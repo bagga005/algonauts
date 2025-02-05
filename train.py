@@ -520,11 +520,13 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
         movies_val)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    features_val = torch.FloatTensor(features_val).to(device)
     model_name = get_model_name(subject, modality)
-    model = utils.load_model(model_name)
+    model = utils.load_model(model_name).to(device)
 
     # Predict the fMRI responses for the validation movies
-    fmri_val_pred = model.predict(features_val)
+    fmri_val_pred = model(features_val)
     compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
 def main():
