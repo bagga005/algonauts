@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import h5py
 import os
 import utils
@@ -444,18 +445,34 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     return model, training_time
 
 def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
+    start_time = time.time()
     for modality in ["visual", "audio", "language", "all", "audio+language", "visual+language"]:
+        subject_start = time.time()
+        print(f"Starting training for modality {modality}...")
         features = get_features(modality)
         model, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+        subject_time = time.time() - subject_start
+        print(f"Completed modality {modality} in {subject_time:.2f} seconds")
         model_name = get_model_name(subject, modality)
         utils.save_model(model, model_name)
         del features
+    total_time = time.time() - start_time
+    print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
+
 
 def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
+    start_time = time.time()
     for subject in [1, 2, 3, 5]:
+        subject_start = time.time()
+        print(f"Starting training for subject {subject}...")
         fmri = get_fmri(subject)
         train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+        subject_time = time.time() - subject_start
+        print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
+    total_time = time.time() - start_time
+    print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
+    return total_time
 
 def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val):
     for modality in ["visual", "audio", "language", "all", "audio+language", "visual+language"]:
@@ -482,20 +499,25 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
 def main():
-    root_data_dir = utils.get_data_root_dir()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    # root_data_dir = utils.get_data_root_dir()
+    # areas_of_interest_path = os.path.join(root_data_dir, 'sub-01_modality-all_accuracy.npy')
+    # npn = np.load(areas_of_interest_path)
+    # print(npn)
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
-    movies_val = ["friends-s06"] # @param {allow-input: true}
+    movies_val = ["friends-s06"] # @param {allow-input: true}c
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
-    # modality = "all"
+    modality = "all"
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
-    # subject = 2
-    # fmri = get_fmri(subject)
+    subject = 3
+    fmri = get_fmri(subject)
     # areas_of_interest_path = os.path.join(root_data_dir, 'eval_results', 'areas-of-interest.csv')
     # arr = utils.load_csv_to_array(areas_of_interest_path)
     # print('arr', arr[:100])
@@ -506,8 +528,8 @@ def main():
     # print('modality', modality)
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
-    train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     #validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
