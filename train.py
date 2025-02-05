@@ -527,7 +527,9 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     params = utils.load_model(model_name)
     model.load_state_dict(params)
     # Predict the fMRI responses for the validation movies
-    fmri_val_pred = model(features_val)
+    with torch.no_grad():
+        fmri_val_pred = model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
+
     compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
 def main():
@@ -561,8 +563,8 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    #validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
+    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
