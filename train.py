@@ -334,32 +334,43 @@ def train_encoding(features_train, fmri_train):
     #model = LinearRegression().fit(features_train, fmri_train)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     ### Convert features_train and fmri_train to PyTorch tensors ###
     X = torch.FloatTensor(features_train).to(device)
     y = torch.FloatTensor(fmri_train).to(device)
+    
     model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     batch_size = 1024
     model.train()
 
-    epochs = 100  # Number of iterations
+    # Create DataLoader for batch processing
+    dataset = torch.utils.data.TensorDataset(X, y)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    epochs = 100
     for epoch in range(epochs):
-        y_pred = model(X)
-        loss = criterion(y_pred, y)
-
-        # Backward pass
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        total_loss = 0
+        for batch_X, batch_y in dataloader:
+            # Forward pass
+            y_pred = model(batch_X)
+            loss = criterion(y_pred, batch_y)
+            
+            # Backward pass
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            total_loss += loss.item()
         
-
-        # Print loss every 100 epochs
+        # Print average loss every 10 epochs
         if epoch % 10 == 0:
-            print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+            avg_loss = total_loss / len(dataloader)
+            print(f"Epoch {epoch}, Average Loss: {avg_loss:.4f}")
+
     ### Calculate training time ###
     training_time = time.time() - start_time
-
 
     ### Output ###
     return model, training_time
@@ -529,7 +540,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     # Predict the fMRI responses for the validation movies
     with torch.no_grad():
         fmri_val_pred = model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
-
+    
     compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
 def main():
@@ -563,8 +574,8 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
+    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    #validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
