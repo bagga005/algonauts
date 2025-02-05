@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 import h5py
 import os
 import utils
@@ -298,6 +299,14 @@ def main_feature_extraction():
         for key_movie, value_movie in value_modality.items():
             print(key_movie + " " + str(value_movie.shape))
 
+class LinearRegressionModel(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(LinearRegressionModel, self).__init__()
+        self.linear = nn.Linear(input_size, output_size)  # 1 input, 1 output
+
+    def forward(self, x):
+        return self.linear(x)
+
 def train_encoding(features_train, fmri_train):
     """
     Train a linear-regression-based encoding model to predict fMRI responses
@@ -322,10 +331,35 @@ def train_encoding(features_train, fmri_train):
     start_time = time.time()
     
     ### Train the linear regression model ###
-    model = LinearRegression().fit(features_train, fmri_train)
+    #model = LinearRegression().fit(features_train, fmri_train)
     
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    ### Convert features_train and fmri_train to PyTorch tensors ###
+    X = torch.FloatTensor(features_train).to(device)
+    y = torch.FloatTensor(fmri_train).to(device)
+    model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    batch_size = 1024
+    model.train()
+
+    epochs = 100  # Number of iterations
+    for epoch in range(epochs):
+        y_pred = model(X)
+        loss = criterion(y_pred, y)
+
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+
+        # Print loss every 100 epochs
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
     ### Calculate training time ###
     training_time = time.time() - start_time
+
 
     ### Output ###
     return model, training_time
@@ -445,19 +479,14 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     return model, training_time
 
 def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
-    start_time = time.time()
     for modality in ["visual", "audio", "language", "all", "audio+language", "visual+language"]:
-        subject_start = time.time()
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
         model, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-        subject_time = time.time() - subject_start
-        print(f"Completed modality {modality} in {subject_time:.2f} seconds")
+        print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality)
         utils.save_model(model, model_name)
         del features
-    total_time = time.time() - start_time
-    print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
 
 
 def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
