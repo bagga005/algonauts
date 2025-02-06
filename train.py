@@ -5,6 +5,7 @@ import h5py
 import os
 import utils
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 from scipy.stats import pearsonr
 import nibabel as nib
 from nilearn import plotting
@@ -347,56 +348,106 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        #utils.analyze_fmri_distribution(fmri_train)
-        ### Convert features_train and fmri_train to PyTorch tensors ###
-        X = torch.FloatTensor(features_train).to(self.device)
-        y = torch.FloatTensor(fmri_train).to(self.device)
-        
-        print('X.shape', X.shape)
-        print('y.shape', y.shape)
         batch_size = 8192
         learning_rate = 0.0001
         epochs = 300
         max_grad_norm = 1.0
+        #utils.analyze_fmri_distribution(fmri_train)
+        ### Convert features_train and fmri_train to PyTorch tensors ###
+        X_train, X_val, y_train, y_val = train_test_split(
+        features_train, fmri_train, 
+        test_size=0.1, 
+        random_state=42
+    )
+    
+        ### Convert to PyTorch tensors ###
+        X_train = torch.FloatTensor(X_train).to(self.device)
+        y_train = torch.FloatTensor(y_train).to(self.device)
+        X_val = torch.FloatTensor(X_val).to(self.device)
+        y_val = torch.FloatTensor(y_val).to(self.device)
+        
+        print(f'Training samples: {X_train.shape[0]:,}')
+        print(f'Validation samples: {X_val.shape[0]:,}')
+
+        
+        
+        # Create DataLoaders for both training and validation
+        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, 
+            batch_size=batch_size, 
+            shuffle=True
+        )
+        
+        val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset, 
+            batch_size=batch_size, 
+            shuffle=False
+        )
+        
+        
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         
-        self.model.train()
-
-        # Create DataLoader for batch processing
-        dataset = torch.utils.data.TensorDataset(X, y)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        print('len dataloader', len(dataloader))
+        
+        print('len dataloader', len(train_loader))
         # Early stopping parameters
-        patience = 5
-        min_delta = 1e-4
-        best_loss = float('inf')
+        best_val_loss = float('inf')
+        patience = 20
         patience_counter = 0
         best_model_state = None
+        train_losses = []
+        val_losses = []
 
+        self.model.train()
         total_loss =0
         for epoch in range(epochs):
             total_loss =0
-            for batch_X, batch_y in dataloader:
+            for batch_X, batch_y in train_loader:
                 # Forward pass
+                optimizer.zero_grad()
                 y_pred = self.model(batch_X)
                 loss = criterion(y_pred, batch_y)
-                
-                # Backward pass
-                optimizer.zero_grad()
                 loss.backward()
                 # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm)
                 optimizer.step()
                 total_loss += loss.item()
+            train_loss = total_loss / len(train_loader)
+            train_losses.append(train_loss)
+            
+            # Validation phase
+            self.model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    y_pred = self.model(batch_X)
+                    loss = criterion(y_pred, batch_y)
+                    val_loss += loss.item()
+            
+            val_loss = val_loss / len(val_loader)
+            val_losses.append(val_loss)
 
             # Print average loss every 10 epochs
+            # Print progress
             if epoch % 10 == 0:
-                avg_loss = total_loss/len(dataloader)
-                
-                print(f"Epoch {epoch}, Average Loss: {avg_loss:.4f}")
-
+                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
+            
+             # Early stopping check
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = self.model.state_dict().copy()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f'\nEarly stopping triggered at epoch {epoch}')
+                    break
+        
+        # Restore best model
+        self.model.load_state_dict(best_model_state)
             # Early stopping check
             # if avg_loss < best_loss - min_delta:
             #     best_loss = avg_loss
