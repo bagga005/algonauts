@@ -300,18 +300,22 @@ def main_feature_extraction():
             print(key_movie + " " + str(value_movie.shape))
 
 class LinearRegressionModel(nn.Module):
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, dropout_rate=0.1):
         super(LinearRegressionModel, self).__init__()
         hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.linear2 = nn.Linear(hidden_size, output_size)
-        self.relu = nn.ReLU()
+        self.batchnorm = nn.BatchNorm1d(hidden_size)
+        self.dropout = nn.Dropout(dropout_rate)
+
+        self.activation = nn.GELU()
         
         nn.init.xavier_uniform_(self.linear1.weight)
         nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
-        x = self.relu(self.linear1(x))
+        #x = self.activation(self.batchnorm(self.linear1(x)))
+        x = self.activation(self.linear1(x))
         return self.linear2(x)
 
 class RegressionHander_Pytorch():
@@ -352,7 +356,7 @@ class RegressionHander_Pytorch():
         print('y.shape', y.shape)
         batch_size = 8192
         learning_rate = 0.0001
-        epochs = 100
+        epochs = 300
         max_grad_norm = 1.0
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
