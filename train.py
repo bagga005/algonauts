@@ -503,13 +503,204 @@ class LinearHandler_Sklearn():
         fmri_val_pred = self.model.predict(features_val)
         return fmri_val_pred
 
-def train_encoding_linear_regression(features_train, fmri_train):
-    ### Record start time ###
-    start_time = time.time()    
-    model = LinearRegression().fit(features_train, fmri_train)
-    training_time = time.time() - start_time
-    return model, training_time
+class TransformerRegressionModel(nn.Module):
+    def __init__(self, input_size, output_size, nhead=8, num_layers=2, dropout=0.1):
+        super(TransformerRegressionModel, self).__init__()
+        
+        # Define sizes
+        self.input_size = input_size
+        self.output_size = output_size
+        
+        # Make sure input_size is divisible by nhead for attention mechanism
+        self.d_model = (input_size // nhead) * nhead
+        if self.d_model != input_size:
+            self.input_projection = nn.Linear(input_size, self.d_model)
+        else:
+            self.input_projection = nn.Identity()
+            
+        # Batch normalization for input features
+        self.input_norm = nn.BatchNorm1d(self.d_model)
+        
+        # Transformer Encoder Layer optimized for regression
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.d_model,
+            nhead=nhead,
+            dim_feedforward=2*self.d_model,  # Reduced from 4x to 2x for regression
+            dropout=dropout,
+            activation='gelu',  # GELU works well with continuous data
+            batch_first=True,
+            norm_first=True    # Pre-norm architecture for better training stability
+        )
+        
+        # Transformer Encoder
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=num_layers
+        )
+        
+        # Output layers for regression
+        self.output_layers = nn.Sequential(
+            nn.Linear(self.d_model, (self.d_model + output_size) // 2),
+            nn.BatchNorm1d((self.d_model + output_size) // 2),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear((self.d_model + output_size) // 2, output_size)
+        )
+        
+        # Initialize weights
+        self._init_weights()
 
+    def _init_weights(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_normal_(p)  # Changed to normal for regression
+                
+    def forward(self, x):
+        # Add batch dimension if not present
+        if x.dim() == 2:
+            x = x.unsqueeze(1)
+            
+        # Project input if needed and normalize
+        x = self.input_projection(x)
+        x = self.input_norm(x.squeeze(1)).unsqueeze(1)
+        
+        # Pass through transformer
+        x = self.transformer(x)
+        
+        # Process output for regression
+        x = x.squeeze(1)
+        x = self.output_layers(x)
+        
+        return x
+
+class RegressionHander_Transformer():
+    def __init__(self, input_size, output_size):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = TransformerRegressionModel(input_size, output_size, nhead=8, num_layers=2, dropout=0.1).to(self.device)
+
+    def train(self, features_train, fmri_train):
+        start_time = time.time()
+        
+        # Split data with stratification
+        X_train, X_val, y_train, y_val = train_test_split(
+            features_train, fmri_train, 
+            test_size=0.1, 
+            random_state=42
+        )
+        
+        # Convert to PyTorch tensors
+        X_train = torch.FloatTensor(X_train).to(self.device)
+        y_train = torch.FloatTensor(y_train).to(self.device)
+        X_val = torch.FloatTensor(X_val).to(self.device)
+        y_val = torch.FloatTensor(y_val).to(self.device)
+        
+        # Create DataLoaders
+        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, 
+            batch_size=256,  # Adjusted for regression
+            shuffle=True,
+            pin_memory=True  # Faster data transfer to GPU
+        )
+        
+        val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset, 
+            batch_size=256,
+            shuffle=False,
+            pin_memory=True
+        )
+        
+        # MSE loss for regression
+        criterion = nn.MSELoss()
+        
+        # AdamW with reduced weight decay for regression
+        optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=0.0001,
+            weight_decay=0.001,  # Reduced from 0.01
+            betas=(0.9, 0.999)  # Standard betas work well for regression
+        )
+        
+        # Cosine annealing with warm restarts
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=50,  # First restart
+            T_mult=2,  # Multiply period by 2 after each restart
+            eta_min=1e-6
+        )
+        
+        best_val_loss = float('inf')
+        patience = 25  # Increased patience for regression
+        patience_counter = 0
+        
+        for epoch in range(300):
+            # Training phase
+            self.model.train()
+            train_loss = 0
+            for batch_X, batch_y in train_loader:
+                optimizer.zero_grad()
+                y_pred = self.model(batch_X)
+                loss = criterion(y_pred, batch_y)
+                loss.backward()
+                
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)  # Reduced for regression
+                
+                optimizer.step()
+                train_loss += loss.item()
+            
+            train_loss = train_loss / len(train_loader)
+            
+            # Validation with correlation metric
+            self.model.eval()
+            val_loss = 0
+            val_corr = 0
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    y_pred = self.model(batch_X)
+                    val_loss += criterion(y_pred, batch_y).item()
+                    # Calculate correlation for monitoring
+                    corr = torch.corrcoef(torch.stack([y_pred.flatten(), batch_y.flatten()]))
+                    val_corr += corr[0,1].item()
+            
+            val_loss = val_loss / len(val_loader)
+            val_corr = val_corr / len(val_loader)
+            
+            scheduler.step()
+            
+            if epoch % 10 == 0:
+                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Corr: {val_corr:.4f}')
+            
+            # Early stopping check
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = self.model.state_dict().copy()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f'\nEarly stopping triggered at epoch {epoch}')
+                    break
+        
+        self.model.load_state_dict(best_model_state)
+        return self.model, time.time() - start_time
+
+    def save_model(self, model_name):
+        utils.save_model_pytorch(self.model, model_name)
+
+    def load_model(self, model_name):
+        params = utils.load_model_pytorch(model_name)
+        self.model.load_state_dict(params)
+
+    def predict(self, features_val):
+        features_val = torch.FloatTensor(features_val).to(self.device)
+        self.model.eval()
+        with torch.no_grad():
+            fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
+        return fmri_val_pred    
 
 
 def save_encoding_accuracy(encoding_accuracy, subject, modality):
@@ -626,6 +817,8 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
+    elif training_handler == 'transformer':
+        trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
     model, training_time = trainer.train(features_train, fmri_train)
     del features_train, fmri_train
     return trainer, training_time
@@ -685,6 +878,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
+    elif training_handler == 'transformer':
+        trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
 
     model_name = get_model_name(subject, modality)
     trainer.load_model(model_name)
@@ -709,7 +904,7 @@ def main():
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
-    training_handler = 'pytorch'
+    training_handler = 'transformer'
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     subject = 3
