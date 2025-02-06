@@ -347,13 +347,13 @@ class RegressionHander_Pytorch():
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
-        batch_size = 2084
+        batch_size = 1024
         self.model.train()
 
         # Create DataLoader for batch processing
         dataset = torch.utils.data.TensorDataset(X, y)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
+        print('len dataloader', len(dataloader))
         # Early stopping parameters
         patience = 5
         min_delta = 1e-4
@@ -362,37 +362,37 @@ class RegressionHander_Pytorch():
         best_model_state = None
 
         epochs = 100
+        total_loss =0
         for epoch in range(epochs):
-            total_loss = 0
+            total_loss =0
             for batch_X, batch_y in dataloader:
                 # Forward pass
-                y_pred = self.model(batch_X)
-                loss = criterion(y_pred, batch_y)
+                y_pred = self.model(X)
+                loss = criterion(y_pred, y)
                 
                 # Backward pass
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                
                 total_loss += loss.item()
-            
-            avg_loss = total_loss / len(dataloader)
-            
+
             # Print average loss every 10 epochs
             if epoch % 10 == 0:
+                avg_loss = total_loss/len(dataloader)
+                
                 print(f"Epoch {epoch}, Average Loss: {avg_loss:.4f}")
 
             # Early stopping check
-            if avg_loss < best_loss - min_delta:
-                best_loss = avg_loss
-                patience_counter = 0
-                best_model_state = self.model.state_dict()
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    print(f"Early stopping triggered at epoch {epoch}")
-                    self.model.load_state_dict(best_model_state)
-                    break
+            # if avg_loss < best_loss - min_delta:
+            #     best_loss = avg_loss
+            #     patience_counter = 0
+            #     best_model_state = self.model.state_dict()
+            # else:
+            #     patience_counter += 1
+            #     if patience_counter >= patience:
+            #         print(f"Early stopping triggered at epoch {epoch}")
+            #         self.model.load_state_dict(best_model_state)
+            #         break
 
         ### Calculate training time ###
         training_time = time.time() - start_time
@@ -643,7 +643,7 @@ def main():
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
-    training_handler = 'sklearn'
+    training_handler = 'pytorch'
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     subject = 3
@@ -659,8 +659,9 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
+    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
+    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
