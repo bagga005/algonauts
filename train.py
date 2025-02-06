@@ -343,11 +343,14 @@ class RegressionHander_Pytorch():
         
         print('X.shape', X.shape)
         print('y.shape', y.shape)
-
+        batch_size = 8192
+        learning_rate = 0.0001
+        epochs = 100
+        max_grad_norm = 1.0
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
-        batch_size = 1024
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        
         self.model.train()
 
         # Create DataLoader for batch processing
@@ -361,18 +364,19 @@ class RegressionHander_Pytorch():
         patience_counter = 0
         best_model_state = None
 
-        epochs = 100
         total_loss =0
         for epoch in range(epochs):
             total_loss =0
             for batch_X, batch_y in dataloader:
                 # Forward pass
-                y_pred = self.model(X)
-                loss = criterion(y_pred, y)
+                y_pred = self.model(batch_X)
+                loss = criterion(y_pred, batch_y)
                 
                 # Backward pass
                 optimizer.zero_grad()
                 loss.backward()
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm)
                 optimizer.step()
                 total_loss += loss.item()
 
