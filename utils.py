@@ -77,3 +77,34 @@ def load_csv_to_array(csv_path):
     return df.values.flatten()
     
 
+def analyze_fmri_distribution(fmri_data):
+    """
+    Analyzes the distribution of fMRI values.
+    
+    Parameters:
+    fmri_data: numpy array or torch tensor of fMRI values
+    """
+    # Convert to numpy if it's a torch tensor
+    if torch.is_tensor(fmri_data):
+        fmri_data = fmri_data.cpu().numpy()
+    
+    total_values = fmri_data.size
+    positive_values = np.sum(fmri_data > 0)
+    negative_values = np.sum(fmri_data < 0)
+    zero_values = np.sum(fmri_data == 0)
+    
+    mean_value = np.mean(fmri_data)
+    std_value = np.std(fmri_data)
+    min_value = np.min(fmri_data)
+    max_value = np.max(fmri_data)
+    
+    print(f"Distribution Analysis of fMRI Data:")
+    print(f"Total values: {total_values:,}")
+    print(f"Positive values: {positive_values:,} ({(positive_values/total_values)*100:.2f}%)")
+    print(f"Negative values: {negative_values:,} ({(negative_values/total_values)*100:.2f}%)")
+    print(f"Zero values: {zero_values:,} ({(zero_values/total_values)*100:.2f}%)")
+    print(f"\nStatistics:")
+    print(f"Mean: {mean_value:.4f}")
+    print(f"Standard deviation: {std_value:.4f}")
+    print(f"Min value: {min_value:.4f}")
+    print(f"Max value: {max_value:.4f}")

@@ -302,10 +302,17 @@ def main_feature_extraction():
 class LinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size):
         super(LinearRegressionModel, self).__init__()
-        self.linear = nn.Linear(input_size, output_size)  # 1 input, 1 output
+        hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
+        self.linear1 = nn.Linear(input_size, hidden_size)
+        self.linear2 = nn.Linear(hidden_size, output_size)
+        self.relu = nn.ReLU()
+        
+        nn.init.xavier_uniform_(self.linear1.weight)
+        nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
-        return self.linear(x)
+        x = self.relu(self.linear1(x))
+        return self.linear2(x)
 
 class RegressionHander_Pytorch():
     def __init__(self, input_size, output_size):
@@ -336,7 +343,7 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        
+        #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
         X = torch.FloatTensor(features_train).to(self.device)
         y = torch.FloatTensor(fmri_train).to(self.device)
