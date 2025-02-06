@@ -529,13 +529,14 @@ class TransformerRegressionModel(nn.Module):
             dropout=dropout,
             activation='gelu',  # GELU works well with continuous data
             batch_first=True,
-            norm_first=True    # Pre-norm architecture for better training stability
+            norm_first=False    # Pre-norm architecture for better training stability
         )
         
         # Transformer Encoder
         self.transformer = nn.TransformerEncoder(
             encoder_layer,
-            num_layers=num_layers
+            num_layers=num_layers,
+            enable_nested_tensor=False 
         )
         
         # Output layers for regression
@@ -696,11 +697,40 @@ class RegressionHander_Transformer():
         self.model.load_state_dict(params)
 
     def predict(self, features_val):
-        features_val = torch.FloatTensor(features_val).to(self.device)
+        """
+        Predict fMRI responses for validation features
+        """
         self.model.eval()
         with torch.no_grad():
-            fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
-        return fmri_val_pred    
+            # Convert to tensor if numpy array
+            if isinstance(features_val, np.ndarray):
+                features_val = torch.FloatTensor(features_val).to(self.device)
+                
+            # Process in batches to avoid memory issues
+            batch_size = 256
+            predictions = []
+            
+            # Create DataLoader for validation features
+            dataset = torch.utils.data.TensorDataset(features_val)
+            dataloader = torch.utils.data.DataLoader(
+                dataset, 
+                batch_size=batch_size,
+                shuffle=False
+            )
+            
+            for (batch_x,) in dataloader:
+                # Ensure input is properly shaped for transformer
+                if batch_x.dim() == 2:
+                    batch_x = batch_x.unsqueeze(1)  # Add sequence dimension
+                    
+                # Get predictions
+                pred = self.model(batch_x)
+                predictions.append(pred.cpu())
+                
+            # Concatenate all predictions
+            fmri_val_pred = torch.cat(predictions, dim=0).numpy()
+            
+            return fmri_val_pred  
 
 
 def save_encoding_accuracy(encoding_accuracy, subject, modality):
