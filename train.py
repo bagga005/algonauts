@@ -315,8 +315,8 @@ class LinearRegressionModel(nn.Module):
         nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
-        #x = self.activation(self.batchnorm(self.linear1(x)))
-        x = self.activation(self.linear1(x))
+        x = self.dropout(self.activation(self.batchnorm(self.linear1(x))))
+        #x = self.activation(self.linear1(x))
         return self.linear2(x)
 
 class RegressionHander_Pytorch():
