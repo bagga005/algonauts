@@ -9,15 +9,25 @@ load_dotenv()
 def get_data_root_dir():
     return os.getenv("DATA_ROOT_DIR")
 
-def save_model(model, model_name):
+def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_data_root_dir(), 'models', file_name)
     torch.save(model.state_dict(), full_path)
 
-def load_model(model_name):
+def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_data_root_dir(), 'models', file_name)
     return torch.load(full_path)
+
+def save_model_sklearn(model, model_name):
+    file_name = f'{model_name}.pkl'
+    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    pickle.dump(model, open(full_path, 'wb'))
+
+def load_model_sklearn(model_name):
+    file_name = f'{model_name}.pkl'
+    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    return pickle.load(open(full_path, 'rb'))
 
 def save_npy(encoding_accuracy, subject, modality):
     """
