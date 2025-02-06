@@ -602,7 +602,7 @@ class RegressionHander_Transformer():
             train_dataset, 
             batch_size=256,  # Adjusted for regression
             shuffle=True,
-            pin_memory=True  # Faster data transfer to GPU
+            pin_memory=False  # Faster data transfer to GPU
         )
         
         val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
@@ -610,7 +610,7 @@ class RegressionHander_Transformer():
             val_dataset, 
             batch_size=256,
             shuffle=False,
-            pin_memory=True
+            pin_memory=False
         )
         
         # MSE loss for regression
