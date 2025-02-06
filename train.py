@@ -643,7 +643,7 @@ def main():
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
-    training_handler = 'pytorch'
+    training_handler = 'sklearn'
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     subject = 3
@@ -660,7 +660,7 @@ def main():
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
-    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
+    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
