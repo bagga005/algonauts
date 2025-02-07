@@ -541,11 +541,12 @@ class TransformerRegressionModel(nn.Module):
         
         # Output layers for regression
         self.output_layers = nn.Sequential(
-            nn.Linear(self.d_model, (self.d_model + output_size) // 2),
-            nn.BatchNorm1d((self.d_model + output_size) // 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear((self.d_model + output_size) // 2, output_size)
+            # nn.Linear(self.d_model, (self.d_model + output_size) // 2),
+            # nn.BatchNorm1d((self.d_model + output_size) // 2),
+            # nn.GELU(),
+            # nn.Dropout(dropout),
+            # nn.Linear((self.d_model + output_size) // 2, output_size)
+            nn.Linear(self.d_model, output_size)
         )
         
         # Initialize weights
@@ -579,7 +580,7 @@ class RegressionHander_Transformer():
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = TransformerRegressionModel(input_size, output_size, nhead=8, num_layers=2, dropout=0.1).to(self.device)
+        self.model = TransformerRegressionModel(input_size, output_size, nhead=8, num_layers=1, dropout=0.2).to(self.device)
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()
@@ -626,16 +627,17 @@ class RegressionHander_Transformer():
         optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=0.0001,
-            weight_decay=0.001,  # Reduced from 0.01
+            weight_decay=0.01,  # Reduced from 0.01
             betas=(0.9, 0.999)  # Standard betas work well for regression
         )
         
-        # Cosine annealing with warm restarts
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        # Learning rate scheduler
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            T_0=50,  # First restart
-            T_mult=2,  # Multiply period by 2 after each restart
-            eta_min=1e-6
+            mode='min',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-6
         )
         
         best_val_loss = float('inf')
@@ -677,7 +679,7 @@ class RegressionHander_Transformer():
             
             val_loss = val_loss / len(val_loader)
             
-            scheduler.step()
+            scheduler.step(val_loss)
             
             if epoch % 10 == 0:
                 compute_encoding_accuracy(y_true_np, y_pred_np, "Val Subject", "Val Modality")
@@ -939,7 +941,7 @@ def main():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
-    movies_train = ["friends-s01",  "friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
     #movies_train = ["friends-s01"] # @param {allow-input: true}
