@@ -4,9 +4,9 @@ import torch.nn as nn
 import h5py
 import os
 import utils
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from scipy.stats import pearsonr
+from model_sklearn import LinearHandler_Sklearn
+from model_torchregression import RegressionHander_Pytorch
+from model_transformer import RegressionHander_Transformer
 import nibabel as nib
 from nilearn import plotting
 from nilearn.maskers import NiftiLabelsMasker
@@ -300,448 +300,6 @@ def main_feature_extraction():
         for key_movie, value_movie in value_modality.items():
             print(key_movie + " " + str(value_movie.shape))
 
-class LinearRegressionModel(nn.Module):
-    def __init__(self, input_size, output_size, dropout_rate=0.1):
-        super(LinearRegressionModel, self).__init__()
-        hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, output_size)
-        self.batchnorm = nn.BatchNorm1d(hidden_size)
-        self.dropout = nn.Dropout(dropout_rate)
-
-        self.activation = nn.GELU()
-        
-        nn.init.xavier_uniform_(self.linear1.weight)
-        nn.init.xavier_uniform_(self.linear2.weight)
-
-    def forward(self, x):
-        x = self.dropout(self.activation(self.batchnorm(self.linear1(x))))
-        #x = self.activation(self.linear1(x))
-        return self.linear2(x)
-
-class RegressionHander_Pytorch():
-    def __init__(self, input_size, output_size):
-        self.input_size = input_size
-        self.output_size = output_size
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = LinearRegressionModel(input_size, output_size).to(self.device)
-
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
-        """
-        Train a linear-regression-based encoding model to predict fMRI responses
-        using movie features.
-
-        Parameters
-        ----------
-        features_train : float
-            Stimulus features for the training movies.
-        fmri_train : float
-            fMRI responses for the training movies.
-
-        Returns
-        -------
-        model : object
-            Trained regression model.
-        training_time : float
-            Time taken to train the model in seconds.
-        """
-        
-        ### Record start time ###
-        start_time = time.time()
-        batch_size = 8192
-        learning_rate = 0.0001
-        epochs = 300
-        max_grad_norm = 1.0
-        #utils.analyze_fmri_distribution(fmri_train)
-        ### Convert features_train and fmri_train to PyTorch tensors ###
-        X_train, X_val, y_train, y_val = train_test_split(
-        features_train, fmri_train, 
-        test_size=0.2, 
-        random_state=42
-    )
-    
-        ### Convert to PyTorch tensors ###
-        X_train = torch.FloatTensor(X_train).to(self.device)
-        y_train = torch.FloatTensor(y_train).to(self.device)
-        X_val = torch.FloatTensor(X_val).to(self.device)
-        y_val = torch.FloatTensor(y_val).to(self.device)
-        
-        print(f'Training samples: {X_train.shape[0]:,}')
-        print(f'Validation samples: {X_val.shape[0]:,}')
-
-        
-        
-        # Create DataLoaders for both training and validation
-        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, 
-            batch_size=batch_size, 
-            shuffle=True
-        )
-        
-        val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset, 
-            batch_size=batch_size, 
-            shuffle=False
-        )
-        
-        
-        #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
-        criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        
-        
-        print('len dataloader', len(train_loader))
-        # Early stopping parameters
-        best_val_loss = float('inf')
-        patience = 20
-        patience_counter = 0
-        best_model_state = None
-        train_losses = []
-        val_losses = []
-
-        self.model.train()
-        total_loss =0
-        for epoch in range(epochs):
-            total_loss =0
-            for batch_X, batch_y in train_loader:
-                # Forward pass
-                optimizer.zero_grad()
-                y_pred = self.model(batch_X)
-                loss = criterion(y_pred, batch_y)
-                loss.backward()
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm)
-                optimizer.step()
-                total_loss += loss.item()
-            train_loss = total_loss / len(train_loader)
-            train_losses.append(train_loss)
-            
-            # Validation phase
-            self.model.eval()
-            val_loss = 0
-            with torch.no_grad():
-                for batch_X, batch_y in val_loader:
-                    y_pred = self.model(batch_X)
-                    loss = criterion(y_pred, batch_y)
-                    val_loss += loss.item()
-            
-            val_loss = val_loss / len(val_loader)
-            val_losses.append(val_loss)
-
-            # Print average loss every 10 epochs
-            # Print progress
-            if epoch % 10 == 0:
-                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-            
-             # Early stopping check
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_model_state = self.model.state_dict().copy()
-                patience_counter = 0
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    print(f'\nEarly stopping triggered at epoch {epoch}')
-                    break
-        
-        # Restore best model
-        self.model.load_state_dict(best_model_state)
-            # Early stopping check
-            # if avg_loss < best_loss - min_delta:
-            #     best_loss = avg_loss
-            #     patience_counter = 0
-            #     best_model_state = self.model.state_dict()
-            # else:
-            #     patience_counter += 1
-            #     if patience_counter >= patience:
-            #         print(f"Early stopping triggered at epoch {epoch}")
-            #         self.model.load_state_dict(best_model_state)
-            #         break
-
-        ### Calculate training time ###
-        training_time = time.time() - start_time
-
-        ### Output ###
-        return self.model, training_time
-    
-    def save_model(self, model_name):
-        utils.save_model_pytorch(self.model, model_name)
-
-    def load_model(self, model_name):
-        params = utils.load_model_pytorch(model_name)
-        self.model.load_state_dict(params)
-
-    def predict(self, features_val):
-        features_val = torch.FloatTensor(features_val).to(self.device)
-        self.model.eval()
-        with torch.no_grad():
-            fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
-        return fmri_val_pred    
-
-class LinearHandler_Sklearn():
-    def __init__(self,input_size, output_size):
-        self.input_size = input_size
-        self.output_size = output_size
-        self.model = LinearRegression()
-
-    def train(self,features_train, fmri_train, features_train_val, fmri_train_val):
-        ### Record start time ###
-        start_time = time.time()    
-        self.model.fit(features_train, fmri_train)
-        training_time = time.time() - start_time
-        return self.model, training_time
-    
-    def save_model(self, model_name):
-        utils.save_model_sklearn(self.model, model_name)
-
-    def load_model(self, model_name):
-        self.model = utils.load_model_sklearn(model_name)  # Direct assignment instead of load_state_dict
-
-    def predict(self, features_val):
-        fmri_val_pred = self.model.predict(features_val)
-        return fmri_val_pred
-
-class TransformerRegressionModel(nn.Module):
-    def __init__(self, input_size, output_size, nhead=8, num_layers=2, dropout=0.1):
-        super(TransformerRegressionModel, self).__init__()
-        
-        # Define sizes
-        self.input_size = input_size
-        self.output_size = output_size
-        
-        # Make sure input_size is divisible by nhead for attention mechanism
-        self.d_model = (input_size // nhead) * nhead
-        if self.d_model != input_size:
-            self.input_projection = nn.Linear(input_size, self.d_model)
-        else:
-            self.input_projection = nn.Identity()
-            
-        # Batch normalization for input features
-        self.input_norm = nn.BatchNorm1d(self.d_model)
-        
-        # Transformer Encoder Layer optimized for regression
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=self.d_model,
-            nhead=nhead,
-            dim_feedforward=2*self.d_model,  # Reduced from 4x to 2x for regression
-            dropout=dropout,
-            activation='gelu',  # GELU works well with continuous data
-            batch_first=True,
-            norm_first=False    # Pre-norm architecture for better training stability
-        )
-        
-        # Transformer Encoder
-        self.transformer = nn.TransformerEncoder(
-            encoder_layer,
-            num_layers=num_layers,
-            enable_nested_tensor=False 
-        )
-        
-        # Output layers for regression
-        self.output_layers = nn.Sequential(
-            # nn.Linear(self.d_model, (self.d_model + output_size) // 2),
-            # nn.BatchNorm1d((self.d_model + output_size) // 2),
-            # nn.GELU(),
-            # nn.Dropout(dropout),
-            # nn.Linear((self.d_model + output_size) // 2, output_size)
-            nn.Linear(self.d_model, output_size)
-        )
-        
-        # Initialize weights
-        self._init_weights()
-
-    def _init_weights(self):
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_normal_(p)  # Changed to normal for regression
-                
-    def forward(self, x):
-        # Add batch dimension if not present
-        if x.dim() == 2:
-            x = x.unsqueeze(1)
-            
-        # Project input if needed and normalize
-        x = self.input_projection(x)
-        x = self.input_norm(x.squeeze(1)).unsqueeze(1)
-        
-        # Pass through transformer
-        x = self.transformer(x)
-        
-        # Process output for regression
-        x = x.squeeze(1)
-        x = self.output_layers(x)
-        
-        return x
-
-class RegressionHander_Transformer():
-    def __init__(self, input_size, output_size):
-        self.input_size = input_size
-        self.output_size = output_size
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = TransformerRegressionModel(input_size, output_size, nhead=8, num_layers=1, dropout=0.2).to(self.device)
-
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
-        start_time = time.time()
-        
-        # Split data with stratification
-        # X_train, X_val, y_train, y_val = train_test_split(
-        #     features_train, fmri_train, 
-        #     test_size=0.2, 
-        #     random_state=42
-        # )
-        
-        # # Convert to PyTorch tensors
-        # X_train = torch.FloatTensor(X_train).to(self.device)
-        # y_train = torch.FloatTensor(y_train).to(self.device)
-        # X_val = torch.FloatTensor(X_val).to(self.device)
-        # y_val = torch.FloatTensor(y_val).to(self.device)
-        X_train = torch.FloatTensor(features_train).to(self.device)
-        y_train = torch.FloatTensor(fmri_train).to(self.device)
-        X_val = torch.FloatTensor(features_train_val).to(self.device)
-        y_val = torch.FloatTensor(fmri_train_val).to(self.device)
-
-        
-        # Create DataLoaders
-        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, 
-            batch_size=256,  # Adjusted for regression
-            shuffle=True,
-            pin_memory=False  # Faster data transfer to GPU
-        )
-        
-        val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset, 
-            batch_size=256,
-            shuffle=False,
-            pin_memory=False
-        )
-        
-        # MSE loss for regression
-        criterion = nn.MSELoss()
-        
-        # AdamW with reduced weight decay for regression
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(),
-            lr=0.0001,
-            weight_decay=0.01,  # Reduced from 0.01
-            betas=(0.9, 0.999)  # Standard betas work well for regression
-        )
-        
-        # Learning rate scheduler
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode='min',
-            factor=0.5,
-            patience=5,
-            min_lr=1e-6
-        )
-        
-        best_val_loss = float('inf')
-        patience = 25  # Increased patience for regression
-        patience_counter = 0
-        
-        for epoch in range(300):
-            # Training phase
-            self.model.train()
-            train_loss = 0
-            for batch_X, batch_y in train_loader:
-                optimizer.zero_grad()
-                y_pred = self.model(batch_X)
-                loss = criterion(y_pred, batch_y)
-                loss.backward()
-                
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)  # Reduced for regression
-                
-                optimizer.step()
-                train_loss += loss.item()
-            
-            train_loss = train_loss / len(train_loader)
-            
-            # Validation with correlation metric
-            self.model.eval()
-            val_loss = 0
-            val_corr = 0
-            y_pred_np = []
-            y_true_np = []
-            with torch.no_grad():
-                for batch_X, batch_y in val_loader:
-                    y_pred = self.model(batch_X)
-                    val_loss += criterion(y_pred, batch_y).item()
-                    if epoch % 10 == 0:
-                        y_pred_np = y_pred.clone().cpu().numpy()
-                        y_true_np = batch_y.clone().cpu().numpy()
-
-            
-            val_loss = val_loss / len(val_loader)
-            
-            scheduler.step(val_loss)
-            
-            if epoch % 10 == 0:
-                compute_encoding_accuracy(y_true_np, y_pred_np, "Val Subject", "Val Modality")
-                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Corr: {val_corr:.4f}')
-            
-            # Early stopping check
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_model_state = self.model.state_dict().copy()
-                patience_counter = 0
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    print(f'\nEarly stopping triggered at epoch {epoch}')
-                    break
-        
-        self.model.load_state_dict(best_model_state)
-        return self.model, time.time() - start_time
-
-    def save_model(self, model_name):
-        utils.save_model_pytorch(self.model, model_name)
-
-    def load_model(self, model_name):
-        params = utils.load_model_pytorch(model_name)
-        self.model.load_state_dict(params)
-
-    def predict(self, features_val):
-        """
-        Predict fMRI responses for validation features
-        """
-        self.model.eval()
-        with torch.no_grad():
-            # Convert to tensor if numpy array
-            if isinstance(features_val, np.ndarray):
-                features_val = torch.FloatTensor(features_val).to(self.device)
-                
-            # Process in batches to avoid memory issues
-            batch_size = 256
-            predictions = []
-            
-            # Create DataLoader for validation features
-            dataset = torch.utils.data.TensorDataset(features_val)
-            dataloader = torch.utils.data.DataLoader(
-                dataset, 
-                batch_size=batch_size,
-                shuffle=False
-            )
-            
-            for (batch_x,) in dataloader:
-                # Ensure input is properly shaped for transformer
-                if batch_x.dim() == 2:
-                    batch_x = batch_x.unsqueeze(1)  # Add sequence dimension
-                    
-                # Get predictions
-                pred = self.model(batch_x)
-                predictions.append(pred.cpu())
-                
-            # Concatenate all predictions
-            fmri_val_pred = torch.cat(predictions, dim=0).numpy()
-            
-            return fmri_val_pred  
-
 
 def save_encoding_accuracy(encoding_accuracy, subject, modality):
     """
@@ -803,39 +361,7 @@ def plot_encoding_accuracy(subject, encoding_accuracy, modality):
     colorbar.set_label("Pearson's $r$", rotation=90, labelpad=12, fontsize=12)
     plotting.show()
 
-def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality):
-    """
-    Compare the  recorded (ground truth) and predicted fMRI responses, using a
-    Pearson's correlation. The comparison is perfomed independently for each
-    fMRI parcel. The correlation results are then plotted on a glass brain.
 
-    Parameters
-    ----------
-    fmri_val : float
-        fMRI responses for the validation movies.
-    fmri_val_pred : float
-        Predicted fMRI responses for the validation movies
-    subject : int
-        Subject number used to train and validate the encoding model.
-    modality : str
-        Feature modality used to train and validate the encoding model.
-
-    """
-
-    ### Correlate recorded and predicted fMRI responses ###
-    encoding_accuracy = np.zeros((fmri_val.shape[1]), dtype=np.float32)
-    for p in range(len(encoding_accuracy)):
-        encoding_accuracy[p] = pearsonr(fmri_val[:, p],
-            fmri_val_pred[:, p])[0]
-    print('encoding_accuracy.shape', encoding_accuracy.shape)
-    mean_encoding_accuracy = np.round(np.mean(encoding_accuracy), 3)
-    std_encoding_accuracy = np.round(np.std(encoding_accuracy), 3)
-    print(f"Encoding accuracy, sub-0{subject}, modality-{modality}, mean accuracy: {mean_encoding_accuracy}, std: {std_encoding_accuracy}")
-
-    #plot_encoding_accuracy(subject, encoding_accuracy, modality)
-    utils.save_npy(encoding_accuracy, subject, modality)
-    # Save accuracy values to CSV
-    save_encoding_accuracy(encoding_accuracy, subject, modality)
 
 
 def get_model_name(subject, modality):
@@ -927,7 +453,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
 
     fmri_val_pred = trainer.predict(features_val)
     
-    compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+    utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -940,14 +466,15 @@ def main():
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
-    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
-    movies_train = ["friends-s01", "friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
+    #movies_train = ["friends-s01", "friends-s02","friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
+    training_handler = 'pytorch'
+    experiment_comments = 'single layer'
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
-    training_handler = 'sklearn'
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     subject = 3
@@ -963,6 +490,10 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    print('starting for handler:', training_handler, ' with comments: ',experiment_comments)
+    print('train_movies', movies_train)
+    print('movies_train_val', movies_train_val)
+    print('moviels_val', movies_val)
     train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities)

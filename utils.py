@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 import torch
+from scipy.stats import pearsonr
 load_dotenv()
 
 def get_data_root_dir():
@@ -108,3 +109,38 @@ def analyze_fmri_distribution(fmri_data):
     print(f"Standard deviation: {std_value:.4f}")
     print(f"Min value: {min_value:.4f}")
     print(f"Max value: {max_value:.4f}")
+
+def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality):
+    """
+    Compare the  recorded (ground truth) and predicted fMRI responses, using a
+    Pearson's correlation. The comparison is perfomed independently for each
+    fMRI parcel. The correlation results are then plotted on a glass brain.
+
+    Parameters
+    ----------
+    fmri_val : float
+        fMRI responses for the validation movies.
+    fmri_val_pred : float
+        Predicted fMRI responses for the validation movies
+    subject : int
+        Subject number used to train and validate the encoding model.
+    modality : str
+        Feature modality used to train and validate the encoding model.
+
+    """
+
+    ### Correlate recorded and predicted fMRI responses ###
+    encoding_accuracy = np.zeros((fmri_val.shape[1]), dtype=np.float32)
+    for p in range(len(encoding_accuracy)):
+        encoding_accuracy[p] = pearsonr(fmri_val[:, p],
+            fmri_val_pred[:, p])[0]
+    print('encoding_accuracy.shape', encoding_accuracy.shape)
+    mean_encoding_accuracy = np.round(np.mean(encoding_accuracy), 3)
+    std_encoding_accuracy = np.round(np.std(encoding_accuracy), 3)
+    print(f"Encoding accuracy, sub-0{subject}, modality-{modality}, mean accuracy: {mean_encoding_accuracy}, std: {std_encoding_accuracy}")
+
+    #plot_encoding_accuracy(subject, encoding_accuracy, modality)
+    # utils.save_npy(encoding_accuracy, subject, modality)
+    # # Save accuracy values to CSV
+    # save_encoding_accuracy(encoding_accuracy, subject, modality)
+    return mean_encoding_accuracy
