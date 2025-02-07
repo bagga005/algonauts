@@ -326,7 +326,7 @@ class RegressionHander_Pytorch():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = LinearRegressionModel(input_size, output_size).to(self.device)
 
-    def train(self, features_train, fmri_train):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         """
         Train a linear-regression-based encoding model to predict fMRI responses
         using movie features.
@@ -486,7 +486,7 @@ class LinearHandler_Sklearn():
         self.output_size = output_size
         self.model = LinearRegression()
 
-    def train(self,features_train, fmri_train):
+    def train(self,features_train, fmri_train, features_train_val, fmri_train_val):
         ### Record start time ###
         start_time = time.time()    
         self.model.fit(features_train, fmri_train)
@@ -945,7 +945,7 @@ def main():
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
-    training_handler = 'transformer'
+    training_handler = 'sklearn'
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     subject = 3
@@ -961,7 +961,7 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities)
+    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
