@@ -581,21 +581,26 @@ class RegressionHander_Transformer():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = TransformerRegressionModel(input_size, output_size, nhead=8, num_layers=2, dropout=0.1).to(self.device)
 
-    def train(self, features_train, fmri_train):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()
         
         # Split data with stratification
-        X_train, X_val, y_train, y_val = train_test_split(
-            features_train, fmri_train, 
-            test_size=0.1, 
-            random_state=42
-        )
+        # X_train, X_val, y_train, y_val = train_test_split(
+        #     features_train, fmri_train, 
+        #     test_size=0.2, 
+        #     random_state=42
+        # )
         
-        # Convert to PyTorch tensors
-        X_train = torch.FloatTensor(X_train).to(self.device)
-        y_train = torch.FloatTensor(y_train).to(self.device)
-        X_val = torch.FloatTensor(X_val).to(self.device)
-        y_val = torch.FloatTensor(y_val).to(self.device)
+        # # Convert to PyTorch tensors
+        # X_train = torch.FloatTensor(X_train).to(self.device)
+        # y_train = torch.FloatTensor(y_train).to(self.device)
+        # X_val = torch.FloatTensor(X_val).to(self.device)
+        # y_val = torch.FloatTensor(y_val).to(self.device)
+        X_train = torch.FloatTensor(features_train).to(self.device)
+        y_train = torch.FloatTensor(fmri_train).to(self.device)
+        X_val = torch.FloatTensor(features_train_val).to(self.device)
+        y_val = torch.FloatTensor(fmri_train_val).to(self.device)
+
         
         # Create DataLoaders
         train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
@@ -659,20 +664,23 @@ class RegressionHander_Transformer():
             self.model.eval()
             val_loss = 0
             val_corr = 0
+            y_pred_np = []
+            y_true_np = []
             with torch.no_grad():
                 for batch_X, batch_y in val_loader:
                     y_pred = self.model(batch_X)
                     val_loss += criterion(y_pred, batch_y).item()
-                    # Calculate correlation for monitoring
-                    corr = torch.corrcoef(torch.stack([y_pred.flatten(), batch_y.flatten()]))
-                    val_corr += corr[0,1].item()
+                    if epoch % 10 == 0:
+                        y_pred_np = y_pred.clone().cpu().numpy()
+                        y_true_np = batch_y.clone().cpu().numpy()
+
             
             val_loss = val_loss / len(val_loader)
-            val_corr = val_corr / len(val_loader)
             
             scheduler.step()
             
             if epoch % 10 == 0:
+                compute_encoding_accuracy(y_true_np, y_pred_np, "Val Subject", "Val Modality")
                 print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Corr: {val_corr:.4f}')
             
             # Early stopping check
@@ -841,39 +849,40 @@ def get_fmri(subject):
     fmri = load_fmri(root_data_dir, subject)
     return fmri
 
-def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler):
+def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler):
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val)
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'transformer':
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
-    model, training_time = trainer.train(features_train, fmri_train)
+    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
     del features_train, fmri_train
     return trainer, training_time
 
-def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities=None):
+def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities=None):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
-        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler)
+        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality)
         trainer.save_model(model_name)
         del features
 
 
-def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler):
+def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler):
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
         print(f"Starting training for subject {subject}...")
         fmri = get_fmri(subject)
-        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler)
+        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler)
         subject_time = time.time() - subject_start
         print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
@@ -929,9 +938,10 @@ def main():
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
-    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] # @param {allow-input: true}
-    movies_val = ["friends-s06"] # @param {allow-input: true}c
+    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
+    movies_train = ["friends-s01",  "friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
+    movies_train_val = ["friends-s02"]
+    movies_val = ["friends-s03"] # @param {allow-input: true}c
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
@@ -951,8 +961,9 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
+    #train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
+    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities)
     validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
