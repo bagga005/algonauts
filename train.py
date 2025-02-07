@@ -356,7 +356,7 @@ class RegressionHander_Pytorch():
         ### Convert features_train and fmri_train to PyTorch tensors ###
         X_train, X_val, y_train, y_val = train_test_split(
         features_train, fmri_train, 
-        test_size=0.1, 
+        test_size=0.2, 
         random_state=42
     )
     
@@ -930,6 +930,7 @@ def main():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
+    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] # @param {allow-input: true}
     movies_val = ["friends-s06"] # @param {allow-input: true}c
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
