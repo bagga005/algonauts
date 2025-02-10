@@ -1,12 +1,12 @@
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge, RidgeCV
 import time
 import utils
 
 class LinearHandler_Sklearn():
-    def __init__(self,input_size, output_size):
+    def __init__(self,input_size, output_size, alphas=[0.1, 1.0, 10.0, 100.0], alpha=1.0):
         self.input_size = input_size
         self.output_size = output_size
-        self.model = LinearRegression()
+        self.model = RidgeCV(alphas=alphas, store_cv_values=True) #Ridge(alpha=alpha, solver='svd') #LinearRegression()
 
     def train(self,features_train, fmri_train, features_train_val, fmri_train_val):
         ### Record start time ###

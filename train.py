@@ -82,6 +82,8 @@ def load_fmri(root_data_dir, subject):
     # Load the the fMRI responses
     fmri_friends = h5py.File(fmri_dir, 'r')
     for key, val in fmri_friends.items():
+        # print('key', key)
+        # print('val', val[:].shape)
         fmri[str(key[13:])] = val[:].astype(np.float32)
     del fmri_friends
 
@@ -455,6 +457,22 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     
     utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
+def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
+    fmri = get_fmri(subject)
+    features = get_features(modality)
+    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    
+    #utils.compute_encoding_accuracy(fmri_train, fmri_train, subject, modality)
+    pre_fmri = fmri_train.copy()
+    # Remove first row from fmri_train
+    fmri_train = fmri_train[1:, :]  # Start from index 1 to end
+    # Remove last row from pre_fmri
+    pre_fmri = pre_fmri[:-1, :] 
+    print('fmri_train.shape', fmri_train.shape)
+    print('pre_fmri.shape', pre_fmri.shape)
+    utils.compute_encoding_accuracy(fmri_train, pre_fmri, subject, modality)
+
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -466,19 +484,20 @@ def main():
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
-    movies_train = ["friends-s01", "friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
-    #movies_train = ["friends-s01", "friends-s02","friends-s04", "friends-s05", "friends-s06"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life"] # @param {allow-input: true}
+    #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
-    movies_val = ["friends-s03"] # @param {allow-input: true}c
-    training_handler = 'pytorch'
-    experiment_comments = 'single layer'
+    movies_val = ["movie10-wolf"] # @param {allow-input: true}c
+    training_handler = 'sklearn'
+    experiment_comments = 'ridgecv'
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
-    subject = 3
+    subject = 1
     fmri = get_fmri(subject)
+    #measure_yony_accuracy(subject, specific_modalities[0], fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     # areas_of_interest_path = os.path.join(root_data_dir, 'eval_results', 'areas-of-interest.csv')
     # arr = utils.load_csv_to_array(areas_of_interest_path)
     # print('arr', arr[:100])
