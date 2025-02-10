@@ -378,9 +378,26 @@ def get_fmri(subject):
     root_data_dir = utils.get_data_root_dir()
     fmri = load_fmri(root_data_dir, subject)
     return fmri
+def add_recurrent_features(features,fmri,recurrence):
+    #print('features.shape', features.shape)
+    #print('fmri.shape', fmri.shape)
+    if recurrence > 0:
+        fmri = fmri[recurrence:,:]
+        recurrent_features = np.zeros((features.shape[0]-recurrence, features.shape[1]*(recurrence+1)), dtype=np.float32)
+        #print('recurrent_features.shape', recurrent_features.shape)
+        for i in range(recurrence, features.shape[0]):# Remove first row from fmri_train
+            feature_vector = features[i-recurrence:i+1,:].flatten()
+            #print('feature_vector.shape', feature_vector.shape)
+            recurrent_features[i-recurrence,:] = feature_vector
+    else:
+        recurrent_features = features
+    #print('recurrent_features.shape', recurrent_features.shape)
+    #print('fmri.shape', fmri.shape)
+    return recurrent_features, fmri
 
 def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler):
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    features_train, fmri_train = add_recurrent_features(features_train, fmri_train, 1)
     features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val)
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
@@ -489,7 +506,7 @@ def main():
     movies_train_val = ["friends-s02"]
     movies_val = ["movie10-wolf"] # @param {allow-input: true}c
     training_handler = 'sklearn'
-    experiment_comments = 'ridgecv'
+    experiment_comments = 'ridge'
     #movies_train = ["friends-s01"] # @param {allow-input: true}
 
     specific_modalities = ["all"]
@@ -514,9 +531,9 @@ def main():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities)
-    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
-    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities)
-    validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
+    # validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities)
+    # validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities)
+    # validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
