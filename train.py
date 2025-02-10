@@ -399,6 +399,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val)
+    features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'sklearn':
@@ -503,11 +504,11 @@ def main():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s04", "friends-s05", "friends-s06", "movie10-bourne", "movie10-figures", "movie10-life","movie10-wolf"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
-    movies_val = ["movie10-wolf"] # @param {allow-input: true}c
-    training_handler = 'sklearn'
+    movies_val = ["friends-s03"] # @param {allow-input: true}c
+    training_handler = 'transformer'
     experiment_comments = 'ridge'
     specific_modalities = ["all"]
     recurrence = 3
@@ -529,7 +530,7 @@ def main():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    print('starting for handler:', training_handler, ' with comments: ',experiment_comments)
+    print('starting for handler:', training_handler, ' with comments: ',experiment_comments, 'with recurrence:', recurrence)
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
