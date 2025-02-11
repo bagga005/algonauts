@@ -18,7 +18,7 @@ def main():
     training_handler = 'sklearn'
     experiment_comments = 'ridge'
     specific_modalities = ["all"]
-    recurrence = 0
+    recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
     
     # features = get_features(modality)
