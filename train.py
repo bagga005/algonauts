@@ -399,6 +399,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val)
+    features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'sklearn':
