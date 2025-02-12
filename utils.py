@@ -10,8 +10,11 @@ load_dotenv()
 def get_data_root_dir():
     return os.getenv("DATA_ROOT_DIR")
 
-def get_tmp_folder():
-    return os.getenv("TMP_FOLDER")
+def get_tmp_dir():
+    return os.getenv("TMP_DIR")
+
+def get_output_dir():
+    return os.getenv("OUTPUT_DIR")
 
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
