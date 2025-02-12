@@ -1,6 +1,6 @@
 import train
-
-def main():
+import h5py
+def run_trainings():
 
     # root_data_dir = utils.get_data_root_dir()
     # areas_of_interest_path = os.path.join(root_data_dir, 'sub-01_modality-all_accuracy.npy')
@@ -63,7 +63,13 @@ def main():
     # utils.save_model(model, model_name)
 
     #model = utils.load_model(f'sub-01_modality-all')
-    
+
+def readh5(path):
+    with h5py.File(path, 'r') as data:
+        for episode in data.keys():
+            print(episode)
+
 
 if __name__ == "__main__":
-    main()
+    run_trainings
+    #readh5('/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5')
