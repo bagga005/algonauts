@@ -74,7 +74,6 @@ def get_vision_model():
 
     return feature_extractor, model_layer, device
 
-feature_extractor, model_layer = get_vision_model(device)
 
 def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     transform, device, save_dir_temp, save_dir_features):
