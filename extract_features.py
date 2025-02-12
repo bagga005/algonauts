@@ -17,7 +17,7 @@ def extract_raw_visual_features():
     transform = define_frames_transform()
     # Execute visual feature extraction
     visual_features = extract_visual_features(episode_path, tr, feature_extractor,
-        model_layer, transform, device, save_dir_temp, save_dir_features)
+        model_layer, transform, device, save_dir_temp, "/teamspace/studios/this_studio/algo_data/file.h5", "s101")
 
 if __name__ == "__main__":
     extract_raw_visual_features()

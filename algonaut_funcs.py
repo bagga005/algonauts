@@ -76,7 +76,7 @@ def get_vision_model():
 
 
 def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
-    transform, device, save_dir_temp, save_dir_features):
+    transform, device, save_dir_temp, save_file, group_name):
     """
     Extract visual features from a movie using a pre-trained video model.
 
@@ -112,9 +112,8 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     clip = VideoFileClip(episode_path)
     start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
     # Create the directory where the movie chunks are temporarily saved
-    temp_dir = os.path.join(save_dir_temp, 'temp')
-    os.makedirs(temp_dir, exist_ok=True)
-
+    temp_dir = save_dir_temp # os.path.join(save_dir_temp, 'temp')
+    #os.makedirs(temp_dir, exist_ok=True)
     # Empty features list
     visual_features = []
 
@@ -131,7 +130,6 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
             # Load the frames from the chunked movie clip
             video_clip = VideoFileClip(chunk_path)
             chunk_frames = [frame for frame in video_clip.iter_frames()]
-
             # Format the frames to shape:
             # (batch_size, channels, num_frames, height, width)
             frames_array = np.transpose(np.array(chunk_frames), (3, 0, 1, 2))
@@ -152,12 +150,10 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     visual_features = np.array(visual_features, dtype='float32')
 
     # Save the visual features
-    #out_file_visual = os.path.join(
-    #    save_dir_features, f'friends_s01e01a_features_visual.h5')
-    #with h5py.File(out_file_visual, 'a' if Path(out_file_visual).exists() else 'w') as f:
-    #    group = f.create_group("s01e01a")
-    #    group.create_dataset('visual', data=visual_features, dtype=np.float32)
-    #print(f"Visual features saved to {out_file_visual}")
+    with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
+        group = f.create_group(group_name)
+        group.create_dataset('visual', data=visual_features, dtype=np.float32)
+    print(f"Visual features saved to {save_file}")
 
     # Output
     return visual_features
