@@ -28,6 +28,7 @@ def extract_raw_visual_features():
         print(f"Extracting visual features for {stim_id}", stim_path)
         fn = f"{out_data_dir}/stim_id.h5"
     # Execute visual feature extraction
+<<<<<<< HEAD
         visual_features = extract_visual_features(episode_path, tr, feature_extractor,
         model_layer, transform, device, save_dir_temp, save_dir_features)
 
