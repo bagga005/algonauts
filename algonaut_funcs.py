@@ -8,6 +8,8 @@ from torchvision.transforms import Compose, Lambda, CenterCrop
 from torchvision.models.feature_extraction import create_feature_extractor
 from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSideScale
 import utils
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 import h5py
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -160,3 +162,96 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     # Output
     return visual_features
 
+def load_features_visual(path, stim_id):
+    """
+    Load the extracted features from the HDF5 file.
+
+    Parameters
+    ----------
+    root_data_dir : str
+        Root data directory.
+    modality : str
+        The modality of the features ('visual', 'audio', or 'language').
+
+    Returns
+    -------
+    features : float
+        Stimulus features.
+
+    """
+
+    ### Get the stimulus features file directory ###
+    data_dir = os.path.join(path, stim_id+'.h5')
+        #                     'stimulus_features', 'raw', modality,
+        # 'friends_s01e01a_features_'+modality+'.h5')
+
+    ### Load the stimulus features ###
+    with h5py.File(data_dir, 'r') as data:
+        assert len(data.keys()) == 1, f"Expected exactly 1 key, but found {len(data.keys())} keys"
+        features = np.asarray(data[stim_id]['visual'])
+
+    print(f"visual features original shape: {features.shape}")
+    print('(Movie samples × Features)')
+
+    ### Output ###
+    return features
+
+def preprocess_features(features):
+    """
+    Rplaces NaN values in the stimulus features with zeros, and z-score the
+    features.
+
+    Parameters
+    ----------
+    features : float
+        Stimulus features.
+
+    Returns
+    -------
+    prepr_features : float
+        Preprocessed stimulus features.
+
+    """
+
+    ### Convert NaN values to zeros ###
+    features = np.nan_to_num(features)
+
+    ### Z-score the features ###
+    scaler = StandardScaler()
+    prepr_features = scaler.fit_transform(features)
+
+    ### Output ###
+    return prepr_features
+
+def perform_pca(prepr_features, n_components, modality):
+    """
+    Perform PCA on the standardized features.
+
+    Parameters
+    ----------
+    prepr_features : float
+        Preprocessed stimulus features.
+    n_components : int
+        Number of components to keep
+
+    Returns
+    -------
+    features_pca : float
+        PCA-downsampled stimulus features.
+
+    """
+
+    ### Set the number of principal components to keep ###
+    # If number of PCs is larger than the number of features, set the PC number
+    # to the number of features
+    if n_components > prepr_features.shape[1]:
+        n_components = prepr_features.shape[1]
+
+    ### Perform PCA ###n_init=4, max_iter=300
+    pca = PCA(n_components, random_state=20200220)
+    features_pca = pca.fit_transform(prepr_features)
+    print(f"\n{modality} features PCA shape: {features_pca.shape}")
+    print('(Movie samples × Principal components)')
+
+    ### Output ###
+    return features_pca
