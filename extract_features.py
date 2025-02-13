@@ -1,6 +1,8 @@
 import utils
+import os
 from glob import glob
 from tqdm import tqdm
+import h5py
 
 from algonaut_funcs import extract_visual_features, get_vision_model, define_frames_transform
 def extract_raw_visual_features():
@@ -19,14 +21,17 @@ def extract_raw_visual_features():
 
     # Saving directories
     save_dir_temp = utils.get_tmp_dir()
-    save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
+    #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
     feature_extractor, model_layer, device = get_vision_model()
     transform = define_frames_transform()
+    exclude_list =['friends_s03e05b']
     # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting visual features for {stim_id}", stim_path)
-        fn = f"{out_data_dir}/stim_id.h5"
+        fn = f"{out_data_dir}{stim_id}.h5"
+        print(fn)
+        if os.path.exists(fn) or stim_id in exclude_list: continue; 
         # Execute visual feature extraction
         visual_features = extract_visual_features(stim_path, tr, feature_extractor,
         model_layer, transform, device, save_dir_temp, fn, stim_id)

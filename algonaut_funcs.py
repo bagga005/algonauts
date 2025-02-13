@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -7,6 +8,7 @@ from torchvision.transforms import Compose, Lambda, CenterCrop
 from torchvision.models.feature_extraction import create_feature_extractor
 from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSideScale
 import utils
+import h5py
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def uniform_temporal_subsample(x: torch.Tensor, num_samples: int) -> torch.Tensor:
@@ -148,7 +150,7 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
 
     # Convert the visual features to float32
     visual_features = np.array(visual_features, dtype='float32')
-
+    print('visual_features.shape', visual_features.shape)
     # Save the visual features
     with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
         group = f.create_group(group_name)
