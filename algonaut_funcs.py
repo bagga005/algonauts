@@ -152,12 +152,10 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
 
     # Convert the visual features to float32
     visual_features = np.array(visual_features, dtype='float32')
-    print('visual_features.shape', visual_features.shape)
     # Save the visual features
     with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
         group = f.create_group(group_name)
         group.create_dataset('visual', data=visual_features, dtype=np.float32)
-    print(f"Visual features saved to {save_file}")
 
     # Output
     return visual_features
