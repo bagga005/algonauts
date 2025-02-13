@@ -24,7 +24,7 @@ def extract_raw_visual_features():
     #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
     feature_extractor, model_layer, device = get_vision_model()
     transform = define_frames_transform()
-    exclude_list =['friends_s03e05b']
+    exclude_list =['friends_s03e05b', 'friends_s03e06a']
     # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
