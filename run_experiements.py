@@ -73,12 +73,14 @@ def readh5(path):
     with h5py.File(path, 'r') as data:
         for episode in data.keys():
             print(episode)
-            print(data[episode]['audio'].shape)
+            print(data[episode]['language_pooler_output'].shape)
+            print(data[episode]['language_last_hidden_state'].shape)
+            #print(data[episode]['audio'].shape)
 
 
 if __name__ == "__main__":
     #run_trainings()
     #file = '/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5'
-    file = '/home/bagga005/algo/comp_data/stimulus_features/raw/audio/friends_s01e01a.h5'
+    file = '/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a.h5'
     readh5(file)
     #readh5('/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5')
