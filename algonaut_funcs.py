@@ -8,6 +8,7 @@ from torchvision.transforms import Compose, Lambda, CenterCrop
 from torchvision.models.feature_extraction import create_feature_extractor
 from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSideScale
 import utils
+import librosa
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import h5py
@@ -151,12 +152,13 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
             pbar.update(1)
 
     # Convert the visual features to float32
+    
     visual_features = np.array(visual_features, dtype='float32')
     # Save the visual features
     with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
         group = f.create_group(group_name)
         group.create_dataset('visual', data=visual_features, dtype=np.float32)
-
+    print('visual_features', visual_features.shape)
     # Output
     return visual_features
 
@@ -193,6 +195,85 @@ def load_features_visual(path, stim_id):
 
     ### Output ###
     return features
+
+def extract_audio_features(episode_path, tr, sr, save_dir_temp,
+    save_file, group_name):
+    """
+    Extract audio features from a movie using Mel-frequency cepstral
+    coefficients (MFCCs).
+
+    Parameters
+    ----------
+    episode_path : str
+        Path to the movie file for which the audio features are extracted.
+    tr : float
+        Duration of each chunk, in seconds (aligned with the fMRI repetition
+        time, or TR).
+    sr : int
+        Audio sampling rate.
+    device : str
+        Device to perform computations ('cpu' or 'gpu').
+    save_dir_temp : str
+        Directory where the chunked movie clips are temporarily stored for
+        feature extraction.
+    save_dir_features : str
+        Directory where the extracted audio features are saved.
+
+    Returns
+    -------
+    audio_features : float
+        Array containing the extracted audio features.
+
+    """
+
+    # Get the onset time of each movie chunk
+    clip = VideoFileClip(episode_path)
+    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    # Create the directory where the movie chunks are temporarily saved
+    temp_dir = os.path.join(save_dir_temp, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+
+    # Empty features list
+    audio_features = []
+
+    ### Loop over chunks ###
+    with tqdm(total=len(start_times), desc="Extracting audio features") as pbar:
+        for start in start_times:
+
+            # Divide the movie in chunks of length TR, and save the resulting
+            # audio clips as '.wav' files
+            clip_chunk = clip.subclip(start, start+tr)
+            chunk_audio_path = os.path.join(temp_dir, 'audio_s01e01a.wav')
+            clip_chunk.audio.write_audiofile(chunk_audio_path, verbose=False,
+                logger=None)
+            # Load the audio samples from the chunked movie clip
+            y, sr = librosa.load(chunk_audio_path, sr=sr, mono=True)
+
+            # Extract the audio features (MFCC)
+            mfcc_features = np.mean(librosa.feature.mfcc(y=y, sr=sr), axis=1)
+            audio_features.append(mfcc_features)
+            # Update the progress bar
+            pbar.update(1)
+
+    ### Convert the visual features to float32 ###
+    audio_features = np.array(audio_features, dtype='float32')
+
+    # Save the visual features
+    with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
+        group = f.create_group(group_name)
+        group.create_dataset('audio', data=audio_features, dtype=np.float32)
+    print('audio_features shape', audio_features.shape)
+
+    # Save the audio features
+    #out_file_audio = os.path.join(
+    #    save_dir_features, f'friends_s01e01a_features_audio.h5')
+    #with h5py.File(out_file_audio, 'a' if Path(out_file_audio).exists() else 'w') as f:
+    #    group = f.create_group("s01e01a")
+    #    group.create_dataset('audio', data=audio_features, dtype=np.float32)
+    #print(f"Audio features saved to {out_file_audio}")
+
+    ### Output ###
+    return audio_features
 
 def preprocess_features(features):
     """

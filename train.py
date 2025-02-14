@@ -200,16 +200,22 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         elif movie[:7] == 'movie10':
             id = movie[8:]
         movie_splits = [key for key in fmri if id in key[:len(id)]]
+        print('movie[:7]', movie[:7])
+        print('id', id)
+        print('movie_splits', movie_splits)
 
         ### Loop over movie splits ###
         for split in movie_splits:
-
+            # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
+            # if split == 's01e01a': print('fmri_split', fmri_split.shape)
             # Exclude the first and last fMRI samples
             fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
+            # if split == 's01e01a': print('fmri_split', fmri_split.shape)
             aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
-
+            # if split == 's01e01a': print('aligned_fmri', aligned_fmri.shape)
+            # if split == 's01e01a': print('len(fmri_split', len(fmri_split))
             ### Loop over fMRI samples ###
             for s in range(len(fmri_split)):
                 # Empty variable containing the stimulus features of all
@@ -244,6 +250,12 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                             idx_end = len(features[mod][split])
                             idx_start = idx_end - stimulus_window
                         f = features[mod][split][idx_start:idx_end]
+                        # if mod =='visual' and split == 's01e01a' and (s == 0 or s==1 or s==2): 
+                        #     print('mod', mod)
+                        #     print('s', s)
+                        #     print('idx_start', idx_start)
+                        #     print('idx_end', idx_end)
+                        #     print('f', f.shape)
                         f_all = np.append(f_all, f.flatten())
 
                     ### Language features ###
