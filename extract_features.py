@@ -12,7 +12,7 @@ import json_log_formatter
 #init logging
 logger = logging.getLogger('my_json')
 formatter = json_log_formatter.JSONFormatter()
-json_handler = logging.FileHandler(filename='run_log.json')
+json_handler = logging.FileHandler(filename='run_log-language.json')
 json_handler.setFormatter(formatter)
 logger.addHandler(json_handler)
 logger.setLevel(logging.INFO)
@@ -55,8 +55,8 @@ def extract_language_for_stimuli(stim_obj, out_data_dir):
     #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
     # Load the model and tokenizer
     model, tokenizer = get_language_model(device)
-    # extract_language_features(stim_obj['stim_path'], model, tokenizer, stim_obj['num_used_tokens'],
-    #     stim_obj['kept_tokens_last_hidden_state'], device,  stim_obj['fn'], stim_obj['stim_id'])
+    extract_language_features(stim_obj['stim_path'], model, tokenizer, stim_obj['num_used_tokens'],
+         stim_obj['kept_tokens_last_hidden_state'], device,  stim_obj['fn'], stim_obj['stim_id'])
     logger.info("Finish", extra={'stim_id': stim_obj['stim_id'], 'status': 1})
 
 
@@ -90,15 +90,13 @@ def extract_raw_language_features():
         stim_obj = dict(stim_path=stim_path, num_used_tokens=num_used_tokens, kept_tokens_last_hidden_state=kept_tokens_last_hidden_state,
                          fn=fn, stim_id=stim_id)
         stim_list.append(stim_obj)
-        map(
-            fn=extract_audio_for_stimuli,
-            inputs=stim_list,
-            num_workers=os.cpu_count(),
-            output_dir="thisdic"
-        )
-        # Execute language feature extraction
-        extract_language_features(stim_path, model, tokenizer, num_used_tokens,
-        kept_tokens_last_hidden_state, device,  fn, stim_id)
+    print('number of stim to process: ' + str(len(stim_list)))
+    map(
+        fn=extract_language_for_stimuli,
+        inputs=stim_list,
+        num_workers=os.cpu_count(),
+        output_dir="thisdic"
+    )
         
 def extract_audio_for_stimuli(stim_obj, out_data_dir):
     logger.info("Start", extra={'stim_id': stim_obj['stim_id'], 'status': 0})
@@ -142,5 +140,5 @@ def extract_raw_audio_features():
 
 if __name__ == "__main__":
     #extract_raw_visual_features()
-    extract_raw_audio_features()
-    #extract_raw_language_features()
+    #extract_raw_audio_features()
+    extract_raw_language_features()
