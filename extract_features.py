@@ -48,6 +48,18 @@ def extract_raw_visual_features():
         visual_features = extract_visual_features(stim_path, tr, feature_extractor,
         model_layer, transform, device, save_dir_temp, fn, stim_id)
 
+def extract_language_for_stimuli(stim_obj, out_data_dir):
+    logger.info("Start", extra={'stim_id': stim_obj['stim_id'], 'status': 0})
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
+    # Load the model and tokenizer
+    model, tokenizer = get_language_model(device)
+    # extract_language_features(stim_obj['stim_path'], model, tokenizer, stim_obj['num_used_tokens'],
+    #     stim_obj['kept_tokens_last_hidden_state'], device,  stim_obj['fn'], stim_obj['stim_id'])
+    logger.info("Finish", extra={'stim_id': stim_obj['stim_id'], 'status': 1})
+
+
 def extract_raw_language_features():
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
@@ -66,19 +78,24 @@ def extract_raw_language_features():
     num_used_tokens = 510
     kept_tokens_last_hidden_state = 10
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # Saving directories
-    save_dir_temp = utils.get_tmp_dir()
-    #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
-    # Load the model and tokenizer
-    model, tokenizer = get_language_model(device)
+    
     exclude_list =[]
+    stim_list = []
     # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting language features for {stim_id}", stim_path)
         fn = os.path.join(out_data_dir, "stimulus_features", "raw", "language", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
+        stim_obj = dict(stim_path=stim_path, num_used_tokens=num_used_tokens, kept_tokens_last_hidden_state=kept_tokens_last_hidden_state,
+                         fn=fn, stim_id=stim_id)
+        stim_list.append(stim_obj)
+        map(
+            fn=extract_audio_for_stimuli,
+            inputs=stim_list,
+            num_workers=os.cpu_count(),
+            output_dir="thisdic"
+        )
         # Execute language feature extraction
         extract_language_features(stim_path, model, tokenizer, num_used_tokens,
         kept_tokens_last_hidden_state, device,  fn, stim_id)
