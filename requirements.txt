@@ -1,4 +1,4 @@
-h5py==3.1.0
+h5py==3.12.1
 librosa==0.10.2.post1
 matplotlib==3.7.3
 moviepy==1.0.3

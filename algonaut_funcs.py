@@ -10,6 +10,7 @@ from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSi
 import utils
 from transformers import BertTokenizer, BertModel
 import librosa
+import random
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import h5py
@@ -232,8 +233,9 @@ def extract_audio_features(episode_path, tr, sr, save_dir_temp,
     # Get the onset time of each movie chunk
     clip = VideoFileClip(episode_path)
     start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    dir_ext = random.randint(1, 10000000)
     # Create the directory where the movie chunks are temporarily saved
-    temp_dir = os.path.join(save_dir_temp, 'temp')
+    temp_dir = os.path.join(save_dir_temp, 'temp' + str(dir_ext))
     os.makedirs(temp_dir, exist_ok=True)
 
     # Empty features list
