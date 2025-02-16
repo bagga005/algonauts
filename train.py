@@ -35,19 +35,19 @@ def load_stimulus_features(root_data_dir, modality):
 
     ### Load the visual features ###
     if modality == 'visual' or modality == 'all' or modality == 'visual+language':
-        stimuli_dir = os.path.join(root_data_dir, 'stimulus_features', 'pca',
+        stimuli_dir = os.path.join(root_data_dir, 'pca',
             'friends_movie10', 'visual', 'features_train.npy')
         features['visual'] = np.load(stimuli_dir, allow_pickle=True).item()
 
     ### Load the audio features ###
     if modality == 'audio' or modality == 'all' or modality == 'audio+language':
-        stimuli_dir = os.path.join(root_data_dir, 'stimulus_features', 'pca',
+        stimuli_dir = os.path.join(root_data_dir, 'pca',
             'friends_movie10', 'audio', 'features_train.npy')
         features['audio'] = np.load(stimuli_dir, allow_pickle=True).item()
 
     ### Load the language features ###
     if modality == 'language' or modality == 'all' or modality == 'audio+language' or modality == 'visual+language':
-        stimuli_dir = os.path.join(root_data_dir, 'stimulus_features', 'pca',
+        stimuli_dir = os.path.join(root_data_dir, 'pca',
             'friends_movie10', 'language', 'features_train.npy')
         features['language'] = np.load(stimuli_dir, allow_pickle=True).item()
 
@@ -200,9 +200,9 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         elif movie[:7] == 'movie10':
             id = movie[8:]
         movie_splits = [key for key in fmri if id in key[:len(id)]]
-        print('movie[:7]', movie[:7])
-        print('id', id)
-        print('movie_splits', movie_splits)
+        # print('movie[:7]', movie[:7])
+        # print('id', id)
+        # print('movie_splits', movie_splits)
 
         ### Loop over movie splits ###
         for split in movie_splits:
@@ -306,7 +306,8 @@ def main_feature_extraction():
     movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
 
     movies_val = ["friends-s06"] # @param {allow-input: true}
-    features = load_stimulus_features(root_data_dir, modality)
+    stim_data_dir = utils.get_stimulus_features_dir()
+    features = load_stimulus_features(stim_data_dir, modality)
 
     # Print all available movie splits for each stimulus modality
     for key_modality, value_modality in features.items():
@@ -382,8 +383,8 @@ def get_model_name(subject, modality):
     return f'sub-' + str(subject) + '_modality-' + str(modality)
 
 def get_features(modality):
-    root_data_dir = utils.get_data_root_dir()
-    features = load_stimulus_features(root_data_dir, modality)
+    stim_data_dir = utils.get_stimulus_features_dir()
+    features = load_stimulus_features(stim_data_dir, modality)
     return features
 
 def get_fmri(subject):

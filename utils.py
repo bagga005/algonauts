@@ -7,6 +7,9 @@ import torch
 from scipy.stats import pearsonr
 load_dotenv()
 
+def get_stimulus_features_dir():
+    return os.getenv("STIMULUS_FEATURES_DIR")
+
 def get_raw_data_dir():
     return os.getenv("RAW_DATA_DIR")
 
@@ -24,22 +27,22 @@ def get_output_dir():
 
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
-    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    full_path = os.path.join(get_output_dir(), 'models', file_name)
     torch.save(model.state_dict(), full_path)
 
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
-    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    full_path = os.path.join(get_output_dir(), 'models', file_name)
     return torch.load(full_path)
 
 def save_model_sklearn(model, model_name):
     file_name = f'{model_name}.pkl'
-    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    full_path = os.path.join(get_output_dir(), 'models', file_name)
     pickle.dump(model, open(full_path, 'wb'))
 
 def load_model_sklearn(model_name):
     file_name = f'{model_name}.pkl'
-    full_path = os.path.join(get_data_root_dir(), 'models', file_name)
+    full_path = os.path.join(get_output_dir(), 'models', file_name)
     return pickle.load(open(full_path, 'rb'))
 
 def save_npy(encoding_accuracy, subject, modality):
