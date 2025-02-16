@@ -171,8 +171,8 @@ def do_pca(inpath, outfile,modality):
     filter_in_name ='bourne'
     if filter_in_name != '':
         files = [f for f in files if filter_in_name in f]
-    filter_out_name = 'bourne'
-    if filter_out_name != 's07':
+    filter_out_name = 's07'
+    if filter_out_name != '':
         files = [f for f in files if filter_out_name not in f]
     files.sort()
     print(len(files), files[:3], files[-3:])
