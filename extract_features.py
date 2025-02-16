@@ -30,7 +30,11 @@ def extract_raw_visual_features():
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    files = glob(f"{root_data_dir}algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
+    file_in_filter = 'friends_s03e05b'
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
+    if file_in_filter:
+        files = [f for f in files if file_in_filter in f]
     files.sort()
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
@@ -44,7 +48,7 @@ def extract_raw_visual_features():
     #save_dir_features = out_data_dir +  "stimulus_features/raw/visual/"
     feature_extractor, model_layer, device = get_vision_model()
     transform = define_frames_transform()
-    exclude_list =['friends_s03e05b', 'friends_s03e06a']
+    
     # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
@@ -74,7 +78,7 @@ def extract_raw_language_features():
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    files = glob(f"{root_data_dir}algonauts_2025.competitors/stimuli/transcripts/**/**/*.tsv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/**/**/*.tsv")
     if fileFilter:
         files = [f for f in files if fileFilter in f]
     files.sort()
@@ -209,13 +213,13 @@ def do_pca(inpath, outfile,modality):
     
 
 if __name__ == "__main__":
-    #extract_raw_visual_features()
+    extract_raw_visual_features()
     #extract_raw_audio_features()
     #extract_raw_language_features()
     #do_pca('language')
-    modality = 'language'
-    inpath = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new.npy')
-    do_pca(inpath, outfile, modality)
+    # modality = 'language'
+    # inpath = os.path.join(utils.get_raw_data_dir(), modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new.npy')
+    # do_pca(inpath, outfile, modality)
     #print(inpath)
     #print(outfile)
