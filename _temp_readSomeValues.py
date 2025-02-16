@@ -53,6 +53,7 @@ def print_npy_keys(file_path):
                     for key in data.item().keys():
                         print(f"- {key}")
                     print(data.item()['wolf17'].shape)
+                    print(len(data.item().keys()))
                 else:
                     print("\nArray contains object type but not a dictionary")
                     print("Content:", data)
@@ -72,4 +73,6 @@ if __name__ == "__main__":
     file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/" + stimId + ".h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    read_h5_file(file1_path, stimId)
+    #read_h5_file(file1_path, stimId)
+    file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
+    print_npy_keys(file1_path)

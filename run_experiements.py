@@ -11,12 +11,12 @@ def run_trainings():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne", "movie10-figures", "movie10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-figures", "movie10-life", "movie10-wolf"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
-    movies_val = ["movie10-wolf"] # @param {allow-input: true}c
+    movies_val = ["friends-s03"] # @param {allow-input: true}c
     training_handler = 'sklearn'
-    experiment_comments = 'ridge'
+    experiment_comments = 'original run'
     specific_modalities = ["all"]
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
@@ -41,15 +41,15 @@ def run_trainings():
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
-    # train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities, recurrence)
-    # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities, recurrence)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities, recurrence)
+    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities, recurrence)
     # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities, recurrence)
-    # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, recurrence)
-    movies_train = ["friends-s01"]
-    features = train.get_features("all")
+    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, recurrence)
+    #movies_train = ["friends-s01"]
+    #features = train.get_features("all")
     #print('features', features['visual'].keys())
     #print('features', features['visual']['s01e01a'].shape)
-    train.align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    #train.align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
@@ -79,8 +79,8 @@ def readh5(path):
 
 
 if __name__ == "__main__":
-    #run_trainings()
+    run_trainings()
     #file = '/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5'
-    file = '/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a.h5'
-    readh5(file)
+    #file = '/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a.h5'
+    #readh5(file)
     #readh5('/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5')

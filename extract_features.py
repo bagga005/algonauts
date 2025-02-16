@@ -131,13 +131,13 @@ def extract_raw_audio_features():
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    files = glob(f"{root_data_dir}algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
     files.sort()
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
 
-    exclude_list =['friends_s03e05b', 'friends_s03e06a']
+    exclude_list =[]#['friends_s03e05b', 'friends_s03e06a']
     # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     stim_list = []
@@ -168,12 +168,15 @@ def do_pca(inpath, outfile,modality):
     out_data_dir = utils.get_output_dir()
     n_components = 250
     files = glob(f"{inpath}/*.h5")
-    filter_in_name ='bourne'
+    filter_in_name =''
     if filter_in_name != '':
         files = [f for f in files if filter_in_name in f]
-    filter_out_name = 's07'
+    filter_out_name = 's07e'
     if filter_out_name != '':
         files = [f for f in files if filter_out_name not in f]
+    filter_out_name2 = 'bourne'
+    if filter_out_name2 != '':
+        files = [f for f in files if filter_out_name2 not in f]
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
@@ -212,7 +215,7 @@ if __name__ == "__main__":
     #do_pca('language')
     modality = 'language'
     inpath = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train.npy')
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new.npy')
     do_pca(inpath, outfile, modality)
     #print(inpath)
     #print(outfile)
