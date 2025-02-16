@@ -8,3 +8,6 @@ visual_chunkTEMP_MPY_wvf_snd.mp3
 /temp
 /output_dir
 run_log.json
+run_log-audio.json
+extract_features.py
+run_log-language.json
