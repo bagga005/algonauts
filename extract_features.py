@@ -168,6 +168,7 @@ def do_pca(inpath, outfile,modality):
     out_data_dir = utils.get_output_dir()
     n_components = 250
     files = glob(f"{inpath}/*.h5")
+    
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
@@ -207,5 +208,6 @@ if __name__ == "__main__":
     modality = 'language'
     inpath = os.path.join(utils.get_raw_data_dir(), modality)
     outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train.npy')
-    print(inpath)
-    print(outfile)
+    do_pca(inpath, outfile, modality)
+    #print(inpath)
+    #print(outfile)
