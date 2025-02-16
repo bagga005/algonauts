@@ -500,6 +500,9 @@ def preprocess_features(features):
 
     ### Convert NaN and inf values to zeros ###
     features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
+    # Assert no NaN or inf values remain
+    assert not np.any(np.isnan(features)), "NaN values found in features"
+    assert not np.any(np.isinf(features)), "Infinite values found in features"
 
     ### Z-score the features ###
     scaler = StandardScaler()
