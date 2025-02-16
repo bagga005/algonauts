@@ -496,7 +496,10 @@ def preprocess_features(features):
     features = np.where(np.isinf(features), np.nan, features)
     
     ### Convert NaN values to zeros ###
-    features = np.nan_to_num(features)
+    # features = np.nan_to_num(features)
+
+    ### Convert NaN and inf values to zeros ###
+    features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
 
     ### Z-score the features ###
     scaler = StandardScaler()
