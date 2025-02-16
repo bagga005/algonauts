@@ -4,42 +4,50 @@ import time
 import random
 # print(os.cpu_count())
 from lightning.data import map
-from lightning.pytorch import loggers as pl_loggers
 import logging
 import json_log_formatter
 
-formatter = json_log_formatter.JSONFormatter()
 
-json_handler = logging.FileHandler(filename='my-log.json')
-json_handler.setFormatter(formatter)
 
 logger = logging.getLogger('my_json')
+formatter = json_log_formatter.JSONFormatter()
+json_handler = logging.FileHandler(filename='run_log.json')
+json_handler.setFormatter(formatter)
 logger.addHandler(json_handler)
 logger.setLevel(logging.INFO)
 # logger = logging.getLogger(__name__)
 # logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 
-
-def create_file_with_square(index, output_dir):
+def create_file_with_square(stimId, stim_file):
     st = random.randint(1, 10)
     time.sleep(st)
     sst = str(st)
-    logger.info('Starting', extra={'sleep_time': sst})
+    logger.info(stimId['brand'], extra={'sleep_time': sst})
     # logger.debug('This is my sleep time for {index} :'+  str(st))
-    output_filepath = os.path.join(output_dir, f"{index}.txt")
-    with open(output_filepath, "w") as f:
-        f.write(str(st))
+     #output_filepath = os.path.join(output_dir, f"{index}.txt")
+    # with open(stim_file, "w") as f:
+     #    f.write(str(st))
 
 if __name__ == '__main__':
     
     
     #tb_logger.log('a')
     #tb_logger.summary.text("first_text", "hello world", step=0)
+    thisdict = [{
+        "brand": "Ford",
+        "model": "Mustang",
+        "year": 1964
+    },
+    {
+        "brand": "Ford",
+        "model": "Mustang",
+        "year": 1964
+    }]
     map(
         fn=create_file_with_square,
-        inputs=["a","b","c","d","e","f"],
+        inputs=thisdict,
         num_workers=2,
-        output_dir="./output_dir"
+        output_dir="thisdic"
     )
 
 
