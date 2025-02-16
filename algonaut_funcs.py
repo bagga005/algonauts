@@ -433,6 +433,48 @@ def extract_language_features(episode_path, model, tokenizer, num_used_tokens,
     ### Output ###
     return pooler_output, last_hidden_state
 
+def load_features(file_path, modality):
+    """
+    Load the extracted features from the HDF5 file.
+
+    Parameters
+    ----------
+    root_data_dir : str
+        Root data directory.
+    modality : str
+        The modality of the features ('visual', 'audio', or 'language').
+
+    Returns
+    -------
+    features : float
+        Stimulus features.
+
+    """
+
+    ### Get the stimulus features file directory ###
+    # data_dir = os.path.join(root_data_dir, 'stimulus_features', 'raw', modality,
+    #     'friends_s01e01a_features_'+modality+'.h5')
+
+    ### Load the stimulus features ###
+    with h5py.File(file_path, 'r') as data:
+        for episode in data.keys():
+            if modality != 'language':
+                features = np.asarray(data[episode][modality])
+            else:
+                # Vectorize and append pooler_output and last_hidden_state
+                # language features
+                pooler_output = np.asarray(
+                    data[episode][modality+'_pooler_output'])
+                last_hidden = np.asarray(np.reshape(
+                    data[episode][modality+'_last_hidden_state'],
+                    (len(pooler_output), -1)))
+                features = np.append(pooler_output, last_hidden, axis=1)
+    print(f"{modality} features original shape: {features.shape}")
+    print('(Movie samples × Features)')
+
+    ### Output ###
+    return features
+
 def preprocess_features(features):
     """
     Rplaces NaN values in the stimulus features with zeros, and z-score the

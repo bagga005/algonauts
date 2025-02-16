@@ -4,8 +4,14 @@ from glob import glob
 from tqdm import tqdm
 import h5py
 import torch
-from lightning.data import map
-from algonaut_funcs import extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
+USE_LIGHTNING = True
+try:
+    from lightning.data import map
+except:
+    print("lightning.data not found, using multiprocessing")
+    USE_LIGHTNING = False
+    from multiprocessing import Pool
+from algonaut_funcs import load_features, preprocess_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
 import logging
 import json_log_formatter
 
@@ -63,10 +69,13 @@ def extract_language_for_stimuli(stim_obj, out_data_dir):
 def extract_raw_language_features():
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
+    fileFilter = "movie10_life02"
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
     files = glob(f"{root_data_dir}algonauts_2025.competitors/stimuli/transcripts/**/**/*.tsv")
+    if fileFilter:
+        files = [f for f in files if fileFilter in f]
     files.sort()
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
@@ -91,13 +100,20 @@ def extract_raw_language_features():
                          fn=fn, stim_id=stim_id)
         stim_list.append(stim_obj)
     print('number of stim to process: ' + str(len(stim_list)))
-    map(
-        fn=extract_language_for_stimuli,
-        inputs=stim_list,
-        num_workers=os.cpu_count(),
-        output_dir="thisdic"
-    )
-        
+    if USE_LIGHTNING:
+        map(
+            fn=extract_language_for_stimuli,
+            inputs=stim_list,
+            num_workers=os.cpu_count(),
+            output_dir="thisdic"
+        )
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model, tokenizer = get_language_model(device)
+        for stim_obj in stim_list:
+            extract_language_features(stim_obj['stim_path'], model, tokenizer, stim_obj['num_used_tokens'],
+         stim_obj['kept_tokens_last_hidden_state'], device,  stim_obj['fn'], stim_obj['stim_id'])
+ 
 def extract_audio_for_stimuli(stim_obj, out_data_dir):
     logger.info("Start", extra={'stim_id': stim_obj['stim_id'], 'status': 0})
     extract_audio_features(stim_obj['stim_path'], stim_obj['tr'], stim_obj['sr'], stim_obj['save_dir_temp'], stim_obj['fn'], stim_obj['stim_id'])
@@ -138,7 +154,37 @@ def extract_raw_audio_features():
         output_dir="thisdic"
     )
 
+def do_pca(modality):
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = utils.get_output_dir()
+    n_components = 250
+    files = glob(f"/home/bagga005/algo/comp_data/stimulus_features/raw/language/*.h5")
+    files.sort()
+    print(len(files), files[:3], files[-3:])
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+    fileFilter = "movie10_life02"
+    iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    for i, (stim_id, stim_path) in iterator:
+        print(f"pca features for {stim_id}", stim_path)
+        with h5py.File(stim_path, 'r') as f1:
+            print("Root level keys:", list(f1.keys()))
+            data = f1[stim_id]['language_last_hidden_state'][:]
+            print(data.shape)
+            features = load_features(stim_path, modality)
+            print('extracted features.shape', features.shape)
+            # Preprocess the stimulus features
+            prepr_features = preprocess_features(features)
+
+            # Perform PCA
+            features_pca = perform_pca(prepr_features, n_components, modality)
+            print('pca features.shape', features_pca.shape)
+    # Collecting the paths to all the movie stimuli
+    #files = glob(f"{root_data_dir}algonauts_2025.competitors/stimulus_features/raw/language/*.h5")
+    
+
 if __name__ == "__main__":
     #extract_raw_visual_features()
     #extract_raw_audio_features()
-    extract_raw_language_features()
+    #extract_raw_language_features()
+    do_pca('language')
