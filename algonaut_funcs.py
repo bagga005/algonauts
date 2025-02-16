@@ -492,6 +492,9 @@ def preprocess_features(features):
 
     """
 
+    # Replace inf values with NaN first
+    features = np.where(np.isinf(features), np.nan, features)
+    
     ### Convert NaN values to zeros ###
     features = np.nan_to_num(features)
 
