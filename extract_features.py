@@ -4,6 +4,7 @@ from glob import glob
 from tqdm import tqdm
 import h5py
 import torch
+import numpy as np
 USE_LIGHTNING = True
 try:
     from lightning.data import map
@@ -154,31 +155,46 @@ def extract_raw_audio_features():
         output_dir="thisdic"
     )
 
-def do_pca(modality):
+def get_shortstim_name(stimuli):
+    if 'friends' in stimuli:
+        return stimuli[8:]
+    elif 'movie10' in stimuli:
+        return stimuli[8:]
+    else:
+        return stimuli
+
+def do_pca(inpath, outfile,modality):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
     n_components = 250
-    files = glob(f"/home/bagga005/algo/comp_data/stimulus_features/raw/language/*.h5")
+    files = glob(f"{inpath}/*.h5")
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
     fileFilter = "movie10_life02"
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    valdict = {}
     for i, (stim_id, stim_path) in iterator:
         print(f"pca features for {stim_id}", stim_path)
         with h5py.File(stim_path, 'r') as f1:
-            print("Root level keys:", list(f1.keys()))
-            data = f1[stim_id]['language_last_hidden_state'][:]
-            print(data.shape)
+            #print("Root level keys:", list(f1.keys()))
+            #data = f1[stim_id]['language_last_hidden_state'][:]
+            #print(data.shape)
             features = load_features(stim_path, modality)
-            print('extracted features.shape', features.shape)
+            #print('extracted features.shape', features.shape)
             # Preprocess the stimulus features
             prepr_features = preprocess_features(features)
 
             # Perform PCA
             features_pca = perform_pca(prepr_features, n_components, modality)
             print('pca features.shape', features_pca.shape)
+            valdict[get_shortstim_name(stim_id)] = features_pca
+
+    # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
+    data_array = np.array(valdict)
+    # Save to .npy file
+    np.save(outfile, data_array)
     # Collecting the paths to all the movie stimuli
     #files = glob(f"{root_data_dir}algonauts_2025.competitors/stimulus_features/raw/language/*.h5")
     
@@ -187,4 +203,9 @@ if __name__ == "__main__":
     #extract_raw_visual_features()
     #extract_raw_audio_features()
     #extract_raw_language_features()
-    do_pca('language')
+    #do_pca('language')
+    modality = 'language'
+    inpath = os.path.join(utils.get_raw_data_dir(), modality)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train.npy')
+    print(inpath)
+    print(outfile)

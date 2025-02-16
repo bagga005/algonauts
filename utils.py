@@ -7,6 +7,12 @@ import torch
 from scipy.stats import pearsonr
 load_dotenv()
 
+def get_raw_data_dir():
+    return os.getenv("RAW_DATA_DIR")
+
+def get_pca_dir():
+    return os.getenv("PCA_DIR")
+
 def get_data_root_dir():
     return os.getenv("DATA_ROOT_DIR")
 
