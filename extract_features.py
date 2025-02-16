@@ -168,7 +168,9 @@ def do_pca(inpath, outfile,modality):
     out_data_dir = utils.get_output_dir()
     n_components = 250
     files = glob(f"{inpath}/*.h5")
-    
+    filter_name ='bourne'
+    if filter_name != '':
+        files = [f for f in files if filter_name in f]
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
