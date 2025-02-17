@@ -1,11 +1,11 @@
 import h5py
 import numpy as np
 
-def read_h5_file(file_path, stimId):
+def read_h5_file(file_path, stimId, group_name):
     
     with h5py.File(file_path, 'r') as f1:
         print("Root level keys:", list(f1.keys()))
-        data = f1[stimId]['language_last_hidden_state'][:]
+        data = f1[stimId][group_name][:]
         print(data.shape)
         #print(data[400][:5])
         # Count NaN and non-NaN values
@@ -70,9 +70,11 @@ if __name__ == "__main__":
     #file_path = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy"
     #print_npy_keys(file_path)
     stimId = "friends_s01e01a"
-    file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/" + stimId + ".h5"
+    file1_path = "/mnt/c/temp/" + stimId + ".h5"
+    #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/" + stimId + ".h5"
+    #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    #read_h5_file(file1_path, stimId)
-    file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
-    print_npy_keys(file1_path)
+    read_h5_file(file1_path, stimId, 'visual')
+    # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
+    # print_npy_keys(file1_path)
