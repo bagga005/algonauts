@@ -45,6 +45,14 @@ def load_model_sklearn(model_name):
     full_path = os.path.join(get_output_dir(), 'models', file_name)
     return pickle.load(open(full_path, 'rb'))
 
+def get_shortstim_name(stimuli):
+    if 'friends' in stimuli:
+        return stimuli[8:]
+    elif 'movie10' in stimuli:
+        return stimuli[8:]
+    else:
+        return stimuli
+
 def save_npy(encoding_accuracy, subject, modality):
     """
     Save encoding accuracy values to both CSV and NPY files.

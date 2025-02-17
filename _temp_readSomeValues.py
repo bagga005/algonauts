@@ -66,6 +66,7 @@ def print_npy_keys(file_path):
     except Exception as e:
         print(f"Error loading file: {str(e)}")
 
+
 if __name__ == "__main__":
     #file_path = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy"
     #print_npy_keys(file_path)
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    read_h5_file(file1_path, stimId, 'visual')
+    #read_h5_file(file1_path, stimId, 'visual')
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
-    # print_npy_keys(file1_path)
+    file1 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5"
+    print_npy_keys(file1)
