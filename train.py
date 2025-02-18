@@ -240,6 +240,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         # N is defined by the 'stimulus_window' variable), model
                         # the fMRI sample using the first N stimulus feature
                         # samples
+                        print('s', s, 'split', split)
                         if s < (stimulus_window + hrf_delay):
                             idx_start = excluded_samples_start
                             idx_end = idx_start + stimulus_window
@@ -289,8 +290,17 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     varr = np.zeros(100)
                     varr[v_session-1] = 1
                     f_all = np.append(f_all, varr)
+                    varr = np.zeros(50)
+                    fr_num = (s//10) 
+                    if fr_num > 49:
+                        fr_num = 49
+                    varr[fr_num] = 1
+                    # if s ==0 or s == 15 or s == 29: 
+                    #     print('fr',varr[:10])
+                    f_all = np.append(f_all, varr)
+                    #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
-                print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
+                #print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###
