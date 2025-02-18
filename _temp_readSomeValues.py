@@ -100,6 +100,15 @@ def parse_session_task(input_string):
 # key, value = parse_session_task(test_str)
 # print(f"Key: {key}, Value: {value}")
 
+def get_max_val_for_key(session_task_dict, session_num):
+    max_val = 1
+    for key in session_task_dict.keys():
+        ses_num, count = session_task_dict[key] 
+        if int(ses_num) == session_num:
+            max_val += 1
+    return max_val
+
+
 def read_subject_fmri_session_h5(file_path, subject, base_value=0):
     """
     Print all first-level group names in an HDF5 file
@@ -113,9 +122,10 @@ def read_subject_fmri_session_h5(file_path, subject, base_value=0):
             print("First level groups in the file:")
             for key in f.keys():
                 print(f"- {key}")
-                key, value = parse_session_task(key)
-                session_task_dict[key] = int(value) + base_value
-                print(f"Key: {key}, Value: {str(int(value) + base_value)}")
+                key_val, value = parse_session_task(key)
+                max_val = get_max_val_for_key(session_task_dict, int(value) + base_value)
+                session_task_dict[key_val] = (int(value) + base_value, max_val)
+                print(f"Key: {key}, Value: {str(int(value) + base_value)}, max_val: {max_val}")
             utils.save_viewing_session_for_subject(subject, session_task_dict)
     except Exception as e:
         print(f"Error reading file: {str(e)}")

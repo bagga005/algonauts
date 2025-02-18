@@ -209,8 +209,10 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         for split in movie_splits:
             v_session = None
             if viewing_session is not None:
-                v_session = int(viewing_session[split])
-            #print('split: ', split, ' v_session: ', v_session)
+                v_session, max_count = viewing_session[split]
+                v_session = int(v_session)
+                max_count = int(max_count)
+                print('split: ', split, ' v_session: ', v_session, ' max_count: ', max_count)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
@@ -295,9 +297,13 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     if fr_num > 49:
                         fr_num = 49
                     varr[fr_num] = 1
-                    # if s ==0 or s == 15 or s == 29: 
-                    #     print('fr',varr[:10])
                     f_all = np.append(f_all, varr)
+                    parr = np.zeros(5)
+                    if max_count > 5:
+                        max_count = 5
+                    parr[max_count-1] = 1
+                    f_all = np.append(f_all, parr)
+
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
                 #print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
