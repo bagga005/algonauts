@@ -122,7 +122,7 @@ def load_fmri(root_data_dir, subject):
 
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
-    excluded_samples_end, hrf_delay, stimulus_window, movies):
+    excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session):
     """
     Align the stimulus feature with the fMRI response samples for the selected
     movies, later used to train and validate the encoding models.
@@ -203,9 +203,14 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         # print('movie[:7]', movie[:7])
         # print('id', id)
         # print('movie_splits', movie_splits)
-
+        #load viewing session
+        
         ### Loop over movie splits ###
         for split in movie_splits:
+            v_session = None
+            if viewing_session is not None:
+                v_session = int(viewing_session[split])
+            print('split: ', split, ' v_session: ', v_session)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
@@ -279,14 +284,18 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         else:
                             f = features[mod][split][idx]
                         f_all = np.append(f_all, f.flatten())
-
+                
+                if viewing_session is not None:
+                    f_all = np.append(f_all, v_session)
                  ### Append the stimulus features of all modalities for this sample ###
+                print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
 
     ### Output ###
+    print('aligned_features.shape', aligned_features.shape)
     return aligned_features, aligned_fmri
 
 def main_feature_extraction():
@@ -408,10 +417,10 @@ def add_recurrent_features(features,fmri,recurrence):
     #print('fmri.shape', fmri.shape)
     return recurrent_features, fmri
 
-def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, recurrence=1):
-    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, recurrence=1):
+    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
     features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
-    features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val)
+    features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
     features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
@@ -427,10 +436,11 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
+    viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     for modality in modalities:
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
-        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, recurrence)
+        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence=recurrence)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality)
         trainer.save_model(model_name)
@@ -443,7 +453,8 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
         subject_start = time.time()
         print(f"Starting training for subject {subject}...")
         fmri = get_fmri(subject)
-        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, recurrence)
+        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
+        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence)
         subject_time = time.time() - subject_start
         print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
@@ -455,22 +466,25 @@ def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
+    viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     for modality in modalities:
         features = get_features(modality)
-        run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, recurrence)
+        run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, viewing_session, recurrence)
         del features
 
 def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities=None, recurrence=1):
     for subject in [1, 2, 3, 5]:
         fmri = get_fmri(subject)
-        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, recurrence)
+        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
+        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, viewing_session, recurrence)
         del fmri
 
 def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, recurrence=1):
- # Align the stimulus features with the fMRI responses for the validation movies
+    viewing_session = utils.load_viewing_session_for_subject(subject)
+    # Align the stimulus features with the fMRI responses for the validation movies
     features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
-        movies_val)
+        movies_val, viewing_session)
     features_val, fmri_val = add_recurrent_features(features_val, fmri_val, recurrence)
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # features_val = torch.FloatTensor(features_val).to(device)
@@ -489,10 +503,20 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     
     utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
 
+def get_subject_string(subject):
+    if subject == 1:
+        return '01'
+    elif subject == 2:
+        return '02'
+    elif subject == 3:
+        return '03'
+    elif subject == 5:
+        return '05'
 def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
     fmri = get_fmri(subject)
+    viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     features = get_features(modality)
-    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
+    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
     
     #utils.compute_encoding_accuracy(fmri_train, fmri_train, subject, modality)
     pre_fmri = fmri_train.copy()

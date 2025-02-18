@@ -1,5 +1,6 @@
 import train
 import h5py
+from utils import load_viewing_session_for_subject
 def run_trainings():
 
     # root_data_dir = utils.get_data_root_dir()
@@ -15,7 +16,7 @@ def run_trainings():
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
-    training_handler = 'pytorch'
+    training_handler = 'sklearn'
     experiment_comments = 'original run'
     specific_modalities = ["visual"]
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
@@ -42,9 +43,9 @@ def run_trainings():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities, recurrence)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities, recurrence)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities, recurrence)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, recurrence)
+    # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, specific_modalities,  recurrence)
+    # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, specific_modalities, recurrence)
+    # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities,  recurrence)
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
     #print('features', features['visual'].keys())
