@@ -286,16 +286,18 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         f_all = np.append(f_all, f.flatten())
                 
                 if viewing_session is not None:
-                    f_all = np.append(f_all, v_session)
+                    varr = np.zeros(100)
+                    varr[v_session-1] = 1
+                    f_all = np.append(f_all, varr)
                  ### Append the stimulus features of all modalities for this sample ###
-                #print('f_all.shape', f_all.shape)
+                print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
 
     ### Output ###
-    #print('aligned_features.shape', aligned_features.shape)
+    print('aligned_features.shape', aligned_features.shape)
     return aligned_features, aligned_fmri
 
 def main_feature_extraction():
