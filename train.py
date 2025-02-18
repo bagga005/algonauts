@@ -242,7 +242,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         # N is defined by the 'stimulus_window' variable), model
                         # the fMRI sample using the first N stimulus feature
                         # samples
-                        print('s', s, 'split', split)
+                        #print('s', s, 'split', split)
                         if s < (stimulus_window + hrf_delay):
                             idx_start = excluded_samples_start
                             idx_end = idx_start + stimulus_window
