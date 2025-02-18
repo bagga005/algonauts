@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 import utils
+import os
 def read_h5_file(file_path, stimId, group_name):
     
     with h5py.File(file_path, 'r') as f1:
@@ -99,7 +100,7 @@ def parse_session_task(input_string):
 # key, value = parse_session_task(test_str)
 # print(f"Key: {key}, Value: {value}")
 
-def read_subject_fmri_session_h5(file_path, subject):
+def read_subject_fmri_session_h5(file_path, subject, base_value=0):
     """
     Print all first-level group names in an HDF5 file
     
@@ -113,8 +114,8 @@ def read_subject_fmri_session_h5(file_path, subject):
             for key in f.keys():
                 print(f"- {key}")
                 key, value = parse_session_task(key)
-                session_task_dict[key] = value
-                print(f"Key: {key}, Value: {value}")
+                session_task_dict[key] = int(value) + base_value
+                print(f"Key: {key}, Value: {str(int(value) + base_value)}")
             utils.save_viewing_session_for_subject(subject, session_task_dict)
     except Exception as e:
         print(f"Error reading file: {str(e)}")
@@ -132,7 +133,8 @@ if __name__ == "__main__":
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
     file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/target_sample_number/sub-03_friends-s7_fmri_samples.npy"
-    file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
+    #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
+    file_name = "sub-03_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5"
+    file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-03","func",file_name)
     #file1 ="/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5"
-    read_subject_fmri_session_h5(file1, '03')
-    #print_npy_keys(file1)
+    read_subject_fmri_session_h5(file_path, '03', 0)
