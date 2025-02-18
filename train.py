@@ -290,7 +290,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     varr[v_session-1] = 1
                     f_all = np.append(f_all, varr)
                  ### Append the stimulus features of all modalities for this sample ###
-                print('f_all.shape', f_all.shape)
+                print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###

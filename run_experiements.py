@@ -7,7 +7,7 @@ def run_trainings():
     # areas_of_interest_path = os.path.join(root_data_dir, 'sub-01_modality-all_accuracy.npy')
     # npn = np.load(areas_of_interest_path)
     # print(npn)
-    excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
+    excluded_samples_start = 9  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
