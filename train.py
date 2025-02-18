@@ -210,7 +210,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
             v_session = None
             if viewing_session is not None:
                 v_session = int(viewing_session[split])
-            print('split: ', split, ' v_session: ', v_session)
+            #print('split: ', split, ' v_session: ', v_session)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
@@ -288,14 +288,14 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 if viewing_session is not None:
                     f_all = np.append(f_all, v_session)
                  ### Append the stimulus features of all modalities for this sample ###
-                print('f_all.shape', f_all.shape)
+                #print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
 
     ### Output ###
-    print('aligned_features.shape', aligned_features.shape)
+    #print('aligned_features.shape', aligned_features.shape)
     return aligned_features, aligned_fmri
 
 def main_feature_extraction():
@@ -432,11 +432,13 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     del features_train, fmri_train
     return trainer, training_time
 
-def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, specific_modalities=None, recurrence=1):
+def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
-    viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
+    viewing_session = None
+    if include_viewing_sessions:
+        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     for modality in modalities:
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
@@ -462,25 +464,25 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities=None, recurrence=1):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
-    viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     for modality in modalities:
         features = get_features(modality)
-        run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, viewing_session, recurrence)
+        run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, recurrence)
         del features
 
 def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities=None, recurrence=1):
     for subject in [1, 2, 3, 5]:
         fmri = get_fmri(subject)
-        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
-        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities, viewing_session, recurrence)
+        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
         del fmri
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, recurrence=1):
-    viewing_session = utils.load_viewing_session_for_subject(subject)
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, recurrence=1):
+    viewing_session = None
+    if include_viewing_sessions:
+        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     # Align the stimulus features with the fMRI responses for the validation movies
     features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
