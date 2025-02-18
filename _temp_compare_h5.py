@@ -143,7 +143,7 @@ def has_nan(file1_path, group_name, dataset_name):
         with h5py.File(file1_path, 'r') as f1:
             data1 = f1[group_name][dataset_name][:]
             is_nan = np.isnan(data1).any()
-            print('key: ', group_name, 'data.shape: ', data1.shape, 'is nan: ', is_nan)
+            #print('key: ', group_name, 'data.shape: ', data1.shape, 'is nan: ', is_nan)
             return is_nan
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -154,9 +154,12 @@ def has_nan_for_folder(folder_path, dataset_name):
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    return_val = False
     for stim_id, stim_path in stimuli.items():
         if has_nan(stim_path, stim_id, dataset_name):
             print(f"Dataset {dataset_name} in {stim_id} has NaNs")
+            return_val = True
+    return return_val
 
 def compare_npy_values(file1_path, file2_path):
     """
@@ -233,6 +236,7 @@ if __name__ == "__main__":
     file1 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5"
     file2 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
     folder_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual"
+    folder_path = "/teamspace/studios/this_studio/algo_data/stimulus_features/raw/visual"
     print(has_nan_for_folder(folder_path, 'visual'))
     group1 = "friends_s01e01a"
     group2 = "s01e01a"
