@@ -53,9 +53,13 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        batch_size = 8192
-        learning_rate = 0.0001
-        epochs = 300
+        batch_size = 1024
+        learning_rate_initial_1 = 0.00000001
+        learning_rate_initial_2 = 0.0000001
+        learning_rate = 0.000001
+        warmup_epochs_1 = 30
+        warmup_epochs_2 = 80
+        epochs = 1000
         max_grad_norm = 1.0
         #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
@@ -94,7 +98,7 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-4)
         
         
         print('len dataloader', len(train_loader))
@@ -105,11 +109,20 @@ class RegressionHander_Pytorch():
         best_model_state = None
         train_losses = []
         val_losses = []
-
+        print('starting training iterations')
         self.model.train()
         total_loss =0
         for epoch in range(epochs):
             total_loss =0
+            # Increase learning rate linearly during warmup
+            if epoch > warmup_epochs_1:
+                #print('update lr')
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] = learning_rate_initial_2
+            if epoch > warmup_epochs_2:
+                #print('update lr')
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] = learning_rate
             for batch_X, batch_y in train_loader:
                 # Forward pass
                 optimizer.zero_grad()
