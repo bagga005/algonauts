@@ -457,9 +457,13 @@ def load_features(file_path, modality):
 
     ### Load the stimulus features ###
     with h5py.File(file_path, 'r') as data:
+        # Method 1: Using assert statement
+        assert len(data.keys()) == 1, f"Expected exactly 1 key, but found {len(data.keys())} keys"
+
         for episode in data.keys():
             if modality != 'language':
                 features = np.asarray(data[episode][modality])
+                print(f"{episode} features original shape: {features.shape}")
             else:
                 # Vectorize and append pooler_output and last_hidden_state
                 # language features
@@ -469,8 +473,6 @@ def load_features(file_path, modality):
                     data[episode][modality+'_last_hidden_state'],
                     (len(pooler_output), -1)))
                 features = np.append(pooler_output, last_hidden, axis=1)
-    print(f"{modality} features original shape: {features.shape}")
-    print('(Movie samples × Features)')
 
     ### Output ###
     return features
