@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
 from utils import get_shortstim_name
+from glob import glob
 def compare_h5_datasets(file1_path, file2_path, group_name1, group_name2, dataset_name):
     """
     Compare datasets from two HDF5 files and return correlation coefficient.
@@ -137,7 +138,25 @@ def compare_npy_shapes(file1_path, file2_path):
             print(f"  File 1 shape: {shape1}")
             print(f"  File 2 shape: {shape2}")
             
+def has_nan(file1_path, group_name, dataset_name):
+    try:
+        with h5py.File(file1_path, 'r') as f1:
+            data1 = f1[group_name][dataset_name][:]
+            is_nan = np.isnan(data1).any()
+            print('key: ', group_name, 'data.shape: ', data1.shape, 'is nan: ', is_nan)
+            return is_nan
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return False
 
+def has_nan_for_folder(folder_path, dataset_name):
+    files = glob(f"{folder_path}/*.h5")
+    files.sort()
+    print(len(files), files[:3], files[-3:])
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    for stim_id, stim_path in stimuli.items():
+        if has_nan(stim_path, stim_id, dataset_name):
+            print(f"Dataset {dataset_name} in {stim_id} has NaNs")
 
 def compare_npy_values(file1_path, file2_path):
     """
@@ -213,7 +232,8 @@ if __name__ == "__main__":
     # dataset = 'language_last_hidden_state'#"language_pooler_output"
     file1 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5"
     file2 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
-    
+    folder_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual"
+    print(has_nan_for_folder(folder_path, 'visual'))
     group1 = "friends_s01e01a"
     group2 = "s01e01a"
     dataset = 'visual'#"language_pooler_output"
@@ -223,7 +243,7 @@ if __name__ == "__main__":
     # print(f"Are datasets equal? {are_equal}, R-score: {r_score:.6f}")
     file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_new.npy"
     file2 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy"
-    compare_npy_values(file1, file2)
+    #compare_npy_values(file1, file2)
     # file1_path = "/mnt/c/temp/friends_s01e01a.npy"
     # file2_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.npy"
     #compare_npy_shapes(file1, file2)
