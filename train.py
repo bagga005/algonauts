@@ -212,7 +212,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 v_session, max_count = viewing_session[split]
                 v_session = int(v_session)
                 max_count = int(max_count)
-                print('split: ', split, ' v_session: ', v_session, ' max_count: ', max_count)
+                #print('split: ', split, ' v_session: ', v_session, ' max_count: ', max_count)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
@@ -298,10 +298,11 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         fr_num = 49
                     varr[fr_num] = 1
                     f_all = np.append(f_all, varr)
-                    parr = np.zeros(5)
+                    parr = np.zeros(300)
                     if max_count > 5:
                         max_count = 5
-                    parr[max_count-1] = 1
+                    indd = (max_count * 50) + fr_num
+                    parr[indd] = 1
                     f_all = np.append(f_all, parr)
 
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
