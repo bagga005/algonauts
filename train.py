@@ -212,7 +212,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 v_session, max_count = viewing_session[split]
                 v_session = int(v_session)
                 max_count = int(max_count)
-                print('split: ', split, ' v_session: ', v_session, ' max_count: ', max_count)
+                #print('split: ', split, ' v_session: ', v_session, ' max_count: ', max_count)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
             fmri_split = fmri[split]
@@ -291,18 +291,19 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 if viewing_session is not None:
                     varr = np.zeros(100)
                     varr[v_session-1] = 1
-                    f_all = np.append(f_all, varr)
+                    #f_all = np.append(f_all, varr)
                     varr = np.zeros(50)
                     fr_num = (s//10) 
                     if fr_num > 49:
                         fr_num = 49
                     varr[fr_num] = 1
-                    f_all = np.append(f_all, varr)
+                    #f_all = np.append(f_all, varr)
                     parr = np.zeros(5)
                     if max_count > 5:
                         max_count = 5
+                    #indd = (max_count * 50) + fr_num
                     parr[max_count-1] = 1
-                    f_all = np.append(f_all, parr)
+                    #f_all = np.append(f_all, parr)
 
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
@@ -313,7 +314,6 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
 
     ### Output ###
-    print('aligned_features.shape', aligned_features.shape)
     return aligned_features, aligned_fmri
 
 def main_feature_extraction():
@@ -437,14 +437,15 @@ def add_recurrent_features(features,fmri,recurrence):
 
 def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, recurrence=1):
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
-    features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
-    features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
-    features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
+    #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
+    #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
+    features_train_val, fmri_train_val = None, None
     if training_handler == 'pytorch':
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'transformer':
+        features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
     model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
     del features_train, fmri_train

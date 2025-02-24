@@ -19,7 +19,7 @@ def run_trainings():
     movies_val = ["friends-s03"] # @param {allow-input: true}c
     training_handler = 'sklearn'
     experiment_comments = 'original run'
-    specific_modalities = ["visual"]
+    specific_modalities = ["all"]
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
     
