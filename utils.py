@@ -46,12 +46,12 @@ def load_model_sklearn(model_name):
     return pickle.load(open(full_path, 'rb'))
 
 def save_viewing_session_for_subject(subject, viewing_session):
-    file_name = os.path.join(get_output_dir(), 'viewing_session', f'sub-{subject}_viewing_session.pkl')
+    file_name = os.path.join(get_output_dir(), 'viewing_session', f'{subject}_viewing_session.pkl')
     with open(file_name, 'wb') as f:
         pickle.dump(viewing_session, f)
 
 def load_viewing_session_for_subject(subject):
-    file_name = os.path.join(get_output_dir(), 'viewing_session', f'sub-{subject}_viewing_session.pkl')
+    file_name = os.path.join(get_output_dir(), 'viewing_session', f'{subject}_viewing_session.pkl')
     if not os.path.exists(file_name):
         return {}
     with open(file_name, 'rb') as f:

@@ -109,7 +109,7 @@ def get_max_val_for_key(session_task_dict, session_num):
     return max_val
 
 
-def read_subject_fmri_session_h5(file_path, subject, base_value=0):
+def read_subject_fmri_session_h5_write_summary(file_path, subject, base_value=0):
     """
     Print all first-level group names in an HDF5 file
     
@@ -130,6 +130,16 @@ def read_subject_fmri_session_h5(file_path, subject, base_value=0):
     except Exception as e:
         print(f"Error reading file: {str(e)}")
 
+def make_session_summary_file_all_subjects():
+    subjects_str = ['sub-01', 'sub-02', 'sub-03', 'sub-05']
+    for sub in subjects_str:
+        fr_file = sub + '_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5'
+        mov_file = sub + '_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5'
+        file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri",sub,"func",fr_file)
+        read_subject_fmri_session_h5_write_summary(file_path, sub, 0)
+        file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri",sub,"func",mov_file)
+        read_subject_fmri_session_h5_write_summary(file_path, sub, 85)
+
 if __name__ == "__main__":
     #file_path = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy"
     #print_npy_keys(file_path)
@@ -145,7 +155,7 @@ if __name__ == "__main__":
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/target_sample_number/sub-03_friends-s7_fmri_samples.npy"
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
     #file_name = "sub-03_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5"
-    file_name = "sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
-    file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
-    #file1 ="/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5"
-    read_subject_fmri_session_h5(file_path, '01', 0)
+    # file_name = "sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
+    # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
+    # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
+    make_session_summary_file_all_subjects()

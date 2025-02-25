@@ -303,7 +303,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         max_count = 5
                     #indd = (max_count * 50) + fr_num
                     parr[max_count-1] = 1
-                    #f_all = np.append(f_all, parr)
+                    f_all = np.append(f_all, parr)
 
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
@@ -468,14 +468,14 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
         del features
 
 
-def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, recurrence=1):
+def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
         print(f"Starting training for subject {subject}...")
         fmri = get_fmri(subject)
-        viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
-        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence)
+        #viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
+        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
         subject_time = time.time() - subject_start
         print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
@@ -492,7 +492,7 @@ def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_
         run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, recurrence)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, specific_modalities=None, recurrence=1):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
     for subject in [1, 2, 3, 5]:
         fmri = get_fmri(subject)
         validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
@@ -506,7 +506,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
         movies_val, viewing_session)
-    features_val, fmri_val = add_recurrent_features(features_val, fmri_val, recurrence)
+    #features_val, fmri_val = add_recurrent_features(features_val, fmri_val, recurrence)
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # features_val = torch.FloatTensor(features_val).to(device)
     
