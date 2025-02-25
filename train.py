@@ -297,13 +297,13 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     if fr_num > 49:
                         fr_num = 49
                     varr[fr_num] = 1
-                    #f_all = np.append(f_all, varr)
+                    f_all = np.append(f_all, varr)
                     parr = np.zeros(5)
                     if max_count > 5:
                         max_count = 5
                     #indd = (max_count * 50) + fr_num
                     parr[max_count-1] = 1
-                    f_all = np.append(f_all, parr)
+                    #f_all = np.append(f_all, parr)
 
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
@@ -312,7 +312,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
 
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
-
+    #print('aligned_features.shape', aligned_features.shape)
     ### Output ###
     return aligned_features, aligned_fmri
 
@@ -465,7 +465,7 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality)
         trainer.save_model(model_name)
-        del features
+        del features, trainer
 
 
 def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
@@ -533,7 +533,7 @@ def get_subject_string(subject):
         return 'sub-03'
     elif subject == 5:
         return 'sub-05'
-        
+
 def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
     fmri = get_fmri(subject)
     viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
