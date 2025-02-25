@@ -526,13 +526,14 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
 
 def get_subject_string(subject):
     if subject == 1:
-        return '01'
+        return 'sub-01'
     elif subject == 2:
-        return '02'
+        return 'sub-02'
     elif subject == 3:
-        return '03'
+        return 'sub-03'
     elif subject == 5:
-        return '05'
+        return 'sub-05'
+        
 def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train):
     fmri = get_fmri(subject)
     viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
