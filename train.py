@@ -338,7 +338,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     if fr_num > 49:
                         fr_num = 49
                     varr[0] = math.sin(normalize_to_radians(fr_num))
-                    #f_all = np.append(f_all, varr)
+                    f_all = np.append(f_all, varr)
                     
                     # 2 features for start and end
                     varr = np.zeros(2)
@@ -347,7 +347,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     fr_num = (s//10) 
                     if fr_num > 48:
                         varr[1] = 1
-                    f_all = np.append(f_all, varr)
+                    #f_all = np.append(f_all, varr)
 
                     parr = np.zeros(5)
                     if max_count > 5:
