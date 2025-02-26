@@ -24,12 +24,13 @@ class LinearRegressionModel(nn.Module):
         #x = self.activation(self.linear1(x))
         return self.linear1(x)
 
-class RegressionHander_Pytorch():
+class RegressionHander_PytorchSimple():
     def __init__(self, input_size, output_size):
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = LinearRegressionModel(input_size, output_size).to(self.device)
+        print('init RegressionHander_PytorchSimple')
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         """
@@ -52,6 +53,7 @@ class RegressionHander_Pytorch():
         """
         
         ### Record start time ###
+        
         start_time = time.time()
         batch_size = 8192
         learning_rate = 0.0001
@@ -71,9 +73,9 @@ class RegressionHander_Pytorch():
         X_val = torch.FloatTensor(X_val).to(self.device)
         y_val = torch.FloatTensor(y_val).to(self.device)
         
-        print(f'Training samples: {X_train.shape[0]:,}')
-        print(f'Validation samples: {X_val.shape[0]:,}')
-
+        print(f'Training simple samples: {X_train.shape[0]:,}')
+        print(f'Validation simple samples: {X_val.shape[0]:,}')
+        print(f'starting torch Simple training')
         
         
         # Create DataLoaders for both training and validation

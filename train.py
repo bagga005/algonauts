@@ -1,11 +1,12 @@
 import numpy as np
+import math
 import torch
 import torch.nn as nn
 import h5py
 import os
 import utils
 from model_sklearn import LinearHandler_Sklearn
-from model_torchregression import RegressionHander_Pytorch
+from model_torchregression2 import RegressionHander_PytorchSimple
 from model_transformer import RegressionHander_Transformer
 import nibabel as nib
 from nilearn import plotting
@@ -104,6 +105,7 @@ def load_fmri(root_data_dir, subject):
         movie = 'figures' + format(s+1, '02')
         keys_movie = [rep for rep in keys_all if movie in rep]
         fmri[movie] = ((fmri[keys_movie[0]] + fmri[keys_movie[1]]) / 2).astype(np.float32)
+        #fmri[movie] = (fmri[keys_movie[1]]).astype(np.float32)
         del fmri[keys_movie[0]]
         del fmri[keys_movie[1]]
     # Average the fMRI responses across the two repeats for 'life'
@@ -113,13 +115,42 @@ def load_fmri(root_data_dir, subject):
         movie = 'life' + format(s+1, '02')
         keys_movie = [rep for rep in keys_all if movie in rep]
         fmri[movie] = ((fmri[keys_movie[0]] + fmri[keys_movie[1]]) / 2).astype(np.float32)
+        #fmri[movie] = (fmri[keys_movie[0]]).astype(np.float32)
         del fmri[keys_movie[0]]
         del fmri[keys_movie[1]]
 
     ### Output ###
     return fmri
 
-
+def normalize_to_radians(value, original_min=0, original_max=49, target_min=-math.pi/2, target_max=math.pi/2):
+    """
+    Normalize a value from the original range to the target range.
+    
+    Parameters:
+    -----------
+    value : float
+        The value to normalize
+    original_min : float
+        The minimum value of the original range
+    original_max : float
+        The maximum value of the original range
+    target_min : float
+        The minimum value of the target range
+    target_max : float
+        The maximum value of the target range
+        
+    Returns:
+    --------
+    float
+        The normalized value in the target range
+    """
+    # First, normalize to [0, 1]
+    normalized = (value - original_min) / (original_max - original_min)
+    
+    # Then, scale to target range
+    scaled = normalized * (target_max - target_min) + target_min
+    
+    return scaled
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session):
@@ -292,12 +323,32 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     varr = np.zeros(100)
                     varr[v_session-1] = 1
                     #f_all = np.append(f_all, varr)
+
+                    # 50 features for each 10tr interval
                     varr = np.zeros(50)
                     fr_num = (s//10) 
                     if fr_num > 49:
                         fr_num = 49
                     varr[fr_num] = 1
+                    #f_all = np.append(f_all, varr)
+                    
+                    #sin of frame
+                    varr = np.zeros(1)
+                    fr_num = (s//10) 
+                    if fr_num > 49:
+                        fr_num = 49
+                    varr[0] = math.sin(normalize_to_radians(fr_num))
+                    #f_all = np.append(f_all, varr)
+                    
+                    # 2 features for start and end
+                    varr = np.zeros(2)
+                    if s < 10:
+                        varr[0] = 1
+                    fr_num = (s//10) 
+                    if fr_num > 48:
+                        varr[1] = 1
                     f_all = np.append(f_all, varr)
+
                     parr = np.zeros(5)
                     if max_count > 5:
                         max_count = 5
@@ -436,12 +487,15 @@ def add_recurrent_features(features,fmri,recurrence):
     return recurrent_features, fmri
 
 def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, recurrence=1):
+    print('run training')
     features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
+    print('features train', features_train.shape)
     #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     features_train_val, fmri_train_val = None, None
     if training_handler == 'pytorch':
-        trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
+        trainer = RegressionHander_PytorchSimple(features_train.shape[1], fmri_train.shape[1])
+        print('got simple handler')
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'transformer':
@@ -511,7 +565,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     # features_val = torch.FloatTensor(features_val).to(device)
     
     if training_handler == 'pytorch':
-        trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
+        trainer = RegressionHander_PytorchSimple(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
