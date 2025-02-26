@@ -11,10 +11,13 @@ class LinearRegressionModel(nn.Module):
         # hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
         self.input_size = input_size
         self.output_size = output_size
+        print('input_size', input_size)
         self.num_session_features = 50
         self.num_hidden_features = 100
         self.session_linear1 = nn.Linear(self.num_session_features, self.num_hidden_features)
-        self.final_layer = nn.Linear(self.input_size - self.num_session_features + self.num_hidden_features, output_size)
+        final_layer_input_size = self.input_size - self.num_session_features + self.num_hidden_features
+        print('final_layer_input_size', final_layer_input_size)
+        self.final_layer = nn.Linear(final_layer_input_size, output_size)
         # self.linear2 = nn.Linear(hidden_size, output_size)
         # self.batchnorm = nn.BatchNorm1d(hidden_size)
         # self.dropout = nn.Dropout(dropout_rate)
@@ -28,11 +31,14 @@ class LinearRegressionModel(nn.Module):
     def forward(self, x):
         #x = self.dropout(self.activation(self.batchnorm(self.linear1(x))))
         #x = self.activation(self.linear1(x))
-        session_features = x[:, :self.num_session_features]
+        session_features = x[:, -self.num_session_features:]
+        #print('session_features', session_features.shape)
         session_features = self.session_linear1(session_features)
         session_features = torch.relu(session_features)
-        remaining_features = x[:,self.input_size - self.num_session_features:]
+        remaining_features = x[:,:self.input_size - self.num_session_features]
+        #print('remaining_features', remaining_features.shape)
         combined_features = torch.cat([remaining_features, session_features], dim=1)
+        #print('combined_features', combined_features.shape)
         return self.final_layer(combined_features)
 
 class RegressionHander_PytorchSimple():
