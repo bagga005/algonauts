@@ -14,12 +14,17 @@ class LinearRegressionModel(nn.Module):
         print('input_size', input_size)
         self.num_session_features = 1
         self.num_hidden_features = 4
-        self.final_layer = nn.Linear(input_size, output_size)
+        hidden_size = (input_size + output_size) // 2
+        self.final_layer1 = nn.Linear(input_size, hidden_size)
+        self.final_layer2 = nn.Linear(hidden_size, output_size)
         if self.num_session_features > 0:
             self.session_linear1 = nn.Linear(self.num_session_features, self.num_hidden_features)
             final_layer_input_size = self.input_size - self.num_session_features + self.num_hidden_features
             print('final_layer_input_size', final_layer_input_size)
-            self.final_layer = nn.Linear(final_layer_input_size, output_size)
+            hidden_size = (final_layer_input_size + output_size) // 2
+            self.final_layer1 = nn.Linear(final_layer_input_size, hidden_size)
+            self.final_layer2 = nn.Linear(hidden_size, output_size)
+        
         # self.linear2 = nn.Linear(hidden_size, output_size)
         # self.batchnorm = nn.BatchNorm1d(hidden_size)
         # self.dropout = nn.Dropout(dropout_rate)
@@ -43,9 +48,15 @@ class LinearRegressionModel(nn.Module):
             #print('remaining_features', remaining_features.shape)
             combined_features = torch.cat([remaining_features, session_features], dim=1)
             #print('combined_features', combined_features.shape)
-            return self.final_layer(combined_features)
+            x = self.final_layer1(combined_features)
+            x = torch.relu(x)
+            x = self.final_layer2(x)
+            return x
         else:
-            return self.final_layer(x)
+            x = self.final_layer1(x)
+            x = torch.relu(x)
+            x = self.final_layer2(x)
+            return x
 
 class RegressionHander_PytorchSimple():
     def __init__(self, input_size, output_size):
