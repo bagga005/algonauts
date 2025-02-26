@@ -8,21 +8,32 @@ from sklearn.model_selection import train_test_split
 class LinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, dropout_rate=0.1):
         super(LinearRegressionModel, self).__init__()
-        hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
-        self.linear1 = nn.Linear(input_size, output_size)
+        # hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
+        self.input_size = input_size
+        self.output_size = output_size
+        self.num_session_features = 50
+        self.num_hidden_features = 100
+        self.session_linear1 = nn.Linear(self.num_session_features, self.num_hidden_features)
+        self.final_layer = nn.Linear(self.input_size - self.num_session_features + self.num_hidden_features, output_size)
         # self.linear2 = nn.Linear(hidden_size, output_size)
         # self.batchnorm = nn.BatchNorm1d(hidden_size)
         # self.dropout = nn.Dropout(dropout_rate)
 
         # self.activation = nn.GELU()
         
-        nn.init.xavier_uniform_(self.linear1.weight)
+        nn.init.xavier_uniform_(self.final_layer.weight)
+        nn.init.xavier_uniform_(self.session_linear1.weight)
         # nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
         #x = self.dropout(self.activation(self.batchnorm(self.linear1(x))))
         #x = self.activation(self.linear1(x))
-        return self.linear1(x)
+        session_features = x[:, :self.num_session_features]
+        session_features = self.session_linear1(session_features)
+        session_features = torch.relu(session_features)
+        remaining_features = x[:,self.input_size - self.num_session_features:]
+        combined_features = torch.cat([remaining_features, session_features], dim=1)
+        return self.final_layer(combined_features)
 
 class RegressionHander_PytorchSimple():
     def __init__(self, input_size, output_size):
