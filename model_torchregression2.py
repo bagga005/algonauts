@@ -12,8 +12,8 @@ class LinearRegressionModel(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         print('input_size', input_size)
-        self.num_session_features = 1
-        self.num_hidden_features = 4
+        self.num_session_features = 50
+        self.num_hidden_features = 100
         hidden_size = (input_size + output_size) // 2
         self.final_layer1 = nn.Linear(input_size, hidden_size)
         self.final_layer2 = nn.Linear(hidden_size, output_size)
@@ -31,7 +31,8 @@ class LinearRegressionModel(nn.Module):
 
         # self.activation = nn.GELU()
         
-        nn.init.xavier_uniform_(self.final_layer.weight)
+        nn.init.xavier_uniform_(self.final_layer1.weight)
+        nn.init.xavier_uniform_(self.final_layer2.weight)
         if self.num_session_features > 0:
             nn.init.xavier_uniform_(self.session_linear1.weight)
         # nn.init.xavier_uniform_(self.linear2.weight)
