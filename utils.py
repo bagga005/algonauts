@@ -50,10 +50,13 @@ def save_viewing_session_for_subject(subject, viewing_session):
     with open(file_name, 'wb') as f:
         pickle.dump(viewing_session, f)
 
-def load_viewing_session_for_subject(subject):
+def load_viewing_session_for_subject(subject, require_file_exists=True):
     file_name = os.path.join(get_output_dir(), 'viewing_session', f'{subject}_viewing_session.pkl')
     if not os.path.exists(file_name):
-        raise FileNotFoundError(f"Viewing session file not found for subject {subject}")
+        if require_file_exists:
+            raise FileNotFoundError(f"Viewing session file not found for subject {subject}")
+        else:
+            return {}
     with open(file_name, 'rb') as f:
         return pickle.load(f)
 
