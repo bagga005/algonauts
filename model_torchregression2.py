@@ -12,29 +12,26 @@ class LinearRegressionModel(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         print('input_size', input_size)
-        self.num_session_features = 50
-        self.num_hidden_features = 100
-        hidden_size = (input_size + output_size) // 2
-        self.final_layer1 = nn.Linear(input_size, hidden_size)
-        self.final_layer2 = nn.Linear(hidden_size, output_size)
+        self.num_session_features = 1
+        self.num_session_hidden_features = 4
+        self.num_session_hidden_features_final = 8
+        self.final_layer = nn.Linear(input_size, output_size)
         if self.num_session_features > 0:
-            self.session_linear1 = nn.Linear(self.num_session_features, self.num_hidden_features)
-            final_layer_input_size = self.input_size - self.num_session_features + self.num_hidden_features
+            self.session_linear1 = nn.Linear(self.num_session_features, self.num_session_hidden_features)
+            self.session_linear2 = nn.Linear(self.num_session_hidden_features, self.num_session_hidden_features_final)
+            final_layer_input_size = self.input_size - self.num_session_features + self.num_session_hidden_features_final
             print('final_layer_input_size', final_layer_input_size)
-            hidden_size = (final_layer_input_size + output_size) // 2
-            self.final_layer1 = nn.Linear(final_layer_input_size, hidden_size)
-            self.final_layer2 = nn.Linear(hidden_size, output_size)
-        
+            self.final_layer = nn.Linear(final_layer_input_size, output_size)
         # self.linear2 = nn.Linear(hidden_size, output_size)
         # self.batchnorm = nn.BatchNorm1d(hidden_size)
         # self.dropout = nn.Dropout(dropout_rate)
 
         # self.activation = nn.GELU()
         
-        nn.init.xavier_uniform_(self.final_layer1.weight)
-        nn.init.xavier_uniform_(self.final_layer2.weight)
+        nn.init.xavier_uniform_(self.final_layer.weight)
         if self.num_session_features > 0:
             nn.init.xavier_uniform_(self.session_linear1.weight)
+            nn.init.xavier_uniform_(self.session_linear2.weight)
         # nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
@@ -45,19 +42,15 @@ class LinearRegressionModel(nn.Module):
             #print('session_features', session_features.shape)
             session_features = self.session_linear1(session_features)
             session_features = torch.relu(session_features)
+            session_features = self.session_linear2(session_features)
+            session_features = torch.relu(session_features)
             remaining_features = x[:,:self.input_size - self.num_session_features]
             #print('remaining_features', remaining_features.shape)
             combined_features = torch.cat([remaining_features, session_features], dim=1)
             #print('combined_features', combined_features.shape)
-            x = self.final_layer1(combined_features)
-            x = torch.relu(x)
-            x = self.final_layer2(x)
-            return x
+            return self.final_layer(combined_features)
         else:
-            x = self.final_layer1(x)
-            x = torch.relu(x)
-            x = self.final_layer2(x)
-            return x
+            return self.final_layer(x)
 
 class RegressionHander_PytorchSimple():
     def __init__(self, input_size, output_size):
