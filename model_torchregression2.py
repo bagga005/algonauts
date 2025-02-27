@@ -12,14 +12,12 @@ class LinearRegressionModel(nn.Module):
         self.input_size = input_size
         self.output_size = output_size
         print('input_size', input_size)
-        self.num_session_features = 1
-        self.num_session_hidden_features = 4
-        self.num_session_hidden_features_final = 8
+        self.num_session_features = 52
+        self.num_hidden_features = 104
         self.final_layer = nn.Linear(input_size, output_size)
         if self.num_session_features > 0:
-            self.session_linear1 = nn.Linear(self.num_session_features, self.num_session_hidden_features)
-            self.session_linear2 = nn.Linear(self.num_session_hidden_features, self.num_session_hidden_features_final)
-            final_layer_input_size = self.input_size - self.num_session_features + self.num_session_hidden_features_final
+            self.session_linear1 = nn.Linear(self.num_session_features, self.num_hidden_features)
+            final_layer_input_size = self.input_size - self.num_session_features + self.num_hidden_features
             print('final_layer_input_size', final_layer_input_size)
             self.final_layer = nn.Linear(final_layer_input_size, output_size)
         # self.linear2 = nn.Linear(hidden_size, output_size)
@@ -31,7 +29,6 @@ class LinearRegressionModel(nn.Module):
         nn.init.xavier_uniform_(self.final_layer.weight)
         if self.num_session_features > 0:
             nn.init.xavier_uniform_(self.session_linear1.weight)
-            nn.init.xavier_uniform_(self.session_linear2.weight)
         # nn.init.xavier_uniform_(self.linear2.weight)
 
     def forward(self, x):
@@ -41,8 +38,6 @@ class LinearRegressionModel(nn.Module):
             session_features = x[:, -self.num_session_features:]
             #print('session_features', session_features.shape)
             session_features = self.session_linear1(session_features)
-            session_features = torch.relu(session_features)
-            session_features = self.session_linear2(session_features)
             session_features = torch.relu(session_features)
             remaining_features = x[:,:self.input_size - self.num_session_features]
             #print('remaining_features', remaining_features.shape)
