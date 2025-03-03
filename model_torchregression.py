@@ -30,7 +30,6 @@ class RegressionHander_Pytorch():
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = LinearRegressionModel(input_size, output_size).to(self.device)
-        print('init RegressionHander_Pytorch')
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         """
@@ -53,15 +52,14 @@ class RegressionHander_Pytorch():
         """
         
         ### Record start time ###
-        print('train on orig pytorch')
         start_time = time.time()
         batch_size = 1024
-        learning_rate_initial_1 = 0.00001
-        learning_rate_initial_2 = 0.000001
-        learning_rate = 0.0000001
-        warmup_epochs_1 = 400
-        warmup_epochs_2 = 1800
-        epochs = 2500
+        learning_rate_initial_1 = 0.00000001
+        learning_rate_initial_2 = 0.0000001
+        learning_rate = 0.000001
+        warmup_epochs_1 = 30
+        warmup_epochs_2 = 80
+        epochs = 1000
         max_grad_norm = 1.0
         #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
@@ -77,9 +75,9 @@ class RegressionHander_Pytorch():
         X_val = torch.FloatTensor(X_val).to(self.device)
         y_val = torch.FloatTensor(y_val).to(self.device)
         
-        print(f'Training complex samples: {X_train.shape[0]:,}')
-        print(f'Validation complex samples: {X_val.shape[0]:,}')
-        print(f'starting torch training')
+        print(f'Training samples: {X_train.shape[0]:,}')
+        print(f'Validation samples: {X_val.shape[0]:,}')
+
         
         
         # Create DataLoaders for both training and validation
@@ -100,7 +98,7 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-3)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-4)
         
         
         print('len dataloader', len(train_loader))
