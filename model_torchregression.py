@@ -6,23 +6,36 @@ import utils
 from sklearn.model_selection import train_test_split
 
 class LinearRegressionModel(nn.Module):
-    def __init__(self, input_size, output_size, dropout_rate=0.1):
+    def __init__(self, input_size, output_size, dropout_rate=0.2):
         super(LinearRegressionModel, self).__init__()
-        hidden_size = (input_size + output_size) // 2  # 1600 -> 1300 -> 1000
-        self.linear1 = nn.Linear(input_size, output_size)
-        # self.linear2 = nn.Linear(hidden_size, output_size)
-        # self.batchnorm = nn.BatchNorm1d(hidden_size)
-        # self.dropout = nn.Dropout(dropout_rate)
-
-        # self.activation = nn.GELU()
+        # Progressive dimensionality reduction
+        self.linear1 = nn.Linear(input_size, 8192)
+        self.batchnorm1 = nn.BatchNorm1d(8192)
+        self.dropout1 = nn.Dropout(dropout_rate)
         
-        nn.init.xavier_uniform_(self.linear1.weight)
-        # nn.init.xavier_uniform_(self.linear2.weight)
+        self.linear2 = nn.Linear(8192, 4096)
+        self.batchnorm2 = nn.BatchNorm1d(4096)
+        self.dropout2 = nn.Dropout(dropout_rate)
+        
+        self.linear3 = nn.Linear(4096, 2048)
+        self.batchnorm3 = nn.BatchNorm1d(2048)
+        self.dropout3 = nn.Dropout(dropout_rate)
+        
+        self.linear4 = nn.Linear(2048, output_size)
+        
+        self.activation = nn.GELU()
+        
+        # Initialize weights
+        nn.init.kaiming_normal_(self.linear1.weight)
+        nn.init.kaiming_normal_(self.linear2.weight)
+        nn.init.kaiming_normal_(self.linear3.weight)
+        nn.init.kaiming_normal_(self.linear4.weight)
 
     def forward(self, x):
-        #x = self.dropout(self.activation(self.batchnorm(self.linear1(x))))
-        #x = self.activation(self.linear1(x))
-        return self.linear1(x)
+        x = self.dropout1(self.activation(self.batchnorm1(self.linear1(x))))
+        x = self.dropout2(self.activation(self.batchnorm2(self.linear2(x))))
+        x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
+        return self.linear4(x)
 
 class RegressionHander_Pytorch():
     def __init__(self, input_size, output_size):
@@ -54,9 +67,9 @@ class RegressionHander_Pytorch():
         ### Record start time ###
         start_time = time.time()
         batch_size = 1024
-        learning_rate_initial_1 = 0.00000001
-        learning_rate_initial_2 = 0.0000001
-        learning_rate = 0.000001
+        learning_rate_initial_1 = 1e-3
+        learning_rate_initial_2 = 1e-3
+        learning_rate = 1e-3
         warmup_epochs_1 = 30
         warmup_epochs_2 = 80
         epochs = 1000
@@ -98,7 +111,7 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-5)
         
         
         print('len dataloader', len(train_loader))
