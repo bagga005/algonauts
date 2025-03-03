@@ -13,12 +13,12 @@ class LinearRegressionModel(nn.Module):
         self.batchnorm1 = nn.BatchNorm1d(4096)
         self.dropout1 = nn.Dropout(dropout_rate)
         
-        self.linear2 = nn.Linear(4096, 1024)
-        self.batchnorm2 = nn.BatchNorm1d(1024)
+        self.linear2 = nn.Linear(4096, 2048)
+        self.batchnorm2 = nn.BatchNorm1d(2048)
         self.dropout2 = nn.Dropout(dropout_rate)
         
         
-        self.linear4 = nn.Linear(1024, output_size)
+        self.linear4 = nn.Linear(2048, output_size)
         
         self.activation = nn.GELU()
         
