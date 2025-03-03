@@ -233,15 +233,15 @@ if __name__ == "__main__":
     # file2 = "/mnt/c/temp/friends_s05e03a.h5"
     # group = "friends_s05e03a"
     # dataset = 'language_last_hidden_state'#"language_pooler_output"
-    file1 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5"
-    file2 = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
+    file1 = "/teamspace/studios/this_studio/algo_data/stimulus_features/raw/language/friends_s01e01a.h5"
+    file2 = "/teamspace/studios/present-tomato-9u8y/algo_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
     folder_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual"
     folder_path = "/teamspace/studios/this_studio/algo_data/stimulus_features/raw/visual"
-    print(has_nan_for_folder(folder_path, 'visual'))
+    #print(has_nan_for_folder(folder_path, 'visual'))
     group1 = "friends_s01e01a"
     group2 = "s01e01a"
-    dataset = 'visual'#"language_pooler_output"
-
+    dataset = "language_last_hidden_state" #"language_pooler_output"
+    compare_h5_datasets(file1, file2, group1, group2, dataset)
     # are_equal, r_score = compare_h5_datasets(file1, file2, group1, group2, dataset)
     # print('r_score', r_score)
     # print(f"Are datasets equal? {are_equal}, R-score: {r_score:.6f}")

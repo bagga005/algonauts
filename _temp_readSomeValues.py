@@ -66,16 +66,18 @@ def read_npy_keys(file_path):
         print(f"Error loading file: {str(e)}")
 
 
-
+if __name__ == "__main__":
     #file_path = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy"
     #print_npy_keys(file_path)
     stimId = "friends_s01e01a"
-    file1_path = "/mnt/c/temp/" + stimId + ".h5"
+    stimId = "s01e01a"
+    #file1_path = "/mnt/c/temp/" + stimId + ".h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/" + stimId + ".h5"
-    #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a_features_visual.h5"
+    file1_path = "/teamspace/studios/present-tomato-9u8y/algo_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    #read_h5_file(file1_path, stimId, 'visual')
+    read_h5_file(file1_path, stimId, 'language_pooler_output')
+    read_h5_file(file1_path, stimId, 'language_last_hidden_state')
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
     file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/target_sample_number/sub-03_friends-s7_fmri_samples.npy"
