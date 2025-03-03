@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 from utils import get_shortstim_name
 from glob import glob
-def compare_h5_datasets(file1_path, file2_path, group_name1, group_name2, dataset_name):
+def compare_h5_datasets(file1_path, file2_path, group_name1, group_name2, dataset_name, rtol=1e-5, atol=1e-8, max_diff_to_show=10):
     """
     Compare datasets from two HDF5 files and return correlation coefficient.
     
@@ -38,54 +38,61 @@ def compare_h5_datasets(file1_path, file2_path, group_name1, group_name2, datase
                 print(f"Shapes don't match: {data1.shape} vs {data2.shape}")
                 return False, 0.0
             
-            # Calculate R-score (correlation coefficient)
-            # Flatten arrays and remove NaN values
-            mask = ~(np.isnan(data1) | np.isnan(data2))
-            flat1 = data1[mask].flatten()
-            flat2 = data2[mask].flatten()
-            r_score = np.corrcoef(flat1, flat2)[0, 1]
-            print(f"R-score (correlation coefficient): {r_score:.6f}")
-
-            # Rest of the comparison logic
-            data1_rounded = np.round(data1, decimals=1)
-            data2_rounded = np.round(data2, decimals=1)
-            is_equal = np.array_equal(
-                data1_rounded[~np.isnan(data1_rounded)], 
-                data2_rounded[~np.isnan(data2_rounded)]
-            )
+            # Create masks for non-NaN values in both datasets
+            mask1 = ~np.isnan(data1)
+            mask2 = ~np.isnan(data2)
             
-            # Compare data with tolerances, ignoring NaNs
-            mask = ~(np.isnan(data1) | np.isnan(data2))
-            is_equal2 = np.allclose(
-                data1[mask], 
-                data2[mask], 
-                rtol=1e-2, 
-                atol=1e-5
-            )
+            # Combined mask where both datasets have non-NaN values
+            valid_mask = mask1 & mask2
             
-            print(data1[400][:5])
-            print(data2[400][:5])
-            if is_equal:
-                print("Datasets are identical!")
-            else:
-                # Find where differences occur
-                diff_mask = ~np.isclose(data1, data2, rtol=1e-5, atol=1e-1)
-                diff_indices = np.where(diff_mask)
+            # Count NaN values in each dataset
+            nan_count1 = np.sum(~mask1)
+            nan_count2 = np.sum(~mask2)
+            
+            print(f"NaN count in {file1_path}: {nan_count1}")
+            print(f"NaN count in {file2_path}: {nan_count2}")
+            
+            # Check if NaNs are in the same positions
+            nan_positions_match = np.array_equal(~mask1, ~mask2)
+            if not nan_positions_match:
+                mismatched_nan_count = np.sum(~mask1 != ~mask2)
+                print(f"NaN positions don't match in {mismatched_nan_count} elements")
+            
+            # Compare only non-NaN values
+            if np.sum(valid_mask) > 0:
+                is_close = np.allclose(
+                    data1[valid_mask], 
+                    data2[valid_mask], 
+                    rtol=rtol, 
+                    atol=atol
+                )
                 
-                if len(diff_indices[0]) > 0:
-                    print(f"Datasets differ in {len(diff_indices[0])} positions")
-                    differences = []
-                    for idx in zip(*diff_indices):
-                        diff_magnitude = abs(float(data1[idx]) - float(data2[idx]))
-                        differences.append((idx, data1[idx], data2[idx], diff_magnitude))
+                # Calculate differences for non-NaN values
+                diff = np.abs(data1[valid_mask] - data2[valid_mask])
+                max_diff = np.max(diff) if diff.size > 0 else 0
+                mean_diff = np.mean(diff) if diff.size > 0 else 0
+                
+                print(f"Max difference (excluding NaNs): {max_diff}")
+                print(f"Mean difference (excluding NaNs): {mean_diff}")
+                
+                # Show positions with largest differences
+                if diff.size > 0:
+                    # Get indices of largest differences
+                    largest_diff_indices = np.argsort(diff)[-min(max_diff_to_show, diff.size):]
                     
-                    differences.sort(key=lambda x: x[3], reverse=True)
-                    for idx, val1, val2, magnitude in differences[:50]:
-                        print(f"Position {idx}: {val1} vs {val2} (diff: {magnitude:.6f})")
-                else:
-                    print("Datasets are identical in range!")
-                        
-            return is_equal, r_score
+                    # Convert flat indices back to original array coordinates
+                    flat_indices = np.where(valid_mask.flatten())[0][largest_diff_indices]
+                    orig_indices = np.unravel_index(flat_indices, data1.shape)
+                    
+                    print("\nLargest differences:")
+                    for i in range(len(largest_diff_indices)):
+                        idx = tuple(coord[i] for coord in orig_indices)
+                        print(f"Position {idx}: {data1[idx]} vs {data2[idx]} (diff: {data1[idx] - data2[idx]})")
+                
+                return is_close
+            else:
+                print("No valid (non-NaN) values to compare")
+                return False
             
     except KeyError as e:
         print(f"Error: Group or dataset not found: {e}")
