@@ -12,13 +12,13 @@ def run_trainings():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
-    include_viewing_sessions = True
+    include_viewing_sessions = False
     movies_train = ["friends-s01","friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
     training_handler = 'pytorch'
-    experiment_comments = 'features for episode run time'
+    experiment_comments = '54 session features'
     specific_modalities = ["all"]
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
@@ -26,7 +26,7 @@ def run_trainings():
     # features = get_features(modality)
     # #print('features.keys()', features.keys())
     
-    fmri = train.get_fmri(subject)
+    #fmri = train.get_fmri(subject)
     #measure_yony_accuracy(subject, specific_modalities[0], fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     # areas_of_interest_path = os.path.join(root_data_dir, 'eval_results', 'areas-of-interest.csv')
     # arr = utils.load_csv_to_array(areas_of_interest_path)
@@ -45,12 +45,12 @@ def run_trainings():
     print('moviels_val', movies_val)
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
     #subject = 3
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
-    #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence=1)
+    train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence=1)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, specific_modalities,  recurrence)
     # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
+    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
     #print('features', features['visual'].keys())
