@@ -6,7 +6,7 @@ import h5py
 import os
 import utils
 from model_sklearn import LinearHandler_Sklearn
-from model_torchregression2 import RegressionHander_PytorchSimple
+from model_torchregression import RegressionHander_Pytorch
 from model_transformer import RegressionHander_Transformer
 import nibabel as nib
 from nilearn import plotting
@@ -510,7 +510,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     features_train_val, fmri_train_val = None, None
     if training_handler == 'pytorch':
-        trainer = RegressionHander_PytorchSimple(features_train.shape[1], fmri_train.shape[1])
+        trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
         print('got simple handler')
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
@@ -581,7 +581,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     # features_val = torch.FloatTensor(features_val).to(device)
     
     if training_handler == 'pytorch':
-        trainer = RegressionHander_PytorchSimple(features_val.shape[1], fmri_val.shape[1])
+        trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
