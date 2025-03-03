@@ -63,11 +63,11 @@ class RegressionHander_Pytorch():
         ### Record start time ###
         start_time = time.time()
         batch_size = 1024
-        learning_rate_initial_1 = 1e-4
-        learning_rate_initial_2 = 1e-4
+        learning_rate_initial_1 = 1e-6
+        learning_rate_initial_2 = 1e-5
         learning_rate = 1e-4
-        warmup_epochs_1 = 30
-        warmup_epochs_2 = 80
+        warmup_epochs_1 = 50
+        warmup_epochs_2 = 100
         epochs = 1000
         max_grad_norm = 1.0
         weight_decay = 1e-3
