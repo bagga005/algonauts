@@ -9,32 +9,28 @@ class LinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, dropout_rate=0.2):
         super(LinearRegressionModel, self).__init__()
         # Progressive dimensionality reduction
-        self.linear1 = nn.Linear(input_size, 8192)
-        self.batchnorm1 = nn.BatchNorm1d(8192)
+        self.linear1 = nn.Linear(input_size, 4096)
+        self.batchnorm1 = nn.BatchNorm1d(4096)
         self.dropout1 = nn.Dropout(dropout_rate)
         
-        self.linear2 = nn.Linear(8192, 4096)
-        self.batchnorm2 = nn.BatchNorm1d(4096)
+        self.linear2 = nn.Linear(4096, 1024)
+        self.batchnorm2 = nn.BatchNorm1d(1024)
         self.dropout2 = nn.Dropout(dropout_rate)
         
-        self.linear3 = nn.Linear(4096, 2048)
-        self.batchnorm3 = nn.BatchNorm1d(2048)
-        self.dropout3 = nn.Dropout(dropout_rate)
         
-        self.linear4 = nn.Linear(2048, output_size)
+        self.linear4 = nn.Linear(1024, output_size)
         
         self.activation = nn.GELU()
         
         # Initialize weights
         nn.init.kaiming_normal_(self.linear1.weight)
         nn.init.kaiming_normal_(self.linear2.weight)
-        nn.init.kaiming_normal_(self.linear3.weight)
         nn.init.kaiming_normal_(self.linear4.weight)
 
     def forward(self, x):
         x = self.dropout1(self.activation(self.batchnorm1(self.linear1(x))))
         x = self.dropout2(self.activation(self.batchnorm2(self.linear2(x))))
-        x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
+        #x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
         return self.linear4(x)
 
 class RegressionHander_Pytorch():
@@ -67,13 +63,14 @@ class RegressionHander_Pytorch():
         ### Record start time ###
         start_time = time.time()
         batch_size = 1024
-        learning_rate_initial_1 = 1e-3
-        learning_rate_initial_2 = 1e-3
-        learning_rate = 1e-3
+        learning_rate_initial_1 = 1e-4
+        learning_rate_initial_2 = 1e-4
+        learning_rate = 1e-4
         warmup_epochs_1 = 30
         warmup_epochs_2 = 80
         epochs = 1000
         max_grad_norm = 1.0
+        weight_decay = 1e-3
         #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
         X_train, X_val, y_train, y_val = train_test_split(
@@ -111,7 +108,7 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=1e-5)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=weight_decay)
         
         
         print('len dataloader', len(train_loader))
