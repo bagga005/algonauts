@@ -167,7 +167,7 @@ def get_shortstim_name(stimuli):
     else:
         return stimuli
     
-def features_combined_npy(infolder, outfile, modality):
+def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=True):
     files = glob(f"{infolder}/*.h5")
     files.sort()
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
@@ -178,6 +178,8 @@ def features_combined_npy(infolder, outfile, modality):
         print('shortstim_name: ', get_shortstim_name(stim_id))
         if get_shortstim_name(stim_id) in valdict:
             raise KeyError(f"Key '{get_shortstim_name(stim_id)}' already exists in dictionary")
+        if preProcess:
+            features = preprocess_features(features, zscore)
         valdict[get_shortstim_name(stim_id)] = features
     data_array = np.array(valdict)
     np.save(outfile, data_array)
@@ -229,10 +231,10 @@ def do_pca(inpath, outfile,modality):
     
 
 if __name__ == "__main__":
-    modality = 'visual'
+    modality = 'language'
     infolder = os.path.join(utils.get_raw_data_dir(), modality)
     outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca.npy')
-    features_combined_npy(infolder, outfile, modality)
+    features_combined_npy(infolder, outfile, modality, True, False)
     #extract_raw_visual_features()
     #extract_raw_audio_features()
     #extract_raw_language_features()

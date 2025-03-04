@@ -477,7 +477,7 @@ def load_features(file_path, modality):
     ### Output ###
     return features
 
-def preprocess_features(features):
+def preprocess_features(features, zscore=True):
     """
     Rplaces NaN values in the stimulus features with zeros, and z-score the
     features.
@@ -497,9 +497,12 @@ def preprocess_features(features):
    ### Convert NaN values to zeros ###
     features = np.nan_to_num(features)
 
-    ### Z-score the features ###
-    scaler = StandardScaler()
-    prepr_features = scaler.fit_transform(features)
+    if zscore:
+        ### Z-score the features ###
+        scaler = StandardScaler()
+        prepr_features = scaler.fit_transform(features)
+    else:
+        prepr_features = features
 
     ### Output ###
     return prepr_features
