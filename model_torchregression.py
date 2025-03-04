@@ -9,8 +9,8 @@ class LinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, dropout_rate=0.2):
         super(LinearRegressionModel, self).__init__()
         # Progressive dimensionality reduction
-        self.linear1 = nn.Linear(input_size, 8192)
-        self.batchnorm1 = nn.BatchNorm1d(8192)
+        self.linear1 = nn.Linear(input_size, 2048)
+        self.batchnorm1 = nn.BatchNorm1d(2048)
         self.dropout1 = nn.Dropout(dropout_rate)
         
         self.linear2 = nn.Linear(8192, 4096)
@@ -34,8 +34,8 @@ class LinearRegressionModel(nn.Module):
 
     def forward(self, x):
         x = self.dropout1(self.activation(self.batchnorm1(self.linear1(x))))
-        x = self.dropout2(self.activation(self.batchnorm2(self.linear2(x))))
-        x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
+        #x = self.dropout2(self.activation(self.batchnorm2(self.linear2(x))))
+        #x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
         return self.linear4(x)
 
 class RegressionHander_Pytorch():
@@ -69,8 +69,8 @@ class RegressionHander_Pytorch():
         start_time = time.time()
         batch_size = 1024
         learning_rate_initial_1 = 1e-5
-        learning_rate_initial_2 = 1e-4
-        learning_rate = 1e-4
+        learning_rate_initial_2 = 1e-5
+        learning_rate = 1e-5
         warmup_epochs_1 = 50
         warmup_epochs_2 = 100
         epochs = 1000
