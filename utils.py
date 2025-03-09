@@ -25,6 +25,9 @@ def get_tmp_dir():
 def get_output_dir():
     return os.getenv("OUTPUT_DIR")
 
+def get_accuracy_json_file():
+    return os.path.join(get_output_dir(), 'accuracy.json')
+
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_output_dir(), 'models', file_name)

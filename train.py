@@ -14,6 +14,9 @@ from nilearn.maskers import NiftiLabelsMasker
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
+import datetime
+
 def load_stimulus_features(root_data_dir, modality):
     """
     Load the stimulus features.
@@ -173,8 +176,8 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         Integer indicating the last N fMRI TRs that will be excluded and not
         used for model training. The reason for excluding these TRs is that
         stimulus feature samples (i.e., the stimulus chunks) can be shorter than
-        the fMRI samples (i.e., the fMRI TRs), since in some cases the fMRI run
-        ran longer than the actual movie. However, keep in mind that the fMRI
+        the fMRI samples (i.e., the fMRI TRs), since in some cases the fMRI
+        run ran longer than the actual movie. However, keep in mind that the fMRI
         timeseries onset is ALWAYS SYNCHRONIZED with movie onset (i.e., the
         first fMRI TR is always synchronized with the first stimulus chunk).
     hrf_delay : int
@@ -290,13 +293,17 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                             idx_end = len(features[mod][split])
                             idx_start = idx_end - stimulus_window
                         f = features[mod][split][idx_start:idx_end]
+                        #print('s', s, 'idx_start', idx_start, 'idx_end', idx_end, mod)
+                        f = f.flatten()
+                        #print('f', f.shape)
                         # if mod =='visual' and split == 's01e01a' and (s == 0 or s==1 or s==2): 
                         #     print('mod', mod)
                         #     print('s', s)
                         #     print('idx_start', idx_start)
                         #     print('idx_end', idx_end)
                         #     print('f', f.shape)
-                        f_all = np.append(f_all, f.flatten())
+                        f_all = np.append(f_all, f)
+
 
                     ### Language features ###
                     # Since language features already consist of embeddings
@@ -375,6 +382,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     #print('f_all.shape', f_all.shape,'s', s, 'vsession:', str(v_session-1), 'fr_num:', str(fr_num))
                  ### Append the stimulus features of all modalities for this sample ###
                 #print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
+                #print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
 
     ### Convert the aligned features to a numpy array ###
@@ -473,8 +481,11 @@ def plot_encoding_accuracy(subject, encoding_accuracy, modality):
 
 
 
-def get_model_name(subject, modality):
-    return f'sub-' + str(subject) + '_modality-' + str(modality)
+def get_model_name(subject, modality, dimension):
+    if dimension is not None:
+        return f'sub-' + str(subject) + '_modality-' + str(modality) + '_dimension-' + str(dimension)
+    else:
+        raise ValueError("Dimension is not provided")
 
 def get_features(modality):
     stim_data_dir = utils.get_stimulus_features_dir()
@@ -533,16 +544,21 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
         features = get_features(modality)
         trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence=recurrence)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
-        model_name = get_model_name(subject, modality)
+        model_name = get_model_name(subject, modality, stimulus_window)
         trainer.save_model(model_name)
         del features, trainer
 
 
-def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
+def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, skip_if_accuracy_exists=False, recurrence=1):
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
         print(f"Starting training for subject {subject}...")
+        if skip_if_accuracy_exists:
+            accuracy_json_path = utils.get_accuracy_json_file()
+            if does_accuracy_entry_exist(accuracy_json_path, specific_modalities[0], movies_train_val[0], get_subject_string(subject), stimulus_window):
+                print(f"Skipping training for subject {subject} as accuracy entry already exists, dimension: {stimulus_window}")
+                continue
         fmri = get_fmri(subject)
         #viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
         train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
@@ -553,22 +569,22 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, recurrence=1):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, recurrence)
+        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, recurrence)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None,write_accuracy=False, recurrence=1):
     for subject in [1, 2, 3, 5]:
         fmri = get_fmri(subject)
-        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
+        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, write_accuracy, recurrence)
         del fmri
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, recurrence=1):
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, recurrence=1):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -587,12 +603,17 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     elif training_handler == 'transformer':
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
 
-    model_name = get_model_name(subject, modality)
+    model_name = get_model_name(subject, modality, stimulus_window)
     trainer.load_model(model_name)
 
     fmri_val_pred = trainer.predict(features_val)
     
-    utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+    accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+    if write_accuracy:
+        acc_json_path = utils.get_accuracy_json_file()
+        update_accuracy_json(acc_json_path, float(np.mean(accuracy)), modality, movies_val[0], subject, stimulus_window)
+    
+    return accuracy
 
 def get_subject_string(subject):
     if subject == 1:
@@ -619,5 +640,87 @@ def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, exclu
     print('fmri_train.shape', fmri_train.shape)
     print('pre_fmri.shape', pre_fmri.shape)
     utils.compute_encoding_accuracy(fmri_train, pre_fmri, subject, modality)
+
+def does_accuracy_entry_exist(json_path, modality, val_video, subject, dimension):
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    for item in data:
+        if item['modality'] == modality and item['val_video'] == val_video and item['subject'] == subject and item['dimension'] == dimension:
+            return True
+    return False
+
+def update_accuracy_json(json_path, accuracy, modality, val_video, subject, dimension):
+    """
+    Updates a JSON file with accuracy information for a specific modality, validation video, and subject.
+    If an entry already exists for the given combination, it updates the accuracy.
+    Otherwise, it creates a new entry.
+    
+    Parameters
+    ----------
+    json_path : str
+        Path to the JSON file to update
+    accuracy : float
+        Accuracy value to store
+    modality : str
+        Feature modality used (e.g., "visual", "audio", "language", "all")
+    val_video : str
+        Validation video name (e.g., "friends-s06")
+    subject : int or str
+        Subject number or identifier
+    dimension : str or int, optional
+        Additional dimension to categorize the entry (e.g., "cortical", "subcortical", or a specific ROI number)
+    """
+    # Get current timestamp
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Convert subject to string format if it's an integer
+    if isinstance(subject, int):
+        subject = get_subject_string(subject)
+    
+    # Create the entry dictionary
+    entry = {
+        "modality": modality,
+        "val_video": val_video,
+        "subject": subject,
+        "accuracy": float(accuracy),
+        "dimension": dimension,
+        "updated_on": current_time
+    }
+    
+    # Load existing data if file exists, otherwise create empty list
+    data = []
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            # If file exists but is not valid JSON, start with empty list
+            data = []
+    
+    # Check if entry already exists
+    entry_exists = False
+    for i, item in enumerate(data):
+        if (item.get("modality") == modality and 
+            item.get("val_video") == val_video and 
+            item.get("subject") == subject and 
+            item.get("dimension") == dimension):
+            # Update existing entry
+            data[i]["accuracy"] = entry["accuracy"]
+            data[i]["updated_on"] = current_time
+            entry_exists = True
+            break
+    
+    operation = 'Updated'
+    # If entry doesn't exist, add it
+    if not entry_exists:
+        data.append(entry)
+        operation = 'Added'
+
+    # Write updated data back to file
+    with open(json_path, 'w') as f:
+        json.dump(data, f, indent=4)
+    
+    
+    print(f"{operation} {json_path} with accuracy {accuracy} for {subject}, {modality}, {val_video}, {dimension} at {current_time}")
 
 
