@@ -642,6 +642,8 @@ def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, exclu
     utils.compute_encoding_accuracy(fmri_train, pre_fmri, subject, modality)
 
 def does_accuracy_entry_exist(json_path, modality, val_video, subject, dimension):
+    if not os.path.exists(json_path):
+        return False
     with open(json_path, 'r') as f:
         data = json.load(f)
     for item in data:
