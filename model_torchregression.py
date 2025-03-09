@@ -22,7 +22,7 @@ class LinearRegressionModel(nn.Module):
         self.dropout3 = nn.Dropout(dropout_rate)
         
         
-        self.linear4 = nn.Linear(2048, output_size)
+        self.linear4 = nn.Linear(input_size, output_size)
         
         self.activation = nn.GELU()
         
@@ -33,7 +33,7 @@ class LinearRegressionModel(nn.Module):
         nn.init.kaiming_normal_(self.linear4.weight)
 
     def forward(self, x):
-        x = self.dropout1(self.activation(self.batchnorm1(self.linear1(x))))
+        #x = self.dropout1(self.activation(self.batchnorm1(self.linear1(x))))
         #x = self.dropout2(self.activation(self.batchnorm2(self.linear2(x))))
         #x = self.dropout3(self.activation(self.batchnorm3(self.linear3(x))))
         return self.linear4(x)
@@ -67,15 +67,15 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        batch_size = 1024
+        batch_size = 8192
         learning_rate_initial_1 = 1e-5
-        learning_rate_initial_2 = 1e-5
+        learning_rate_initial_2 = 1e-4
         learning_rate = 1e-5
-        warmup_epochs_1 = 50
-        warmup_epochs_2 = 100
+        warmup_epochs_1 = 20
+        warmup_epochs_2 = 170
         epochs = 1000
         max_grad_norm = 1.0
-        weight_decay = 1e-3
+        weight_decay = 1e-4
         #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
         X_train, X_val, y_train, y_val = train_test_split(
