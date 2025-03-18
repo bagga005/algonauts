@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from scipy.stats import pearsonr
 import torch
 import torch.nn as nn
 import h5py
@@ -16,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 import datetime
-
+from roi_network_map import get_breakup_by_network
 def load_stimulus_features(root_data_dir, modality):
     """
     Load the stimulus features.
@@ -450,6 +451,8 @@ def save_encoding_accuracy(encoding_accuracy, subject, modality):
     df.to_csv(filepath, index=False)
 
 def plot_encoding_accuracy(subject, encoding_accuracy, modality):
+    print('subject', subject)
+    print('modality', modality)
     atlas_file = f'sub-0{subject}_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-dseg_parcellation.nii.gz'
     root_data_dir = utils.get_data_root_dir()
     atlas_path = os.path.join(root_data_dir, 'algonauts_2025.competitors',
@@ -460,7 +463,8 @@ def plot_encoding_accuracy(subject, encoding_accuracy, modality):
     print(encoding_accuracy.shape)
     #encoding_accuracy = np.reshape(encoding_accuracy, (1000, 1))
     print(encoding_accuracy.shape)
-    encoding_accuracy_nii = atlas_masker.inverse_transform(encoding_accuracy)
+    encoding_accuracy_2d = encoding_accuracy.reshape(1, -1)
+    encoding_accuracy_nii = atlas_masker.inverse_transform(encoding_accuracy_2d)
     mean_encoding_accuracy = np.round(np.mean(encoding_accuracy), 3)
 
     ### Plot the encoding accuracy ###
@@ -569,13 +573,13 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, recurrence=1):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, plot_encoding_fig=False, break_up_by_network=False, recurrence=1):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, recurrence)
+        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, plot_encoding_fig, break_up_by_network=True, recurrence=recurrence)
         del features
 
 def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None,write_accuracy=False, recurrence=1):
@@ -584,7 +588,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
         validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, write_accuracy, recurrence)
         del fmri
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, recurrence=1):
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -608,7 +612,26 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
 
     fmri_val_pred = trainer.predict(features_val)
     
-    accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+    
+    if break_up_by_network:
+        prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
+        accuracy_by_network = []
+        for prediction in prediction_by_network:
+            measure, network_fmri_val, network_fmri_val_pred = prediction
+            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False)
+            print(measure, 'accuracy', accuracy)
+            accuracy_by_network.append((measure, accuracy))
+        json_path = utils.get_network_accuracy_json_file()
+        utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
+    else:
+        accuracy, encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+    if plot_encoding_fig:
+        #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
+        # encoding_accuracy[:] = 0
+        # encoding_accuracy[173:232] = 1
+        # encoding_accuracy[684:744] = 1
+        print('encoding_accuracy.shape', encoding_accuracy.shape)
+        plot_encoding_accuracy(subject, encoding_accuracy, modality)
     if write_accuracy:
         acc_json_path = utils.get_accuracy_json_file()
         update_accuracy_json(acc_json_path, float(np.mean(accuracy)), modality, movies_val[0], subject, stimulus_window)
@@ -724,5 +747,165 @@ def update_accuracy_json(json_path, accuracy, modality, val_video, subject, dime
     
     
     print(f"{operation} {json_path} with accuracy {accuracy} for {subject}, {modality}, {val_video}, {dimension} at {current_time}")
+
+def plot_accuracy_by_dimension(json_path, subject=None, modality=None, val_video=None, figsize=(12, 6), 
+                              save_path=None, show_average=True, y_min=0.13, y_max=0.25):
+    """
+    Plot accuracy values from a JSON file with dimension on the x-axis and accuracy on the y-axis.
+    
+    Parameters
+    ----------
+    json_path : str
+        Path to the JSON file containing accuracy data
+    subject : str or list, optional
+        Filter by specific subject(s) (e.g., 'sub-01' or ['sub-01', 'sub-02'])
+    modality : str or list, optional
+        Filter by specific modality/modalities (e.g., 'visual' or ['visual', 'audio'])
+    val_video : str or list, optional
+        Filter by specific validation video(s) (e.g., 'friends-s06')
+    figsize : tuple, optional
+        Figure size as (width, height)
+    save_path : str, optional
+        Path to save the figure. If None, the figure is displayed but not saved.
+    show_average : bool, optional
+        If True, adds a plot showing the average across all subjects
+    y_min : float, optional
+        Minimum value for y-axis (default: 0.13)
+    y_max : float, optional
+        Maximum value for y-axis (default: 0.25)
+        
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The generated figure object
+    """
+    import json
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import numpy as np
+    
+    # Load the JSON data
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    
+    # Convert to DataFrame for easier manipulation
+    df = pd.DataFrame(data)
+    
+    # Apply filters for modality and val_video
+    if modality:
+        if isinstance(modality, str):
+            modality = [modality]
+        df = df[df['modality'].isin(modality)]
+    
+    if val_video:
+        if isinstance(val_video, str):
+            val_video = [val_video]
+        df = df[df['val_video'].isin(val_video)]
+    
+    # Make a copy of the full filtered dataframe before applying subject filter
+    df_all = df.copy()
+    
+    # Apply subject filter if provided
+    if subject:
+        if isinstance(subject, str):
+            subject = [subject]
+        df = df[df['subject'].isin(subject)]
+    
+    # Check if we have data after filtering
+    if df.empty:
+        print("No data available after applying filters.")
+        return None
+    
+    # Convert dimension to numeric if possible for proper sorting
+    try:
+        df['dimension'] = pd.to_numeric(df['dimension'])
+        df = df.sort_values('dimension')
+        df_all['dimension'] = pd.to_numeric(df_all['dimension'])
+        df_all = df_all.sort_values('dimension')
+    except:
+        # If conversion fails, keep as is (might be string dimensions)
+        pass
+    
+    # Create the figure
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # If we have multiple subjects, modalities, or val_videos, use different colors/markers
+    groupby_columns = []
+    if len(df['subject'].unique()) > 1 and subject is None:
+        groupby_columns.append('subject')
+    if len(df['modality'].unique()) > 1 and modality is None:
+        groupby_columns.append('modality')
+    if len(df['val_video'].unique()) > 1 and val_video is None:
+        groupby_columns.append('val_video')
+    
+    # If we have grouping columns, plot each group separately
+    if groupby_columns:
+        for name, group in df.groupby(groupby_columns):
+            label = ' + '.join([str(n) for n in name]) if isinstance(name, tuple) else str(name)
+            ax.plot(group['dimension'], group['accuracy'], 'o-', alpha=0.7, linewidth=1.5, label=label)
+    else:
+        # Otherwise, plot all data points with the same style
+        ax.plot(df['dimension'], df['accuracy'], 'o-', alpha=0.7, linewidth=1.5, label='Individual')
+    
+    # Add average across subjects if requested
+    if show_average and 'subject' in df_all.columns and len(df_all['subject'].unique()) > 1:
+        # Group by dimension and calculate mean accuracy
+        avg_df = df_all.groupby('dimension')['accuracy'].mean().reset_index()
+        # Plot average with thicker line and distinct color
+        ax.plot(avg_df['dimension'], avg_df['accuracy'], 'o-', color='red', 
+                linewidth=2.5, markersize=8, label='Average across subjects')
+        
+        # Add standard deviation as shaded area if we have multiple subjects
+        if len(df_all['subject'].unique()) > 2:
+            std_df = df_all.groupby('dimension')['accuracy'].std().reset_index()
+            ax.fill_between(avg_df['dimension'], 
+                           avg_df['accuracy'] - std_df['accuracy'],
+                           avg_df['accuracy'] + std_df['accuracy'],
+                           alpha=0.2, color='red')
+    
+    # Set y-axis limits
+    ax.set_ylim(y_min, y_max)
+    
+    # Add a horizontal line at y=0 for reference (only if visible in the y-range)
+    if y_min <= 0 <= y_max:
+        ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+    
+    # Set labels and title
+    ax.set_xlabel('HRF Delay')
+    ax.set_ylabel('Accuracy (Pearson\'s r)')
+    
+    # Create title based on filters
+    title_parts = []
+    if subject:
+        title_parts.append(f"Subject: {', '.join(subject)}")
+    if modality:
+        title_parts.append(f"Modality: {', '.join(modality)}")
+    if val_video:
+        title_parts.append(f"Validation: {', '.join(val_video)}")
+    
+    title = "Accuracy by HRF Delay" + (" - " + " | ".join(title_parts) if title_parts else "")
+    ax.set_title(title)
+    
+    # Add grid for better readability
+    ax.grid(True, alpha=0.3)
+    
+    # Add mean accuracy as text annotation
+    mean_acc = df['accuracy'].mean()
+    ax.text(0.02, 0.95, f'Mean Accuracy: {mean_acc:.4f}', 
+            transform=ax.transAxes, fontsize=10, 
+            bbox=dict(facecolor='white', alpha=0.7))
+    
+    # Add legend
+    ax.legend(loc='best')
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save figure if path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Figure saved to {save_path}")
+    
+    return fig
 
 

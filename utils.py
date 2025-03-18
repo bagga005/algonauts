@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import torch
 from scipy.stats import pearsonr
+import json
+import datetime
 load_dotenv()
 
 def get_stimulus_features_dir():
@@ -27,6 +29,13 @@ def get_output_dir():
 
 def get_accuracy_json_file():
     return os.path.join(get_output_dir(), 'accuracy.json')
+
+def get_network_accuracy_json_file():
+    return os.path.join(get_output_dir(), 'network_accuracy.json')
+
+def get_roi_network_map():
+    """Returns the path to the ROI network mapping file"""
+    return os.path.join(os.path.dirname(__file__), 'roi_network_map.json')
 
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
@@ -151,7 +160,7 @@ def analyze_fmri_distribution(fmri_data):
     print(f"Min value: {min_value:.4f}")
     print(f"Max value: {max_value:.4f}")
 
-def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality):
+def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, print_output=True):
     """
     Compare the  recorded (ground truth) and predicted fMRI responses, using a
     Pearson's correlation. The comparison is perfomed independently for each
@@ -172,16 +181,60 @@ def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality):
 
     ### Correlate recorded and predicted fMRI responses ###
     encoding_accuracy = np.zeros((fmri_val.shape[1]), dtype=np.float32)
+
     for p in range(len(encoding_accuracy)):
         encoding_accuracy[p] = pearsonr(fmri_val[:, p],
             fmri_val_pred[:, p])[0]
-    print('encoding_accuracy.shape', encoding_accuracy.shape)
     mean_encoding_accuracy = np.round(np.mean(encoding_accuracy), 3)
     std_encoding_accuracy = np.round(np.std(encoding_accuracy), 3)
-    print(f"Encoding accuracy, sub-0{subject}, modality-{modality}, mean accuracy: {mean_encoding_accuracy}, std: {std_encoding_accuracy}")
+    if print_output:    
+        print(f"Encoding accuracy, sub-0{subject}, modality-{modality}, mean accuracy: {mean_encoding_accuracy}, std: {std_encoding_accuracy}")
 
     #plot_encoding_accuracy(subject, encoding_accuracy, modality)
     # utils.save_npy(encoding_accuracy, subject, modality)
     # # Save accuracy values to CSV
     # save_encoding_accuracy(encoding_accuracy, subject, modality)
-    return mean_encoding_accuracy
+    return mean_encoding_accuracy, encoding_accuracy
+
+def append_network_accuracies_to_json(json_path, accuracy_tuples):
+    """
+    Append network accuracies to a JSON file.
+    
+    Parameters
+    ----------
+    json_path : str
+        Path to the JSON file to update
+    accuracy_tuples : list of tuples
+        List of tuples where each tuple contains (measure_name, accuracy)
+    
+    Returns
+    -------
+    None
+    """
+    # Get current timestamp
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Load existing data if file exists, otherwise create empty list
+    data = []
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            # If file exists but is not valid JSON, start with empty list
+            data = []
+    
+    # Create entries for each measure and append to data
+    for measure, accuracy in accuracy_tuples:
+        entry = {
+            "measure": measure,
+            "accuracy": float(accuracy),  # Convert to float to ensure it's JSON serializable
+            "timestamp": current_time
+        }
+        data.append(entry)
+    
+    # Write updated data back to file
+    with open(json_path, 'w') as f:
+        json.dump(data, f, indent=4)
+    
+    print(f"Appended {len(accuracy_tuples)} network accuracy entries to {json_path}")
