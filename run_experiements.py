@@ -1,6 +1,7 @@
 import train
 import h5py
-from utils import load_viewing_session_for_subject
+import numpy as np
+from utils import load_viewing_session_for_subject, get_accuracy_json_file
 
 def run_for_stimulus_window():
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
@@ -18,7 +19,7 @@ def run_for_stimulus_window():
     print('moviels_val', movies_val)
     #subject = 3
     #fmri = train.get_fmri(subject)
-    for stimulus_window in range(1, 21):
+    for stimulus_window in range(20, 21):
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities)
         train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val, training_handler, include_viewing_sessions, specific_modalities, skip_if_accuracy_exists=True)
         train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, write_accuracy=True)
@@ -36,16 +37,16 @@ def run_trainings():
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
-    stimulus_window = 20  #@param {type:"slider", min:1, max:20, step:1}
+    stimulus_window = 1  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
     include_viewing_sessions = False
-    movies_train = ["friends-s01","friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf"] # @param {allow-input: true}
-    #movies_train = ["movie10-wolf"] # @param {allow-input: true}
+    #movies_train = ["friends-s01","friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf"] # @param {allow-input: true}
+    movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
-    training_handler = 'pytorch'
+    training_handler = 'sklearn'
     experiment_comments = 'baseline torch vision only'
-    specific_modalities = ["all"]
+    specific_modalities = ["audio"]
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
     
@@ -69,14 +70,15 @@ def run_trainings():
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
-    #subject = 3
     train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
+    #subject = 3
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
     #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence=1)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, specific_modalities,  recurrence)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
+    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True)
+    
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
     #print('features', features['visual'].keys())
@@ -111,8 +113,14 @@ def readh5(path):
 
 
 if __name__ == "__main__":
-    #run_trainings()
-    run_for_stimulus_window()
+    #encoding_accuracy = np.zeros((1000,1), dtype=np.float32)
+    #train.plot_encoding_accuracy(3, encoding_accuracy, 'audio')
+    run_trainings()
+    #run_for_stimulus_window()
+    #accuracy_file = '/mnt/c/temp/accuracy_delay.json'
+    #train.plot_accuracy_by_dimension(accuracy_file, modality='all', save_path='plot.jpg')
+    #encoding_accuracy = np.zeros((1000), dtype=np.float32)
+    #train.plot_encoding_accuracy(subject=1, encoding_accuracy=encoding_accuracy, modality='all')
     #file = '/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.h5'
     #file = '/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a.h5'
     #readh5(file)
