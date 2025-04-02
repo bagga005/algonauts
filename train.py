@@ -579,7 +579,7 @@ def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, plot_encoding_fig, break_up_by_network=True, recurrence=recurrence)
+        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, plot_encoding_fig, break_up_by_network=break_up_by_network, recurrence=recurrence)
         del features
 
 def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None,write_accuracy=False, recurrence=1):
