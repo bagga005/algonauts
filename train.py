@@ -573,13 +573,13 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, plot_encoding_fig=False, break_up_by_network=False, recurrence=1):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, recurrence=1):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, plot_encoding_fig, break_up_by_network=break_up_by_network, recurrence=recurrence)
+        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
         del features
 
 def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None,write_accuracy=False, recurrence=1):
@@ -588,7 +588,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
         validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, write_accuracy, recurrence)
         del fmri
 
-def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
+def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -624,7 +624,7 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
         accuracy_by_network = []
         for prediction in prediction_by_network:
             measure, network_fmri_val, network_fmri_val_pred = prediction
-            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False)
+            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
             print(measure, 'accuracy', accuracy)
             accuracy_by_network.append((measure, accuracy))
         json_path = utils.get_network_accuracy_json_file()
@@ -634,7 +634,7 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
     return accuracy
 
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -663,13 +663,13 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         accuracy_by_network = []
         for prediction in prediction_by_network:
             measure, network_fmri_val, network_fmri_val_pred = prediction
-            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False)
+            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
             print(measure, 'accuracy', accuracy)
             accuracy_by_network.append((measure, accuracy))
         json_path = utils.get_network_accuracy_json_file()
         utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
     else:
-        accuracy, encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality)
+        accuracy, encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
     if plot_encoding_fig:
         #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
         # encoding_accuracy[:] = 0

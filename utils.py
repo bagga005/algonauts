@@ -7,6 +7,8 @@ import torch
 from scipy.stats import pearsonr
 import json
 import datetime
+import pandas as pd
+
 load_dotenv()
 
 def get_stimulus_features_dir():
@@ -160,7 +162,71 @@ def analyze_fmri_distribution(fmri_data):
     print(f"Min value: {min_value:.4f}")
     print(f"Max value: {max_value:.4f}")
 
-def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, print_output=True):
+def get_roi_name(parcel):
+    """
+    Get the first ROI name that contains the given parcel number.
+    
+    Parameters
+    ----------
+    parcel : int
+        The parcel number to lookup
+        
+    Returns
+    -------
+    str
+        The name of the ROI containing the parcel
+    """
+    # Load the ROI network mapping from JSON
+    with open(get_roi_network_map(), 'r') as f:
+        roi_map = json.load(f)
+    
+    # Iterate through each ROI in the mapping
+    for roi in roi_map:
+        measure = roi["Measure"]
+        ranges = roi["ranges"]
+        
+        # Check if parcel falls within any of the ranges for this ROI
+        for range_dict in ranges:
+            if range_dict["from"] <= parcel <= range_dict["to"]:
+                return measure
+    
+    # If no matching ROI found
+    return None
+
+def write_encoding_accuracy_to_csv(file_name, encoding_accuracy, subject, modality):
+    """
+    Write encoding accuracy values to a CSV file.
+    
+    Parameters
+    ----------
+    file_name : str
+        Path to the CSV file
+    encoding_accuracy : numpy.ndarray
+        Array containing accuracy values for each parcel
+    subject : int
+        Subject number
+    modality : str
+        Feature modality used
+    """
+    # Check if file exists, if so append column, otherwise create new file
+    if os.path.exists(file_name):
+        # Read existing file
+        existing_df = pd.read_csv(file_name)
+        # Add new column with subject as column name
+        existing_df['sub-0'+ str(subject)] = encoding_accuracy
+        # Write back to file
+        existing_df.to_csv(file_name, index=False)
+    else:
+        # Create new DataFrame with initial data
+        df = pd.DataFrame({
+            'Number': range(1, len(encoding_accuracy)+1),
+            'roi': [get_roi_name(i-1) for i in range(1, len(encoding_accuracy)+1)]
+        })
+        df['sub-0'+ str(subject)] = encoding_accuracy
+        # Output to CSV
+        df.to_csv(file_name, index=False)
+
+def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, print_output=True, write_to_csv=False):
     """
     Compare the  recorded (ground truth) and predicted fMRI responses, using a
     Pearson's correlation. The comparison is perfomed independently for each
@@ -189,6 +255,8 @@ def compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, print_
     std_encoding_accuracy = np.round(np.std(encoding_accuracy), 3)
     if print_output:    
         print(f"Encoding accuracy, sub-0{subject}, modality-{modality}, mean accuracy: {mean_encoding_accuracy}, std: {std_encoding_accuracy}")
+    if write_to_csv:
+        write_encoding_accuracy_to_csv('encoding_file.csv', encoding_accuracy, subject, modality)
 
     #plot_encoding_accuracy(subject, encoding_accuracy, modality)
     # utils.save_npy(encoding_accuracy, subject, modality)
@@ -238,3 +306,34 @@ def append_network_accuracies_to_json(json_path, accuracy_tuples):
         json.dump(data, f, indent=4)
     
     print(f"Appended {len(accuracy_tuples)} network accuracy entries to {json_path}")
+
+def get_roi_name(parcel):
+    """
+    Get the first ROI name that contains the given parcel number.
+    
+    Parameters
+    ----------
+    parcel : int
+        The parcel number to lookup
+        
+    Returns
+    -------
+    str
+        The name of the ROI containing the parcel
+    """
+    # Load the ROI network mapping from JSON
+    with open(get_roi_network_map(), 'r') as f:
+        roi_map = json.load(f)
+    
+    # Iterate through each ROI in the mapping
+    for roi in roi_map:
+        measure = roi["Measure"]
+        ranges = roi["ranges"]
+        
+        # Check if parcel falls within any of the ranges for this ROI
+        for range_dict in ranges:
+            if range_dict["from"] <= parcel <= range_dict["to"]:
+                return measure
+    
+    # If no matching ROI found
+    return None
