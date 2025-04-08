@@ -458,6 +458,8 @@ def load_features(file_path, modality):
     ### Load the stimulus features ###
     with h5py.File(file_path, 'r') as data:
         # Method 1: Using assert statement
+        # print(file_path)
+        # print(data.keys())
         assert len(data.keys()) == 1, f"Expected exactly 1 key, but found {len(data.keys())} keys"
 
         for episode in data.keys():
@@ -532,8 +534,9 @@ def perform_pca(prepr_features, n_components, modality):
         n_components = prepr_features.shape[1]
 
     ### Perform PCA ###n_init=4, max_iter=300
-    pca = PCA(n_components, random_state=20200220)
+    pca = PCA(n_components, random_state=1001, svd_solver="full")
     features_pca = pca.fit_transform(prepr_features)
+    print("Var expl:", pca.explained_variance_ratio_.sum() )
     print(f"\n{modality} features PCA shape: {features_pca.shape}")
     print('(Movie samples × Principal components)')
 

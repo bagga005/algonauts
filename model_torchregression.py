@@ -169,7 +169,8 @@ class RegressionHander_Pytorch():
                 print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
             
              # Early stopping check
-            if val_loss < best_val_loss:
+            if val_loss + 0.0001 < best_val_loss :
+                print('not stopping', val_loss, best_val_loss)
                 best_val_loss = val_loss
                 best_model_state = self.model.state_dict().copy()
                 patience_counter = 0
