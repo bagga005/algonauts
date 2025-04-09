@@ -86,5 +86,7 @@ if __name__ == "__main__":
     # file_name = "sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
-    file = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/visual/features_train.npy'
-    read_npy_keys(file_path=file)
+    # file = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/visual/features_train.npy'
+    # read_npy_keys(file_path=file)
+    file = "/teamspace/studios/this_studio/algo_data/stimulus_features/post/visual/friends_s03e06a.h5"
+    read_h5_file(file, 'friends_s03e06a', 'visual')

@@ -138,52 +138,36 @@ def extract_visual_preprocessed_features(episode_path, tr,
     # Output
     return visual_features
 
-def extract_visual_features_from_preprocessed_video(episode_path, feature_extractor, model_layer, device, save_file, group_name):
+def extract_visual_features_from_preprocessed_video(episode_path, stimId, feature_extractor, model_layer, device, save_file, group_name):
+    visual_features = []
     #load the preprocessed video
     with h5py.File(episode_path, 'r') as f1:
         print("Root level keys:", list(f1.keys()))
-    visual_features = []
+        data = f1[stimId][group_name][:]
+        print(data.shape)
+        
 
-    # Loop over chunks
-    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
-        for start in start_times:
+        # Loop over chunks
+        with tqdm(total=data.shape[0], desc="Extracting visual features") as pbar:
+            for i in range(data.shape[0]):
+                with torch.no_grad():
+                    inputs = torch.from_numpy(data[i]).to(device)
+                    preds = feature_extractor(inputs)
+                    visual_features.append(np.reshape(preds[model_layer].cpu().numpy(), -1))
 
-            # Divide the movie in chunks of length TR, and save the resulting
-            # clips as '.mp4' files
-            clip_chunk = clip.subclip(start, start+tr)
-            chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
-            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
-                logger=None)
-            # Load the frames from the chunked movie clip
-            video_clip = VideoFileClip(chunk_path)
-            chunk_frames = [frame for frame in video_clip.iter_frames()]
-            # Format the frames to shape:
-            # (batch_size, channels, num_frames, height, width)
-            frames_array = np.transpose(np.array(chunk_frames), (3, 0, 1, 2))
-            # Convert the video frames to tensor
-            inputs = torch.from_numpy(frames_array).float()
-            # Preprocess the video frames
-            inputs = transform(inputs).unsqueeze(0).to(device)
-
-            # Extract the visual features
-            with torch.no_grad():
-                preds = feature_extractor(inputs)
-            visual_features.append(np.reshape(preds[model_layer].cpu().numpy(), -1))
-
-            # Update the progress bar
-            pbar.update(1)
+                # Update the progress bar
+                pbar.update(1)
 
     # Convert the visual features to float32
     
     visual_features = np.array(visual_features, dtype='float32')
     # Save the visual features
     with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
-        group = f.create_group(group_name)
+        group = f.create_group(stimId)
         group.create_dataset('visual', data=visual_features, dtype=np.float32)
     print('visual_features', visual_features.shape)
     # Output
     return visual_features
-
 
 
 def extract_visual_features(episode_path, tr, feature_extractor, model_layer,

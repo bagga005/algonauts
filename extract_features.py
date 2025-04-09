@@ -65,10 +65,10 @@ def extract_raw_visual_features_from_preprocessed_video():
     feature_extractor, model_layer, device = get_vision_model()
     
     group_name = 'visual'
-    stim_id = 'friends_s03e05b'
+    stim_id = 'friends_s01e24a'
     episode_path = os.path.join(out_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
     save_file = os.path.join(out_data_dir, "stimulus_features", "post", "visual", f"{stim_id}.h5")
-    extract_visual_features_from_preprocessed_video(episode_path, feature_extractor, model_layer, device, save_file, group_name)
+    extract_visual_features_from_preprocessed_video(episode_path, stim_id, feature_extractor, model_layer, device, save_file, group_name)
 
 
 def extract_preprocessed_video_content():
@@ -311,5 +311,5 @@ if __name__ == "__main__":
     # do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
-    #extract_preprocessed_video_content()
-    extract_raw_visual_features_from_preprocessed_video()
+    extract_preprocessed_video_content()
+    #extract_raw_visual_features_from_preprocessed_video()
