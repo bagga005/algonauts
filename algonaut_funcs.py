@@ -115,13 +115,14 @@ def extract_visual_preprocessed_features(episode_path, tr,
             frames_array = np.transpose(np.array(chunk_frames), (3, 0, 1, 2))
             # Convert the video frames to tensor
             inputs = torch.from_numpy(frames_array).float()
-            print('input 1', inputs.shape)
+            #print('input 1', inputs.shape)
             # Preprocess the video frames
             inputs = transform(inputs).unsqueeze(0).cpu()
-            print('input 2', inputs.shape)
-            inputs = np.reshape(inputs.numpy(), -1)
-            print('input 3', inputs.shape)
+            #print('input 2', inputs.shape)
+            #inputs = np.reshape(inputs.numpy(), -1)
+            #print('input 3', inputs.shape)
             visual_features.append(inputs)
+            #print('visual_features', visual_features.shape)
 
             # Update the progress bar
             pbar.update(1)
@@ -133,7 +134,7 @@ def extract_visual_preprocessed_features(episode_path, tr,
     with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
         group = f.create_group(group_name)
         group.create_dataset('visual', data=visual_features, dtype=np.float32)
-    print('visual_features', visual_features.shape)
+    #print('visual_features', visual_features.shape)
     # Output
     return visual_features
 
