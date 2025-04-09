@@ -6,13 +6,13 @@ import h5py
 import torch
 import numpy as np
 USE_LIGHTNING = True
-try:
-    from lightning.data import map
-except:
-    print("lightning.data not found, using multiprocessing")
-    USE_LIGHTNING = False
-    from multiprocessing import Pool
-from algonaut_funcs import load_features, preprocess_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
+# try:
+#     from lightning.data import map
+# except:
+#     print("lightning.data not found, using multiprocessing")
+#     USE_LIGHTNING = False
+#     from multiprocessing import Pool
+from algonaut_funcs import load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
 import logging
 # import json_log_formatter
 
@@ -58,6 +58,39 @@ def extract_raw_visual_features():
         # Execute visual feature extraction
         visual_features = extract_visual_features(stim_path, tr, feature_extractor,
         model_layer, transform, device, save_dir_temp, fn, stim_id)
+
+def extract_preprocessed_video_content():
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = utils.get_output_dir()
+# As an exemple, extract visual features for season 1, episode 1 of Friends
+    #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
+    # Collecting the paths to all the movie stimuli
+    file_in_filter = ''
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
+    if file_in_filter:
+        files = [f for f in files if file_in_filter in f]
+    files.sort()
+
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+
+    # Duration of each movie chunk, aligned with the fMRI TR of 1.49 seconds
+    tr = 1.49
+
+    # Saving directories
+    save_dir_temp = utils.get_tmp_dir()
+    transform = define_frames_transform()
+    
+    # iterate across all the stimuli movie files
+    iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    for i, (stim_id, stim_path) in iterator:
+        print(f"Extracting visual features for {stim_id}", stim_path)
+        fn = os.path.join(out_data_dir, "stimulus_features", "raw", "visual", f"{stim_id}.h5")
+        if os.path.exists(fn) or stim_id in exclude_list: continue; 
+        # Execute visual feature extraction
+        visual_features = extract_visual_preprocessed_features(stim_path, tr,
+        transform, save_dir_temp, fn, stim_id)
 
 def extract_language_for_stimuli(stim_obj, out_data_dir):
     logger.info("Start", extra={'stim_id': stim_obj['stim_id'], 'status': 0})
@@ -252,17 +285,18 @@ def do_pca(inpath, outfile,modality, do_zscore=True):
     
 
 if __name__ == "__main__":
-    modality = 'visual'
-    infolder = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
-    #features_combined_npy(infolder, outfile, modality, True, True)
-    #extract_raw_visual_features()
-    #extract_raw_audio_features()
-    #extract_raw_language_features()
-    #do_pca('language')
-    # modality = 'language'
-    inpath = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new2.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True)
+    # modality = 'visual'
+    # infolder = os.path.join(utils.get_raw_data_dir(), modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
+    # #features_combined_npy(infolder, outfile, modality, True, True)
+    # #extract_raw_visual_features()
+    # #extract_raw_audio_features()
+    # #extract_raw_language_features()
+    # #do_pca('language')
+    # # modality = 'language'
+    # inpath = os.path.join(utils.get_raw_data_dir(), modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new2.npy')
+    # do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
+    extract_preprocessed_video_content()

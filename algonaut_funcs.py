@@ -83,6 +83,59 @@ def get_vision_model():
 
     return feature_extractor, model_layer, device
 
+def extract_visual_preprocessed_features(episode_path, tr,
+    transform, save_dir_temp, save_file, group_name):
+
+
+    # Get the onset time of each movie chunk
+    clip = VideoFileClip(episode_path)
+    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    # Create the directory where the movie chunks are temporarily saved
+    temp_dir = save_dir_temp # os.path.join(save_dir_temp, 'temp')
+    #os.makedirs(temp_dir, exist_ok=True)
+    # Empty features list
+    visual_features = []
+    tr_index = 0
+
+    # Loop over chunks
+    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
+        for start in start_times:
+
+            # Divide the movie in chunks of length TR, and save the resulting
+            # clips as '.mp4' files
+            clip_chunk = clip.subclip(start, start+tr)
+            chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
+            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                logger=None)
+            # Load the frames from the chunked movie clip
+            video_clip = VideoFileClip(chunk_path)
+            chunk_frames = [frame for frame in video_clip.iter_frames()]
+            # Format the frames to shape:
+            # (batch_size, channels, num_frames, height, width)
+            frames_array = np.transpose(np.array(chunk_frames), (3, 0, 1, 2))
+            # Convert the video frames to tensor
+            inputs = torch.from_numpy(frames_array).float()
+            print('input 1', inputs.shape)
+            # Preprocess the video frames
+            inputs = transform(inputs).unsqueeze(0).cpu()
+            print('input 2', inputs.shape)
+            inputs = np.reshape(inputs.numpy(), -1)
+            print('input 3', inputs.shape)
+            visual_features.append(inputs)
+
+            # Update the progress bar
+            pbar.update(1)
+            tr_index += 1
+    # Convert the visual features to float32
+    
+    visual_features = np.array(visual_features, dtype='float32')
+    # Save the visual features
+    with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
+        group = f.create_group(group_name)
+        group.create_dataset('visual', data=visual_features, dtype=np.float32)
+    print('visual_features', visual_features.shape)
+    # Output
+    return visual_features
 
 def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     transform, device, save_dir_temp, save_file, group_name):
