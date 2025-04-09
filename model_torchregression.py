@@ -9,27 +9,27 @@ class LinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, dropout_rate=0.2):
         super(LinearRegressionModel, self).__init__()
         # Progressive dimensionality reduction
-        self.linear1 = nn.Linear(input_size, 2048)
-        self.batchnorm1 = nn.BatchNorm1d(2048)
-        self.dropout1 = nn.Dropout(dropout_rate)
+        # self.linear1 = nn.Linear(input_size, 2048)
+        # self.batchnorm1 = nn.BatchNorm1d(2048)
+        # self.dropout1 = nn.Dropout(dropout_rate)
         
-        self.linear2 = nn.Linear(8192, 4096)
-        self.batchnorm2 = nn.BatchNorm1d(4096)
-        self.dropout2 = nn.Dropout(dropout_rate)
+        # self.linear2 = nn.Linear(8192, 4096)
+        # self.batchnorm2 = nn.BatchNorm1d(4096)
+        # self.dropout2 = nn.Dropout(dropout_rate)
 
-        self.linear3 = nn.Linear(4096, 2048)
-        self.batchnorm3 = nn.BatchNorm1d(2048)
-        self.dropout3 = nn.Dropout(dropout_rate)
+        # self.linear3 = nn.Linear(4096, 2048)
+        # self.batchnorm3 = nn.BatchNorm1d(2048)
+        # self.dropout3 = nn.Dropout(dropout_rate)
         
         
         self.linear4 = nn.Linear(input_size, output_size)
         
-        self.activation = nn.GELU()
+        # self.activation = nn.GELU()
         
         # Initialize weights
-        nn.init.kaiming_normal_(self.linear1.weight)
-        nn.init.kaiming_normal_(self.linear2.weight)
-        nn.init.kaiming_normal_(self.linear3.weight)
+        # nn.init.kaiming_normal_(self.linear1.weight)
+        # nn.init.kaiming_normal_(self.linear2.weight)
+        # nn.init.kaiming_normal_(self.linear3.weight)
         nn.init.kaiming_normal_(self.linear4.weight)
 
     def forward(self, x):
