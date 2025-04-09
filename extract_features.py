@@ -12,7 +12,7 @@ USE_LIGHTNING = True
 #     print("lightning.data not found, using multiprocessing")
 #     USE_LIGHTNING = False
 #     from multiprocessing import Pool
-from algonaut_funcs import load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
+from algonaut_funcs import extract_visual_features_from_preprocessed_video, load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
 import logging
 # import json_log_formatter
 
@@ -58,6 +58,18 @@ def extract_raw_visual_features():
         # Execute visual feature extraction
         visual_features = extract_visual_features(stim_path, tr, feature_extractor,
         model_layer, transform, device, save_dir_temp, fn, stim_id)
+
+def extract_raw_visual_features_from_preprocessed_video():
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = utils.get_output_dir()
+    feature_extractor, model_layer, device = get_vision_model()
+    
+    group_name = 'visual'
+    stim_id = 'friends_s03e05b'
+    episode_path = os.path.join(out_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
+    save_file = os.path.join(out_data_dir, "stimulus_features", "post", "visual", f"{stim_id}.h5")
+    extract_visual_features_from_preprocessed_video(episode_path, feature_extractor, model_layer, device, save_file, group_name)
+
 
 def extract_preprocessed_video_content():
     root_data_dir = utils.get_data_root_dir()
@@ -299,4 +311,5 @@ if __name__ == "__main__":
     # do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
-    extract_preprocessed_video_content()
+    #extract_preprocessed_video_content()
+    extract_raw_visual_features_from_preprocessed_video()
