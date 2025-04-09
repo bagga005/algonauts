@@ -183,14 +183,83 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
         valdict[get_shortstim_name(stim_id)] = features
     data_array = np.array(valdict)
     np.save(outfile, data_array)
-    
 
-def do_pca(inpath, outfile,modality, do_zscore=True):
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+
+def plot_variance_ratio_curve(features, output_path="pca_variance_curve.png", max_components=None, threshold=0.95, dpi=300):
+    """
+    Create and save the explained variance ratio curve for PCA.
+    
+    Parameters:
+    -----------
+    features : array-like, shape (n_samples, n_features)
+        The input data for PCA
+    output_path : str, optional
+        Path where to save the plot image
+    max_components : int, optional
+        Maximum number of components to consider
+    threshold : float, optional
+        Threshold for cumulative explained variance
+    dpi : int, optional
+        Resolution of the saved image
+    """
+    # Determine max components
+    if max_components is None:
+        max_components = min(features.shape[0], features.shape[1])
+    
+    # Fit PCA with all possible components
+    pca = PCA(n_components=max_components)
+    pca.fit(features)
+    
+    # Calculate cumulative explained variance
+    cum_var_ratio = np.cumsum(pca.explained_variance_ratio_)
+    
+    # Find number of components for threshold
+    n_components_threshold = np.argmax(cum_var_ratio >= threshold) + 1
+    
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+    
+    # Plot individual explained variance
+    plt.subplot(1, 2, 1)
+    plt.plot(range(1, len(pca.explained_variance_ratio_) + 1), 
+             pca.explained_variance_ratio_, 'b-', marker='o')
+    plt.xlabel('Number of Components')
+    plt.ylabel('Explained Variance Ratio')
+    plt.title('Individual Explained Variance')
+    plt.grid(True)
+    
+    # Plot cumulative explained variance
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, len(cum_var_ratio) + 1), cum_var_ratio, 'r-', marker='o')
+    plt.axhline(y=threshold, color='g', linestyle='-')
+    plt.axvline(x=n_components_threshold, color='g', linestyle='-')
+    plt.xlabel('Number of Components')
+    plt.ylabel('Cumulative Explained Variance')
+    plt.title(f'Cumulative Explained Variance\n{n_components_threshold} components explain {threshold*100}% of variance')
+    plt.grid(True)
+    
+    plt.tight_layout()
+    
+    # Save the plot instead of displaying it
+    plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+    plt.close()
+    
+    print(f"Plot saved to {output_path}")
+    return n_components_threshold
+
+# Example usage:
+# n_components = plot_variance_ratio_curve(features, output_path="pca_variance_analysis.png", max_components=100)
+# print(f"Optimal number of components: {n_components}")
+
+def do_pca(inpath, outfile,modality, do_zscore=True, plot_optimal=False):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
-    n_components = 250
+    n_components = 1055
     files = glob(f"{inpath}/*.h5")
-    # filter_in_name =''
+    # filter_in_name ='wolf'
     # if filter_in_name != '':
     #     files = [f for f in files if filter_in_name in f]
     # filter_out_name = 's07e'
@@ -227,34 +296,33 @@ def do_pca(inpath, outfile,modality, do_zscore=True):
     prepr_features = preprocess_features(features, zscore=do_zscore)
     print('prepr_features.shape', prepr_features.shape)
 
-    # Perform PCA
-    features_pca = perform_pca(prepr_features, n_components, modality)
-    print('pca features.shape', features_pca.shape)
+    if plot_optimal:
+        plot_variance_ratio_curve(prepr_features, max_components=2000)
+    else:
+        # Perform PCA
+        features_pca = perform_pca(prepr_features, n_components, modality)
+        print('pca features.shape', features_pca.shape)
 
-    # slice out results
-    from_idx =0
-    for stim_id, size in boundary:
-        if from_idx < 3000: print(stim_id, size)
-        slice = features_pca[from_idx:from_idx+size,:]
-        valdict[get_shortstim_name(stim_id)] = slice
-        if from_idx < 3000: print(from_idx, from_idx + size)
-        from_idx = from_idx + size
-        assert slice.shape[0] == size, "size mismatch while slicing"
+        # slice out results
+        from_idx =0
+        for stim_id, size in boundary:
+            if from_idx < 3000: print(stim_id, size)
+            slice = features_pca[from_idx:from_idx+size,:]
+            valdict[get_shortstim_name(stim_id)] = slice
+            if from_idx < 3000: print(from_idx, from_idx + size)
+            from_idx = from_idx + size
+            assert slice.shape[0] == size, "size mismatch while slicing"
 
-    #valdict[get_shortstim_name(stim_id)] = features_pca
+        # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
+        data_array = np.array(valdict)
+        # Save to .npy file
+        np.save(outfile, data_array)
 
-    # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
-    data_array = np.array(valdict)
-    # Save to .npy file
-    np.save(outfile, data_array)
-    # Collecting the paths to all the movie stimuli
-    #files = glob(f"{root_data_dir}algonauts_2025.competitors/stimulus_features/raw/language/*.h5")
-    
 
 if __name__ == "__main__":
     modality = 'visual'
-    infolder = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
+    # infolder = os.path.join(utils.get_raw_data_dir(), modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
     #features_combined_npy(infolder, outfile, modality, True, True)
     #extract_raw_visual_features()
     #extract_raw_audio_features()
@@ -263,6 +331,6 @@ if __name__ == "__main__":
     # modality = 'language'
     inpath = os.path.join(utils.get_raw_data_dir(), modality)
     outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new2.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True)
+    do_pca(inpath, outfile, modality, do_zscore=True, plot_optimal=False)
     #print(inpath)
     #print(outfile)
