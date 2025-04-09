@@ -76,13 +76,15 @@ if __name__ == "__main__":
     file1_path = "/teamspace/studios/present-tomato-9u8y/algo_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    read_h5_file(file1_path, stimId, 'language_pooler_output')
-    read_h5_file(file1_path, stimId, 'language_last_hidden_state')
+    #read_h5_file(file1_path, stimId, 'language_pooler_output')
+    #read_h5_file(file1_path, stimId, 'language_last_hidden_state')
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
-    file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
+    #file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/target_sample_number/sub-03_friends-s7_fmri_samples.npy"
     #file1 = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/fmri/sub-03/func/sub-03_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
     #file_name = "sub-03_task-movie10_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_bold.h5"
     # file_name = "sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
+    file = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/visual/features_train.npy'
+    read_npy_keys(file_path=file)

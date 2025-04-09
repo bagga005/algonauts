@@ -14,15 +14,15 @@ except:
     from multiprocessing import Pool
 from algonaut_funcs import load_features, preprocess_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
 import logging
-import json_log_formatter
+# import json_log_formatter
 
-#init logging
-logger = logging.getLogger('my_json')
-formatter = json_log_formatter.JSONFormatter()
-json_handler = logging.FileHandler(filename='run_log-language.json')
-json_handler.setFormatter(formatter)
-logger.addHandler(json_handler)
-logger.setLevel(logging.INFO)
+# #init logging
+# logger = logging.getLogger('my_json')
+# formatter = json_log_formatter.JSONFormatter()
+# json_handler = logging.FileHandler(filename='run_log-language.json')
+# json_handler.setFormatter(formatter)
+# logger.addHandler(json_handler)
+# logger.setLevel(logging.INFO)
 
 def extract_raw_visual_features():
     root_data_dir = utils.get_data_root_dir()
@@ -185,42 +185,63 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
     np.save(outfile, data_array)
     
 
-def do_pca(inpath, outfile,modality):
+def do_pca(inpath, outfile,modality, do_zscore=True):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
     n_components = 250
     files = glob(f"{inpath}/*.h5")
-    filter_in_name =''
-    if filter_in_name != '':
-        files = [f for f in files if filter_in_name in f]
-    filter_out_name = 's07e'
-    if filter_out_name != '':
-        files = [f for f in files if filter_out_name not in f]
-    filter_out_name2 = 'bourne'
-    if filter_out_name2 != '':
-        files = [f for f in files if filter_out_name2 not in f]
+    # filter_in_name =''
+    # if filter_in_name != '':
+    #     files = [f for f in files if filter_in_name in f]
+    # filter_out_name = 's07e'
+    # if filter_out_name != '':
+    #     files = [f for f in files if filter_out_name not in f]
+    # filter_out_name2 = 'bourne'
+    # if filter_out_name2 != '':
+    #     files = [f for f in files if filter_out_name2 not in f]
     files.sort()
     print(len(files), files[:3], files[-3:])
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
-    fileFilter = "movie10_life02"
+    #fileFilter = "movie10_life02"
+    boundary = []
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     valdict = {}
+    features = []
     for i, (stim_id, stim_path) in iterator:
         print(f"pca features for {stim_id}", stim_path)
         with h5py.File(stim_path, 'r') as f1:
             #print("Root level keys:", list(f1.keys()))
             #data = f1[stim_id]['language_last_hidden_state'][:]
             #print(data.shape)
-            features = load_features(stim_path, modality)
+            fea = load_features(stim_path, modality)
+            #print('fea.shape', fea.shape)
+            features.append(fea)
+            boundary.append((stim_id, fea.shape[0]))
+            #print(get_shortstim_name(stim_id))
             #print('extracted features.shape', features.shape)
             # Preprocess the stimulus features
-            prepr_features = preprocess_features(features)
+    features = np.concatenate(features, axis=0)
+    print('features.shape', features.shape)
+    
+    prepr_features = preprocess_features(features, zscore=do_zscore)
+    print('prepr_features.shape', prepr_features.shape)
 
-            # Perform PCA
-            features_pca = perform_pca(prepr_features, n_components, modality)
-            print('pca features.shape', features_pca.shape)
-            valdict[get_shortstim_name(stim_id)] = features_pca
+    # Perform PCA
+    features_pca = perform_pca(prepr_features, n_components, modality)
+    print('pca features.shape', features_pca.shape)
+
+    # slice out results
+    from_idx =0
+    for stim_id, size in boundary:
+        if from_idx < 3000: print(stim_id, size)
+        slice = features_pca[from_idx:from_idx+size,:]
+        valdict[get_shortstim_name(stim_id)] = slice
+        if from_idx < 3000: print(from_idx, from_idx + size)
+        from_idx = from_idx + size
+        assert slice.shape[0] == size, "size mismatch while slicing"
+
+    #valdict[get_shortstim_name(stim_id)] = features_pca
 
     # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
     data_array = np.array(valdict)
@@ -231,17 +252,17 @@ def do_pca(inpath, outfile,modality):
     
 
 if __name__ == "__main__":
-    modality = 'language'
+    modality = 'visual'
     infolder = os.path.join(utils.get_raw_data_dir(), modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca.npy')
-    features_combined_npy(infolder, outfile, modality, True, False)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
+    #features_combined_npy(infolder, outfile, modality, True, True)
     #extract_raw_visual_features()
     #extract_raw_audio_features()
     #extract_raw_language_features()
     #do_pca('language')
     # modality = 'language'
-    # inpath = os.path.join(utils.get_raw_data_dir(), modality)
-    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new.npy')
-    # do_pca(inpath, outfile, modality)
+    inpath = os.path.join(utils.get_raw_data_dir(), modality)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new2.npy')
+    do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
