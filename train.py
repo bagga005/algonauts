@@ -261,7 +261,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
             aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
             full_split = split
             if split[0] == 's':
-                full_split = 'friends-' + split
+                full_split = 'friends_' + split
             range_tupple = (-1,-1)
             # if split == 's01e01a': print('aligned_fmri', aligned_fmri.shape)
             # if split == 's01e01a': print('len(fmri_split', len(fmri_split))
@@ -539,6 +539,8 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     if training_handler == 'loravision':
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session, summary_features=True)
         #print('feautres_train', features_train[:500])
+        print('create trainer')
+        del features
         trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1])
         print('got lora vision handler')
     elif training_handler == 'sklearn':
