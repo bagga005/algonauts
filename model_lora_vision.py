@@ -202,7 +202,7 @@ def prepare_training_data(input, target):
         
         def __getitem__(self, idx):
             videoname, frame_indices = self.input_data[idx]
-            filename = os.path.join(utils.get_stimulus_features_dir(), 'pre', 'visual', videoname+'.h5')
+            filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
             print('frame_indices[0]', frame_indices[0])
             print('frame_indices[1]', frame_indices[1])
             # Here you would load the video frames from the h5 file

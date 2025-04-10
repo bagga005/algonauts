@@ -14,6 +14,9 @@ load_dotenv()
 def get_stimulus_features_dir():
     return os.getenv("STIMULUS_FEATURES_DIR")
 
+def get_stimulus_pre_features_dir():
+    return os.getenv("STIMULUS_PRE_FEATURES_DIR")
+
 def get_raw_data_dir():
     return os.getenv("RAW_DATA_DIR")
 
