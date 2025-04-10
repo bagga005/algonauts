@@ -79,7 +79,7 @@ def extract_preprocessed_video_content():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/s3/*.mkv")
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()
