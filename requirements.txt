@@ -13,4 +13,6 @@ torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu118
 transformers==4.33.3
 python-dotenv==1.0.1
 seaborn==0.13.2
+peft==0.15.1
+
 #pip install git+https://github.com/facebookresearch/pytorchvideo.git
