@@ -7,8 +7,7 @@ from torch import nn
 from peft import LoraConfig, get_peft_model
 import h5py
 import time
-# 1. Load the pre-trained model
-model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
+from sklearn.model_selection import train_test_split
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -117,7 +116,14 @@ class RegressionHander_Vision():
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
-        dataloader = prepare_training_data(features_train, fmri_train)
+        X_train, X_val, y_train, y_val = train_test_split(
+            features_train, fmri_train, 
+            test_size=0.2, 
+            random_state=42
+        )   
+        train_loader = prepare_training_data(X_train, y_train)
+        val_loader = prepare_training_data(X_val, y_val)
+
         epochs = 10
         learning_rate_linear = 1e-5
         weight_decay_linear = 1e-4
@@ -146,8 +152,21 @@ class RegressionHander_Vision():
         print(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
         print(f"Total parameters: {total_params:,}")
 
+        # print(f'Training lora vision: {X_train.shape[0]:,}')
+        # print(f'Validation lora vision: {X_val.shape[0]:,}')
+        print(f'starting lora vision training')
+
+        best_val_loss = float('inf')
+        patience = 20
+        patience_counter = 0
+        best_model_state = None
+        train_losses = []
+        val_losses = []
+        total_loss =0
+
         for epoch in range(epochs):
-            for batch_X, batch_y in dataloader:
+            total_loss =0
+            for batch_X, batch_y in train_loader:
                 # Zero gradients for both optimizers
                 lora_optimizer.zero_grad()
                 linear_optimizer.zero_grad()
@@ -157,21 +176,55 @@ class RegressionHander_Vision():
 
                 # Forward pass
                 outputs = self.model(batch_X)
-                print('outputs.shape', outputs.shape)
-                print('batch_y.shape', batch_y.shape)
                 loss = criterion(outputs, batch_y)
-                print('loss', loss)
                 # Backward pass
                 loss.backward()
                 
                 # Update weights with both optimizers
                 lora_optimizer.step()
                 linear_optimizer.step()
+                total_loss += loss.item()
             
+            train_loss = total_loss / len(train_loader)
+            train_losses.append(train_loss)
+
+            # Validation phase
+            self.model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    y_pred = self.model(batch_X)
+                    loss = criterion(y_pred, batch_y)
+                    val_loss += loss.item()
+            
+            val_loss = val_loss / len(val_loader)
+            val_losses.append(val_loss)
+
+            # Print average loss every 10 epochs
+            # Print progress
+            if epoch % 10 == 0:
+                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
+            
+             # Early stopping check
+            if val_loss + 0.001 < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = self.model.state_dict().copy()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f'\nEarly stopping triggered at epoch {epoch}')
+                    break
+
             # Step both schedulers at the end of each epoch
             lora_scheduler.step()
-            training_time = time.time() - start_time
-            return self.model, training_time
+        
+        # Restore best model
+        self.model.load_state_dict(best_model_state)
+            
+            
+        training_time = time.time() - start_time
+        return self.model, training_time
             #linear_scheduler.step()
     def save_model(self, model_name):
         utils.save_model_pytorch(self.model, model_name)
