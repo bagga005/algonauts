@@ -88,5 +88,5 @@ if __name__ == "__main__":
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
     # file = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/visual/features_train.npy'
     # read_npy_keys(file_path=file)
-    file = "/teamspace/studios/this_studio/algo_data/stimulus_features/post/visual/friends_s03e06a.h5"
-    read_h5_file(file, 'friends_s03e06a', 'visual')
+    file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
+    read_h5_file(file, 'friends_s02e01a', 'visual')

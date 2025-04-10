@@ -9,6 +9,7 @@ import utils
 from model_sklearn import LinearHandler_Sklearn
 from model_torchregression import RegressionHander_Pytorch
 from model_transformer import RegressionHander_Transformer
+from model_lora_vision import RegressionHander_Vision
 import nibabel as nib
 from nilearn import plotting
 from nilearn.maskers import NiftiLabelsMasker
@@ -157,7 +158,7 @@ def normalize_to_radians(value, original_min=0, original_max=49, target_min=-mat
     return scaled
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
-    excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session):
+    excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session, summary_features=False):
     """
     Align the stimulus feature with the fMRI response samples for the selected
     movies, later used to train and validate the encoding models.
@@ -224,6 +225,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
 
     ### Empty data variables ###
     aligned_features = []
+    aligned_features_summary = []
     aligned_fmri = np.empty((0,1000), dtype=np.float32)
 
     ### Loop across movies ###
@@ -237,7 +239,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         movie_splits = [key for key in fmri if id in key[:len(id)]]
         # print('movie[:7]', movie[:7])
         # print('id', id)
-        # print('movie_splits', movie_splits)
+        #print('movie_splits', movie_splits)
         #load viewing session
         
         ### Loop over movie splits ###
@@ -257,6 +259,10 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
             fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
             # if split == 's01e01a': print('fmri_split', fmri_split.shape)
             aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
+            full_split = split
+            if split[0] == 's':
+                full_split = 'friends-' + split
+            range_tupple = (-1,-1)
             # if split == 's01e01a': print('aligned_fmri', aligned_fmri.shape)
             # if split == 's01e01a': print('len(fmri_split', len(fmri_split))
             ### Loop over fMRI samples ###
@@ -264,7 +270,6 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 # Empty variable containing the stimulus features of all
                 # modalities for each fMRI sample
                 f_all = np.empty(0)
-
                 ### Loop across modalities ###
                 for mod in features.keys():
                     ### Visual and audio features ###
@@ -294,6 +299,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                             idx_end = len(features[mod][split])
                             idx_start = idx_end - stimulus_window
                         f = features[mod][split][idx_start:idx_end]
+                        range_tupple = (idx_start, idx_end)
                         #print('s', s, 'idx_start', idx_start, 'idx_end', idx_end, mod)
                         f = f.flatten()
                         #print('f', f.shape)
@@ -385,12 +391,15 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 #print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
                 #print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
-
+                aligned_features_summary.append((full_split, range_tupple))
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
     #print('aligned_features.shape', aligned_features.shape)
     ### Output ###
-    return aligned_features, aligned_fmri
+    if summary_features:
+        return aligned_features_summary, aligned_fmri
+    else:
+        return aligned_features, aligned_fmri
 
 def main_feature_extraction():
     root_data_dir = utils.get_data_root_dir()
@@ -519,15 +528,21 @@ def add_recurrent_features(features,fmri,recurrence):
 
 def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, recurrence=1):
     print('run training')
-    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
-    print('features train', features_train.shape)
+    
     #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     features_train_val, fmri_train_val = None, None
     if training_handler == 'pytorch':
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
         print('got simple handler')
+    if training_handler == 'loravision':
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session, summary_features=True)
+        #print('feautres_train', features_train[:500])
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1])
+        print('got lora vision handler')
     elif training_handler == 'sklearn':
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'transformer':
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
