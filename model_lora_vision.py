@@ -276,26 +276,36 @@ def prepare_training_data(input, target, batch_size=2):
     class VideoDataset(torch.utils.data.Dataset):
         def __init__(self, input_data, targets):
             self.input_data = input_data
+            self.frames = []
+            for idx, i_data in enumerate(input_data):
+                videoname, frame_indices = i_data
+                print('videoname', videoname, 'frame_indices', frame_indices)
+                filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
+                with h5py.File(filename, 'r') as f:
+                    frames = f[videoname]['visual']
+                    frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+                    self.frames.append(frames)
             self.targets = torch.FloatTensor(targets)
+            assert len(self.frames) == len(input_data)
             
         def __len__(self):
             return len(self.input_data)
         
         def __getitem__(self, idx):
-            videoname, frame_indices = self.input_data[idx]
-            filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-            # print('frame_indices[0]', frame_indices[0])
-            # print('frame_indices[1]', frame_indices[1])
-            # Here you would load the video frames from the h5 file
-            # For example:
-            with h5py.File(filename, 'r') as f:
-                # Assuming your h5 file has a 'frames' dataset
-                frames = f[videoname]['visual']
-                # print('frames.shape', frames.shape)
-                frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-                #frames = frames.to(self.device)
-                # print('frames.shape', frames.shape)
-            return frames, self.targets[idx]
+            # videoname, frame_indices = self.input_data[idx]
+            # filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
+            # # print('frame_indices[0]', frame_indices[0])
+            # # print('frame_indices[1]', frame_indices[1])
+            # # Here you would load the video frames from the h5 file
+            # # For example:
+            # with h5py.File(filename, 'r') as f:
+            #     # Assuming your h5 file has a 'frames' dataset
+            #     frames = f[videoname]['visual']
+            #     # print('frames.shape', frames.shape)
+            #     frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+            #     #frames = frames.to(self.device)
+            #     # print('frames.shape', frames.shape)
+            return self.frames[idx], self.targets[idx]
     
     # Create dataset
     dataset = VideoDataset(input, target)
@@ -313,7 +323,8 @@ def prepare_training_data(input, target, batch_size=2):
     
  
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# learner = RegressionHander_Vision(32768, 1000)
-# input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
-# target = np.random.randn(3, 1000).astype(np.float32)
-# learner.train(input, target, None, None)
+learner = RegressionHander_Vision(32768, 1000)
+input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
+target = np.random.randn(3, 1000).astype(np.float32)
+prepare_training_data(input, target)
+#learner.train(input, target, None, None)
