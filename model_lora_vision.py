@@ -125,8 +125,9 @@ class RegressionHander_Vision():
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
+        print('start training at', start_time)
         epochs = 100
-        batch_size = 8
+        batch_size = 32
         learning_rate_linear = 1e-5
         weight_decay_linear = 1e-4
         X_train, X_val, y_train, y_val = train_test_split(
@@ -134,9 +135,10 @@ class RegressionHander_Vision():
             test_size=0.2, 
             random_state=42
         )   
+        print('start preparing data at ', time.time())
         train_loader = prepare_training_data(X_train, y_train, batch_size=batch_size)
         val_loader = prepare_training_data(X_val, y_val, batch_size=batch_size)
-
+        print('done preparing data at ', time.time())
         
         # 6. Set up the optimizer with weight decay for regularization
         # Note: only LoRA parameters will have requires_grad=True at this point
@@ -177,8 +179,13 @@ class RegressionHander_Vision():
         for epoch in range(epochs):
             total_loss =0
             in_batch=1
+            load_start = time.time()
+            print('about to start new batch', time.time())
             for batch_X, batch_y in train_loader:
                 # Zero gradients for both optimizers
+                print('start batch at ', time.time())
+                loading_time = time.time() - load_start
+                print(f'load time {loading_time:.2f} seconds')
                 lora_optimizer.zero_grad()
                 linear_optimizer.zero_grad()
                  # Move batch to device
@@ -186,11 +193,14 @@ class RegressionHander_Vision():
                 batch_y = batch_y.to(self.device)
 
                 # Forward pass
+                print('start forward at', time.time())
                 outputs = self.model(batch_X)
+                print('start loss at', time.time())
                 loss = criterion(outputs, batch_y)
+                print('start backward at', time.time())
                 # Backward pass
                 loss.backward()
-                
+                print('start optimize at', time.time())
                 # Update weights with both optimizers
                 lora_optimizer.step()
                 linear_optimizer.step()
@@ -198,6 +208,8 @@ class RegressionHander_Vision():
                 if in_batch % 10 == 0:
                     print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
                 in_batch += 1
+                print('batch done at ',time.time())
+                load_start = time.time()
             
             train_loss = total_loss / len(train_loader)
             train_losses.append(train_loss)
