@@ -94,16 +94,16 @@ class VisionLinearRegressionModel(nn.Module):
 
     def forward(self, x):
         #Remove batch dimension
-        print('x.shape', x.shape)
+        # print('x.shape', x.shape)
         x = x.squeeze(0)
         # Pass the input directly to the wrapped model
         layer_output = self.visual_model(x)
-        print('layer_output.shape', layer_output.shape)
+        # print('layer_output.shape', layer_output.shape)
         layer_output = layer_output.flatten().unsqueeze(0)
-        print('layer_output.shape', layer_output.shape)
+        # print('layer_output.shape', layer_output.shape)
         #make prediction with linear layer
         prediction = self.linear4(layer_output)
-        print('prediction.shape', prediction.shape)
+        # print('prediction.shape', prediction.shape)
         #add batch dimension
         return prediction
 
@@ -124,7 +124,7 @@ class RegressionHander_Vision():
         train_loader = prepare_training_data(X_train, y_train)
         val_loader = prepare_training_data(X_val, y_val)
 
-        epochs = 10
+        epochs = 100
         learning_rate_linear = 1e-5
         weight_decay_linear = 1e-4
         # 6. Set up the optimizer with weight decay for regularization
@@ -163,9 +163,9 @@ class RegressionHander_Vision():
         train_losses = []
         val_losses = []
         total_loss =0
-
         for epoch in range(epochs):
             total_loss =0
+            in_batch=1
             for batch_X, batch_y in train_loader:
                 # Zero gradients for both optimizers
                 lora_optimizer.zero_grad()
@@ -184,6 +184,8 @@ class RegressionHander_Vision():
                 lora_optimizer.step()
                 linear_optimizer.step()
                 total_loss += loss.item()
+                print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
+                in_batch += 1
             
             train_loss = total_loss / len(train_loader)
             train_losses.append(train_loss)
@@ -256,16 +258,16 @@ def prepare_training_data(input, target):
         def __getitem__(self, idx):
             videoname, frame_indices = self.input_data[idx]
             filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-            print('frame_indices[0]', frame_indices[0])
-            print('frame_indices[1]', frame_indices[1])
+            # print('frame_indices[0]', frame_indices[0])
+            # print('frame_indices[1]', frame_indices[1])
             # Here you would load the video frames from the h5 file
             # For example:
             with h5py.File(filename, 'r') as f:
                 # Assuming your h5 file has a 'frames' dataset
                 frames = f[videoname]['visual']
-                print('frames.shape', frames.shape)
+                # print('frames.shape', frames.shape)
                 frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-                print('frames.shape', frames.shape)
+                # print('frames.shape', frames.shape)
             return frames, self.targets[idx]
     
     # Create dataset
