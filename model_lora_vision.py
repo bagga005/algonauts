@@ -180,12 +180,14 @@ class RegressionHander_Vision():
             total_loss =0
             in_batch=1
             load_start = time.time()
-            print('about to start new batch', time.time())
+            total_loading_time = 0
+            #print('about to start new batch', time.time())
             for batch_X, batch_y in train_loader:
                 # Zero gradients for both optimizers
-                print('start batch at ', time.time())
+                #print('start batch at ', time.time())
                 loading_time = time.time() - load_start
-                print(f'load time {loading_time:.2f} seconds')
+                total_loading_time += loading_time
+                #print(f'load time {loading_time:.2f} seconds')
                 lora_optimizer.zero_grad()
                 linear_optimizer.zero_grad()
                  # Move batch to device
@@ -193,22 +195,24 @@ class RegressionHander_Vision():
                 batch_y = batch_y.to(self.device)
 
                 # Forward pass
-                print('start forward at', time.time())
+                #print('start forward at', time.time())
                 outputs = self.model(batch_X)
-                print('start loss at', time.time())
+                #print('start loss at', time.time())
                 loss = criterion(outputs, batch_y)
-                print('start backward at', time.time())
+                #print('start backward at', time.time())
                 # Backward pass
                 loss.backward()
-                print('start optimize at', time.time())
+                #print('start optimize at', time.time())
                 # Update weights with both optimizers
                 lora_optimizer.step()
                 linear_optimizer.step()
                 total_loss += loss.item()
                 if in_batch % 10 == 0:
                     print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
+                    avg_loading_time = total_loading_time / in_batch
+                    print(f'total loading time {total_loading_time:.2f}', f'avg loading time {avg_loading_time:.2f}')
                 in_batch += 1
-                print('batch done at ',time.time())
+                #print('batch done at ',time.time())
                 load_start = time.time()
             
             train_loss = total_loss / len(train_loader)
@@ -269,6 +273,7 @@ class RegressionHander_Vision():
             fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
         return fmri_val_pred    
 
+
 def prepare_training_data(input, target, batch_size=2):
     
     
@@ -276,36 +281,19 @@ def prepare_training_data(input, target, batch_size=2):
     class VideoDataset(torch.utils.data.Dataset):
         def __init__(self, input_data, targets):
             self.input_data = input_data
-            self.frames = []
-            for idx, i_data in enumerate(input_data):
-                videoname, frame_indices = i_data
-                print('videoname', videoname, 'frame_indices', frame_indices)
-                filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-                with h5py.File(filename, 'r') as f:
-                    frames = f[videoname]['visual']
-                    frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-                    self.frames.append(frames)
             self.targets = torch.FloatTensor(targets)
-            assert len(self.frames) == len(input_data)
             
         def __len__(self):
             return len(self.input_data)
         
         def __getitem__(self, idx):
-            # videoname, frame_indices = self.input_data[idx]
-            # filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-            # # print('frame_indices[0]', frame_indices[0])
-            # # print('frame_indices[1]', frame_indices[1])
-            # # Here you would load the video frames from the h5 file
-            # # For example:
-            # with h5py.File(filename, 'r') as f:
-            #     # Assuming your h5 file has a 'frames' dataset
-            #     frames = f[videoname]['visual']
-            #     # print('frames.shape', frames.shape)
-            #     frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-            #     #frames = frames.to(self.device)
-            #     # print('frames.shape', frames.shape)
-            return self.frames[idx], self.targets[idx]
+            videoname, frame_indices = self.input_data[idx]
+            filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
+            # For example:
+            with h5py.File(filename, 'r') as f:
+                frames = f[videoname]['visual']
+                frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+            return frames, self.targets[idx]
     
     # Create dataset
     dataset = VideoDataset(input, target)
@@ -323,8 +311,8 @@ def prepare_training_data(input, target, batch_size=2):
     
  
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-learner = RegressionHander_Vision(32768, 1000)
-input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
-target = np.random.randn(3, 1000).astype(np.float32)
-prepare_training_data(input, target)
+# learner = RegressionHander_Vision(32768, 1000)
+# input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
+# target = np.random.randn(3, 1000).astype(np.float32)
+# prepare_training_data(input, target)
 #learner.train(input, target, None, None)
