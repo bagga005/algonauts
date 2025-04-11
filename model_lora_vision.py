@@ -14,7 +14,7 @@ class VisionLinearRegressionModel(nn.Module):
         super(VisionLinearRegressionModel, self).__init__()
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
         self.model_layer = 'blocks.5.pool'
-        
+        self.device = device
         self.linear4 = nn.Linear(input_size, output_size)
         nn.init.kaiming_normal_(self.linear4.weight)
 
@@ -90,20 +90,28 @@ class VisionLinearRegressionModel(nn.Module):
         
         # 5. Create PEFT model with the wrapped model
         self.visual_model = get_peft_model(wrapped_model, self.lora_config)
+        self.visual_model.to(self.device)
 
 
     def forward(self, x):
         #Remove batch dimension
-        # print('x.shape', x.shape)
-        x = x.squeeze(0)
+        #print('x.shape', x.shape)
+        b_size = x.shape[0]
+        window = x.shape[1]
+        x = x.view(x.shape[1] * x.shape[0], x.shape[2], x.shape[3], x.shape[4], x.shape[5])
+        #x = x.squeeze(0)
+        #print('x.shape post squeeze', x.shape)
         # Pass the input directly to the wrapped model
         layer_output = self.visual_model(x)
-        # print('layer_output.shape', layer_output.shape)
-        layer_output = layer_output.flatten().unsqueeze(0)
-        # print('layer_output.shape', layer_output.shape)
+        #print('layer_output.shape post visual model', layer_output.shape)
+        layer_output = layer_output.reshape(layer_output.shape[0], layer_output.shape[1] * layer_output.shape[2] * layer_output.shape[3] * layer_output.shape[4])
+        #layer_output = layer_output.flatten().unsqueeze(0)
+        #print('layer_output.shape post flatten 1', layer_output.shape)
+        layer_output = layer_output.reshape(int(layer_output.shape[0]/window),  int(layer_output.shape[1]*window))
+        #print('layer_output.shape post flatten 2', layer_output.shape)
         #make prediction with linear layer
         prediction = self.linear4(layer_output)
-        # print('prediction.shape', prediction.shape)
+        #print('prediction.shape', prediction.shape)
         #add batch dimension
         return prediction
 
@@ -112,21 +120,24 @@ class RegressionHander_Vision():
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = VisionLinearRegressionModel(input_size, output_size, self.device).to(self.device)
+        self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
+        self.model.to(self.device)
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
+        epochs = 100
+        batch_size = 8
+        learning_rate_linear = 1e-5
+        weight_decay_linear = 1e-4
         X_train, X_val, y_train, y_val = train_test_split(
             features_train, fmri_train, 
             test_size=0.2, 
             random_state=42
         )   
-        train_loader = prepare_training_data(X_train, y_train)
-        val_loader = prepare_training_data(X_val, y_val)
+        train_loader = prepare_training_data(X_train, y_train, batch_size=batch_size)
+        val_loader = prepare_training_data(X_val, y_val, batch_size=batch_size)
 
-        epochs = 100
-        learning_rate_linear = 1e-5
-        weight_decay_linear = 1e-4
+        
         # 6. Set up the optimizer with weight decay for regularization
         # Note: only LoRA parameters will have requires_grad=True at this point
         lora_optimizer = torch.optim.AdamW(
@@ -184,7 +195,8 @@ class RegressionHander_Vision():
                 lora_optimizer.step()
                 linear_optimizer.step()
                 total_loss += loss.item()
-                print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
+                if in_batch % 10 == 0:
+                    print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
                 in_batch += 1
             
             train_loss = total_loss / len(train_loader)
@@ -195,6 +207,8 @@ class RegressionHander_Vision():
             val_loss = 0
             with torch.no_grad():
                 for batch_X, batch_y in val_loader:
+                    batch_X = batch_X.to(self.device)
+                    batch_y = batch_y.to(self.device)
                     y_pred = self.model(batch_X)
                     loss = criterion(y_pred, batch_y)
                     val_loss += loss.item()
@@ -236,15 +250,15 @@ class RegressionHander_Vision():
         self.model.load_state_dict(params)
 
     def predict(self, features_val):
+        print('prediction called')
         features_val = torch.FloatTensor(features_val).to(self.device)
         self.model.eval()
         with torch.no_grad():
             fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
         return fmri_val_pred    
 
-def prepare_training_data(input, target):
-    # input = [('friends_s02e01a', (0,3)), ('friends_s02e01a', (1,4)), ('friends_s02e01a', (2,5))]
-    # target = np.random.randn(3, 1000).astype(np.float32)
+def prepare_training_data(input, target, batch_size=2):
+    
     
     # Create custom Dataset
     class VideoDataset(torch.utils.data.Dataset):
@@ -267,6 +281,7 @@ def prepare_training_data(input, target):
                 frames = f[videoname]['visual']
                 # print('frames.shape', frames.shape)
                 frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+                #frames = frames.to(self.device)
                 # print('frames.shape', frames.shape)
             return frames, self.targets[idx]
     
@@ -274,7 +289,6 @@ def prepare_training_data(input, target):
     dataset = VideoDataset(input, target)
     
     # Create dataloader
-    batch_size = 1  # Since we're dealing with video data, smaller batch sizes are common
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -286,6 +300,8 @@ def prepare_training_data(input, target):
     return dataloader
     
  
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # learner = RegressionHander_Vision(32768, 1000)
-# learner.train(prepare_training_data())
+# input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
+# target = np.random.randn(3, 1000).astype(np.float32)
+# learner.train(input, target, None, None)
