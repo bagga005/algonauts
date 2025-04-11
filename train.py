@@ -655,20 +655,36 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
-    # Align the stimulus features with the fMRI responses for the validation movies
-    features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
-        excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
-        movies_val, viewing_session)
+   
     #features_val, fmri_val = add_recurrent_features(features_val, fmri_val, recurrence)
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # features_val = torch.FloatTensor(features_val).to(device)
-    
+    fmri_val = None
     if training_handler == 'pytorch':
+         # Align the stimulus features with the fMRI responses for the validation movies
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
+        excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
+        movies_val, viewing_session)
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
+         # Align the stimulus features with the fMRI responses for the validation movies
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
+        excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
+        movies_val, viewing_session)
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
+         # Align the stimulus features with the fMRI responses for the validation movies
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
+        excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
+        movies_val, viewing_session)
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
+    elif training_handler == 'loravision':
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True)
+        #print('feautres_train', features_train[:500])
+        print('create trainer')
+        del features
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1])
+        print('got lora vision handler')
 
     model_name = get_model_name(subject, modality, stimulus_window)
     trainer.load_model(model_name)
