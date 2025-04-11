@@ -267,15 +267,24 @@ class RegressionHander_Vision():
 
     def predict(self, features_val):
         print('prediction called')
-        features_val = torch.FloatTensor(features_val).to(self.device)
+        mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=2)
         self.model.eval()
+        fmri_val_pred = []
         with torch.no_grad():
-            fmri_val_pred = self.model(features_val).cpu().numpy()  # Move to CPU and convert to numpy
-        return fmri_val_pred    
+            for batch_X, batch_y in pred_loader:
+                batch_X = batch_X.to(self.device)
+                output = self.model(batch_X).cpu().numpy()
+                fmri_val_pred.append(output)
+        fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
+        print('fmri_val_pred.shape', fmri_val_pred.shape)
+        return fmri_val_pred
+ 
 
 
 def prepare_training_data(input, target, batch_size=2):
-    
+    # input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
+    # target = np.random.randn(3, 1000).astype(np.float32) 
     
     # Create custom Dataset
     class VideoDataset(torch.utils.data.Dataset):
