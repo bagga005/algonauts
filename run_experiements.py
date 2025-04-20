@@ -40,7 +40,7 @@ def run_trainings():
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
     include_viewing_sessions = False
-    movies_train = ["friends-s04"]#,"friends-s02"] #"friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s04","friends-s02"] #"friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s03"] # @param {allow-input: true}c
@@ -78,7 +78,7 @@ def run_trainings():
     #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, specific_modalities,  recurrence)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
+    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")

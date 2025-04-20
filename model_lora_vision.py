@@ -8,6 +8,7 @@ from peft import LoraConfig, get_peft_model
 import h5py
 import time
 from sklearn.model_selection import train_test_split
+import pickle
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -126,7 +127,7 @@ class RegressionHander_Vision():
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
         print('start training at', start_time)
-        epochs = 100
+        epochs = 30
         batch_size = 32
         learning_rate_linear = 1e-5
         weight_decay_linear = 1e-4
@@ -179,6 +180,7 @@ class RegressionHander_Vision():
         for epoch in range(epochs):
             total_loss =0
             in_batch=1
+            in_batch_losses = []
             load_start = time.time()
             total_loading_time = 0
             #print('about to start new batch', time.time())
@@ -207,16 +209,24 @@ class RegressionHander_Vision():
                 lora_optimizer.step()
                 linear_optimizer.step()
                 total_loss += loss.item()
-                if in_batch % 10 == 0:
+                if in_batch % 100 == 0 or in_batch < 3:
                     print('in_batch', in_batch, 'batch loss', loss.item(), 'avg_loss', total_loss/in_batch)
                     avg_loading_time = total_loading_time / in_batch
                     print(f'total loading time {total_loading_time:.2f}', f'avg loading time {avg_loading_time:.2f}')
+                    in_batch_losses.append(total_loss/in_batch)
+                    self.save_train_val_loss(True, in_batch_losses, f'{epoch}-{in_batch}')
                 in_batch += 1
                 #print('batch done at ',time.time())
                 load_start = time.time()
+                # save model
+                # if in_batch % 10 == 0:
+                #     self.save_model(f'lora-{epoch}')
+                #     print(f'saved model at epoch {epoch}')
             
             train_loss = total_loss / len(train_loader)
             train_losses.append(train_loss)
+            self.save_train_val_loss(True, train_losses, epoch)
+
 
             # Validation phase
             self.model.eval()
@@ -231,10 +241,15 @@ class RegressionHander_Vision():
             
             val_loss = val_loss / len(val_loader)
             val_losses.append(val_loss)
+            self.save_train_val_loss(False, val_losses, epoch)
 
-            # Print average loss every 10 epochs
-            # Print progress
+            # save model
             if epoch % 10 == 0:
+                self.save_model(f'lora-{epoch}')
+
+            # Print average loss every 1 epochs
+            # Print progress
+            if epoch % 1 == 0:
                 print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
             
              # Early stopping check
@@ -258,6 +273,21 @@ class RegressionHander_Vision():
         training_time = time.time() - start_time
         return self.model, training_time
             #linear_scheduler.step()
+    def save_train_val_loss(self, isTrain, arr, epoch):
+        file_name = f'train-{epoch}.pkl'
+        if not isTrain:
+            file_name = f'val-{epoch}.pkl'
+        full_path = os.path.join(utils.get_output_dir(), 'models', file_name)
+        pickle.dump(arr, open(full_path, 'wb'))
+    
+    def load_print_train_val_loss(self, isTrain, epoch):
+        file_name = f'train-{epoch}.pkl'
+        if not isTrain:
+            file_name = f'val-{epoch}.pkl'
+        full_path = os.path.join(utils.get_output_dir(), 'models', file_name)
+        arr = pickle.load(open(full_path, 'rb'))
+        print(arr)
+
     def save_model(self, model_name):
         utils.save_model_pytorch(self.model, model_name)
 
@@ -268,14 +298,18 @@ class RegressionHander_Vision():
     def predict(self, features_val):
         print('prediction called')
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
-        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=2)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32)
         self.model.eval()
         fmri_val_pred = []
         with torch.no_grad():
+            batch_counter = 0
             for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
                 output = self.model(batch_X).cpu().numpy()
                 fmri_val_pred.append(output)
+                if batch_counter % 10 == 0:
+                    print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
+                batch_counter += 1
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
         print('fmri_val_pred.shape', fmri_val_pred.shape)
         return fmri_val_pred
