@@ -298,7 +298,7 @@ class RegressionHander_Vision():
     def predict(self, features_val):
         print('prediction called')
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
-        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32, is_for_training=False)
         self.model.eval()
         fmri_val_pred = []
         with torch.no_grad():
@@ -306,7 +306,7 @@ class RegressionHander_Vision():
             for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
                 output = self.model(batch_X)
-                print('output.shape', output.shape)
+                #print('output.shape', output.shape)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
@@ -318,7 +318,7 @@ class RegressionHander_Vision():
  
 
 
-def prepare_training_data(input, target, batch_size=2):
+def prepare_training_data(input, target, batch_size=2, is_for_training=True):
     # input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
     # target = np.random.randn(3, 1000).astype(np.float32) 
     
@@ -347,7 +347,7 @@ def prepare_training_data(input, target, batch_size=2):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=False,
+        shuffle=is_for_training,
         num_workers=2,
         pin_memory=True  # Helps speed up data transfer to GPU
     )
