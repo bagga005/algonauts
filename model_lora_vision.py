@@ -305,7 +305,9 @@ class RegressionHander_Vision():
             batch_counter = 0
             for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
-                output = self.model(batch_X).cpu().numpy()
+                output = self.model(batch_X)
+                print('output.shape', output.shape)
+                output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
                     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
@@ -345,7 +347,7 @@ def prepare_training_data(input, target, batch_size=2):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=2,
         pin_memory=True  # Helps speed up data transfer to GPU
     )
