@@ -117,16 +117,19 @@ class VisionLinearRegressionModel(nn.Module):
         return prediction
 
 class RegressionHander_Vision():
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size,  pretrain_params_name=None):
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
+        if pretrain_params_name is not None:
+            self.model.load_model(pretrain_params_name)
         self.model.to(self.device)
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
         print('start training at', start_time)
+        base_epoch = 21
         epochs = 30
         batch_size = 32
         learning_rate_linear = 1e-5
@@ -245,7 +248,7 @@ class RegressionHander_Vision():
 
             # save model
             if epoch % 10 == 0:
-                self.save_model(f'lora-{epoch}')
+                self.save_model(f'lora-{epoch+base_epoch}')
 
             # Print average loss every 1 epochs
             # Print progress
