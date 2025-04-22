@@ -9,6 +9,7 @@ import h5py
 import time
 from sklearn.model_selection import train_test_split
 import pickle
+import wandb
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -117,7 +118,7 @@ class VisionLinearRegressionModel(nn.Module):
         return prediction
 
 class RegressionHander_Vision():
-    def __init__(self, input_size, output_size,  pretrain_params_name=None):
+    def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=True):
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -125,6 +126,8 @@ class RegressionHander_Vision():
         if pretrain_params_name is not None:
             self.load_model(pretrain_params_name)
         self.model.to(self.device)
+        self.enable_wandb = enable_wandb
+        
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
@@ -134,6 +137,23 @@ class RegressionHander_Vision():
         batch_size = 32
         learning_rate_linear = 1e-5
         weight_decay_linear = 1e-4
+        wandb_config = {
+            'epochs': epochs,
+            'batch_size': batch_size,
+            'learning_rate_linear': learning_rate_linear,
+            'weight_decay_linear': weight_decay_linear,
+            'base_epoch': base_epoch,
+        }
+        model_name = 'lora-vision-s2-s4'
+        if self.enable_wandb:
+            wandb.init(
+                id=model_name,
+                project='lora-vision-s2-s4',
+                name=model_name,
+                config=wandb_config,
+                resume="allow",
+            )
+
         X_train, X_val, y_train, y_val = train_test_split(
             features_train, fmri_train, 
             test_size=0.2, 
@@ -265,7 +285,17 @@ class RegressionHander_Vision():
                 if patience_counter >= patience:
                     print(f'\nEarly stopping triggered at epoch {epoch}')
                     break
-
+            
+            if self.enable_wandb:
+                logs = {
+                    'train/loss': train_loss,
+                    'train/num_steps': base_epoch + epoch,
+                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                    'test/loss': val_loss,
+                    'test/num_steps': base_epoch + epoch
+                }
+                wandb.log(logs)
             # Step both schedulers at the end of each epoch
             lora_scheduler.step()
         
