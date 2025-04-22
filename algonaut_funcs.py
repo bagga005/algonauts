@@ -170,7 +170,7 @@ def extract_visual_features_from_preprocessed_video(episode_path, stimId, featur
     # Output
     return visual_features
 
-def extract_visual_features_r50_ft(episode_path, device, save_file, group_name):
+def extract_visual_features_r50_ft(episode_path, model_name, device, save_file, group_name):
     """
     Extract visual features from a movie using a pre-trained video model.
 
@@ -205,14 +205,14 @@ def extract_visual_features_r50_ft(episode_path, device, save_file, group_name):
     # Empty features list
     visual_features = []
     model = VisionR50FineTuneModel(8192 * 4, 1000, device)
-    params = utils.load_model_pytorch('lora-20')
+    params = utils.load_model_pytorch(model_name)
     model.load_state_dict(params)
     model.eval()
     #print('episode_path', episode_path)
     frames = []
     with h5py.File(episode_path, 'r') as f:
         frames = f[group_name]['visual']
-        print('length of frames', len(frames))
+        #print('length of frames', len(frames))
         #frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
 
         # Loop over chunks

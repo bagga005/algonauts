@@ -47,7 +47,7 @@ def extract_raw_visual_features_r50_ft():
         print(f"Extracting visual features for {stim_id}", stim_path)
         fn = os.path.join(out_data_dir, "stimulus_features", "raw_fit", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
-        extract_visual_features_r50_ft(stim_path, device, fn, stim_id)
+        extract_visual_features_r50_ft(stim_path,'lora-20', device, fn, stim_id)
 
 def extract_raw_visual_features():
     root_data_dir = utils.get_data_root_dir()
