@@ -123,7 +123,7 @@ class RegressionHander_Vision():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
-            self.model.load_model(pretrain_params_name)
+            self.load_model(pretrain_params_name)
         self.model.to(self.device)
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):

@@ -48,7 +48,7 @@ def run_trainings():
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
     trained_model_name = 'lora-20'
-    if training_handler is not 'loravision':
+    if training_handler != 'loravision':
         trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
     #movies_train = ["friends-s01"] # @param {allow-input: true
