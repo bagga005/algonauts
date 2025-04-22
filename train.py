@@ -686,12 +686,10 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         #print('feautres_train', features_train[:500])
         print('create trainer')
         del features
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1])
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=trained_model_name, enable_wandb=False)
         print('got lora vision handler')
 
-    if trained_model_name is not None:
-        trainer.load_model(trained_model_name)
-    else:
+    if training_handler != 'loravision':
         model_name = get_model_name(subject, modality, stimulus_window)
         trainer.load_model(model_name)
 
