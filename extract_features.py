@@ -12,7 +12,7 @@ USE_LIGHTNING = True
 #     print("lightning.data not found, using multiprocessing")
 #     USE_LIGHTNING = False
 #     from multiprocessing import Pool
-from algonaut_funcs import extract_visual_features_from_preprocessed_video, load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
+from algonaut_funcs import extract_visual_features_r50_ft, extract_visual_features_from_preprocessed_video, load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
 import logging
 # import json_log_formatter
 
@@ -24,13 +24,38 @@ import logging
 # logger.addHandler(json_handler)
 # logger.setLevel(logging.INFO)
 
+def extract_raw_visual_features_r50_ft():
+    pre_features_dir = utils.get_stimulus_pre_features_dir()
+    out_data_dir = utils.get_output_dir()
+# As an exemple, extract visual features for season 1, episode 1 of Friends
+    #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
+    # Collecting the paths to all the movie stimuli
+    file_in_filter = ''
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    files = glob(f"{pre_features_dir}/pre/visual/*.h5")
+    if file_in_filter:
+        files = [f for f in files if file_in_filter in f]
+    files.sort()
+
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+     # iterate across all the stimuli movie files
+    iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    for i, (stim_id, stim_path) in iterator:
+        print(f"Extracting visual features for {stim_id}", stim_path)
+        fn = os.path.join(out_data_dir, "stimulus_features", "raw", "visual", f"{stim_id}.h5")
+        if os.path.exists(fn) or stim_id in exclude_list: continue; 
+        extract_visual_features_r50_ft(stim_path, device, fn, stim_id)
+
 def extract_raw_visual_features():
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    file_in_filter = 'friends_s03e05b'
+    file_in_filter = 'friends_s03e06a'
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/**/*.mkv")
     if file_in_filter:
@@ -311,5 +336,14 @@ if __name__ == "__main__":
     # do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
-    extract_preprocessed_video_content()
+    #extract_preprocessed_video_content()
     #extract_raw_visual_features_from_preprocessed_video()
+    # save_dir_temp = utils.get_tmp_dir()
+    # tr = 1.49
+    # transform = define_frames_transform()
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # filename = '/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5'
+    # outfile = '/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s02e01a.h5'
+    #extract_visual_features_r50_ft(filename, device, outfile, "friends_s02e01a")
+    extract_raw_visual_features_r50_ft()
+    #extract_raw_visual_features()

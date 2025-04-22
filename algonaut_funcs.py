@@ -16,6 +16,7 @@ from sklearn.decomposition import PCA
 import h5py
 import pandas as pd
 import string
+from model_r50_ft import VisionR50FineTuneModel
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def uniform_temporal_subsample(x: torch.Tensor, num_samples: int) -> torch.Tensor:
@@ -169,6 +170,75 @@ def extract_visual_features_from_preprocessed_video(episode_path, stimId, featur
     # Output
     return visual_features
 
+def extract_visual_features_r50_ft(episode_path, device, save_file, group_name):
+    """
+    Extract visual features from a movie using a pre-trained video model.
+
+    Parameters
+    ----------
+    episode_path : str
+        Path to the movie file for which the visual features are extracted.
+    tr : float
+        Duration of each chunk, in seconds (aligned with the fMRI repetition
+        time, or TR).
+    feature_extractor : torch.nn.Module
+        Pre-trained feature extractor model.
+    model_layer : str
+        The model layer from which the visual features are extracted.
+    transform : torchvision.transforms.Compose
+        Transformation pipeline for processing video frames.
+    device : torch.device
+        Device for computation ('cpu' or 'cuda').
+    save_dir_temp : str
+        Directory where the chunked movie clips are temporarily stored for
+        feature extraction.
+    save_dir_features : str
+        Directory where the extracted visual features are saved.
+
+    Returns
+    -------
+    visual_features : float
+        Array containing the extracted visual features.
+
+    """
+
+    # Empty features list
+    visual_features = []
+    model = VisionR50FineTuneModel(8192 * 4, 1000, device)
+    params = utils.load_model_pytorch('lora-20')
+    model.load_state_dict(params)
+    model.eval()
+    #print('episode_path', episode_path)
+    frames = []
+    with h5py.File(episode_path, 'r') as f:
+        frames = f[group_name]['visual']
+        print('length of frames', len(frames))
+        #frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+
+        # Loop over chunks
+        with tqdm(total=len(frames), desc="Extracting visual features") as pbar:
+            for frame in frames:
+                # Extract the visual features
+                with torch.no_grad():
+                    frame = torch.from_numpy(frame).to(device)
+                    preds = model(frame)
+                    #print('preds.shape', preds.shape)
+                visual_features.append(np.reshape(preds.cpu().numpy(), -1))
+
+                # Update the progress bar
+                pbar.update(1)
+
+    # Convert the visual features to float32
+    
+    visual_features = np.array(visual_features, dtype='float32')
+    # Save the visual features
+    with h5py.File(save_file, 'a' if Path(save_file).exists() else 'w') as f:
+        group = f.create_group(group_name)
+        group.create_dataset('visual', data=visual_features, dtype=np.float32)
+    print('visual_features', visual_features.shape)
+    # Output
+    return visual_features
+
 
 def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
     transform, device, save_dir_temp, save_file, group_name):
@@ -236,6 +306,7 @@ def extract_visual_features(episode_path, tr, feature_extractor, model_layer,
             # Extract the visual features
             with torch.no_grad():
                 preds = feature_extractor(inputs)
+                #print('preds[model_layer].shape', preds[model_layer].shape)
             visual_features.append(np.reshape(preds[model_layer].cpu().numpy(), -1))
 
             # Update the progress bar
