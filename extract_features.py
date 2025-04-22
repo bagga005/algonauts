@@ -45,7 +45,7 @@ def extract_raw_visual_features_r50_ft():
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting visual features for {stim_id}", stim_path)
-        fn = os.path.join(out_data_dir, "stimulus_features", "raw", "visual", f"{stim_id}.h5")
+        fn = os.path.join(out_data_dir, "stimulus_features", "raw_fit", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
         extract_visual_features_r50_ft(stim_path, device, fn, stim_id)
 
