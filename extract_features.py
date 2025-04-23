@@ -330,10 +330,10 @@ if __name__ == "__main__":
     # #extract_raw_audio_features()
     # #extract_raw_language_features()
     # #do_pca('language')
-    # # modality = 'language'
-    # inpath = os.path.join(utils.get_raw_data_dir(), modality)
-    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new2.npy')
-    # do_pca(inpath, outfile, modality, do_zscore=True)
+    modality = 'visual'
+    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_fit.npy')
+    do_pca(inpath, outfile, modality, do_zscore=True)
     #print(inpath)
     #print(outfile)
     #extract_preprocessed_video_content()
@@ -345,5 +345,5 @@ if __name__ == "__main__":
     # filename = '/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5'
     # outfile = '/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s02e01a.h5'
     #extract_visual_features_r50_ft(filename, device, outfile, "friends_s02e01a")
-    extract_raw_visual_features_r50_ft()
+    #extract_raw_visual_features_r50_ft()
     #extract_raw_visual_features()
