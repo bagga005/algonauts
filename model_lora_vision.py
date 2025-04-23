@@ -133,7 +133,7 @@ class RegressionHander_Vision():
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
         print('start training at', start_time)
-        base_epoch = 21
+        base_epoch = 30
         epochs = 30
         batch_size = 32
         learning_rate_linear = 1e-5
@@ -177,11 +177,16 @@ class RegressionHander_Vision():
         # 7. Learning rate scheduler - use cosine annealing
         lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             lora_optimizer, 
-            T_max=10,  # Number of epochs
+            T_max=20,  # Number of epochs
             eta_min=1e-6
         )
 
         linear_optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_linear, weight_decay=weight_decay_linear)
+        linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            linear_optimizer, 
+            T_max=20,  # Number of epochs
+            eta_min=1e-5
+        )
 
         criterion = torch.nn.MSELoss()
         # 8. Print trainable parameters to verify
@@ -195,7 +200,7 @@ class RegressionHander_Vision():
         print(f'starting lora vision training')
 
         best_val_loss = float('inf')
-        patience = 20
+        patience = 5
         patience_counter = 0
         best_model_state = None
         train_losses = []
@@ -268,7 +273,7 @@ class RegressionHander_Vision():
             self.save_train_val_loss(False, val_losses, epoch)
 
             # save model
-            if epoch % 10 == 0:
+            if epoch != 0 and epoch % 5 == 0:
                 self.save_model(f'lora-{epoch+base_epoch}')
 
             # Print average loss every 1 epochs
