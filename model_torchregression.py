@@ -67,7 +67,7 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        batch_size = 8192
+        batch_size = 1024
         learning_rate_initial_1 = 1e-5
         learning_rate_initial_2 = 1e-4
         learning_rate = 1e-5
@@ -170,7 +170,7 @@ class RegressionHander_Pytorch():
             
              # Early stopping check
             if val_loss + 0.0001 < best_val_loss :
-                print('not stopping', val_loss, best_val_loss)
+                #print('not stopping', val_loss, best_val_loss)
                 best_val_loss = val_loss
                 best_model_state = self.model.state_dict().copy()
                 patience_counter = 0
