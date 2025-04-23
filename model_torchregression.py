@@ -75,7 +75,7 @@ class RegressionHander_Pytorch():
         warmup_epochs_2 = 170
         epochs = 1000
         max_grad_norm = 1.0
-        weight_decay = 1e-4
+        weight_decay = 1e-3
         #utils.analyze_fmri_distribution(fmri_train)
         ### Convert features_train and fmri_train to PyTorch tensors ###
         X_train, X_val, y_train, y_val = train_test_split(
