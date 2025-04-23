@@ -68,9 +68,9 @@ class RegressionHander_Pytorch():
         ### Record start time ###
         start_time = time.time()
         batch_size = 1024
-        learning_rate_initial_1 = 1e-5
-        learning_rate_initial_2 = 1e-4
-        learning_rate = 1e-5
+        learning_rate_initial = 1e-4
+        #learning_rate_initial_2 = 1e-4
+        learning_rate_final = 1e-5
         warmup_epochs_1 = 20
         warmup_epochs_2 = 170
         epochs = 1000
@@ -113,8 +113,12 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial_1, weight_decay=weight_decay)
-        
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial, weight_decay=weight_decay)
+        linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, 
+            T_max=200,  # Number of epochs
+            eta_min=learning_rate_final
+        )
         
         print('len dataloader', len(train_loader))
         # Early stopping parameters
@@ -130,14 +134,14 @@ class RegressionHander_Pytorch():
         for epoch in range(epochs):
             total_loss =0
             # Increase learning rate linearly during warmup
-            if epoch > warmup_epochs_1:
-                #print('update lr')
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = learning_rate_initial_2
-            if epoch > warmup_epochs_2:
-                #print('update lr')
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = learning_rate
+            # if epoch > warmup_epochs_1:
+            #     #print('update lr')
+            #     for param_group in optimizer.param_groups:
+            #         param_group['lr'] = learning_rate_initial_2
+            # if epoch > warmup_epochs_2:
+            #     #print('update lr')
+            #     for param_group in optimizer.param_groups:
+            #         param_group['lr'] = learning_rate
             for batch_X, batch_y in train_loader:
                 # Forward pass
                 optimizer.zero_grad()
@@ -179,6 +183,7 @@ class RegressionHander_Pytorch():
                 if patience_counter >= patience:
                     print(f'\nEarly stopping triggered at epoch {epoch}')
                     break
+            linear_scheduler.step()
         
         # Restore best model
         self.model.load_state_dict(best_model_state)
