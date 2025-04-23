@@ -133,23 +133,33 @@ class RegressionHander_Vision():
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
         print('start training at', start_time)
-        base_epoch = 30
+        base_epoch = 0
         epochs = 30
         batch_size = 32
-        learning_rate_linear = 1e-5
-        weight_decay_linear = 1e-4
+        
+        linear_learning_rate_initial = 1e-4
+        linear_learning_rate_final = 1e-6
+        linear_weight_decay = 1e-3
+        lora_learning_rate_initial = 1e-4
+        lora_learning_rate_final = 1e-6
+        lora_weight_decay = 1e-3
         wandb_config = {
             'epochs': epochs,
             'batch_size': batch_size,
-            'learning_rate_linear': learning_rate_linear,
-            'weight_decay_linear': weight_decay_linear,
+            'learning_rate_linear': linear_learning_rate_initial,
+            'learning_rate_linear_final': linear_learning_rate_final,
+            'linear_weight_decay': linear_weight_decay,
+            'lora_learning_rate_initial': lora_learning_rate_initial,
+            'lora_learning_rate_final': lora_learning_rate_final,
+            'lora_weight_decay': lora_weight_decay,
             'base_epoch': base_epoch,
         }
         model_name = 'lora-vision-s2-s4'
+        project_name = 'lora-vision-s2-s4'
         if self.enable_wandb:
             wandb.init(
                 id=model_name,
-                project='lora-vision-s2-s4',
+                project=project_name,
                 name=model_name,
                 config=wandb_config,
                 resume="allow",
@@ -165,33 +175,34 @@ class RegressionHander_Vision():
         val_loader = prepare_training_data(X_val, y_val, batch_size=batch_size)
         print('done preparing data at ', time.time())
         
+        
         # 6. Set up the optimizer with weight decay for regularization
         # Note: only LoRA parameters will have requires_grad=True at this point
         lora_optimizer = torch.optim.AdamW(
             self.model.visual_model.parameters(),
-            lr=1e-4,
-            weight_decay=0.01,
+            lr=lora_learning_rate_initial,
+            weight_decay=lora_weight_decay,
             betas=(0.9, 0.999)
         )
 
         # 7. Learning rate scheduler - use cosine annealing
         lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             lora_optimizer, 
-            T_max=20,  # Number of epochs
-            eta_min=1e-6
+            T_max=220,  # Number of epochs
+            eta_min=lora_learning_rate_final
         )
 
-        linear_optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_linear, weight_decay=weight_decay_linear)
+        linear_optimizer = torch.optim.Adam(self.model.parameters(), lr=linear_learning_rate_initial, weight_decay=linear_weight_decay)
         linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             linear_optimizer, 
-            T_max=20,  # Number of epochs
-            eta_min=1e-5
+            T_max=220,  # Number of epochs
+            eta_min=linear_learning_rate_final
         )
 
         criterion = torch.nn.MSELoss()
         # 8. Print trainable parameters to verify
         trainable_params = sum(p.numel() for p in self.model.visual_model.parameters() if p.requires_grad)
-        total_params = sum(p.numel() for p in self.model.parameters())
+        total_params = sum(p.numel() for p in self.model.visual_model.parameters())
         print(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
         print(f"Total parameters: {total_params:,}")
 
@@ -200,7 +211,7 @@ class RegressionHander_Vision():
         print(f'starting lora vision training')
 
         best_val_loss = float('inf')
-        patience = 5
+        patience = 10
         patience_counter = 0
         best_model_state = None
         train_losses = []
@@ -304,14 +315,14 @@ class RegressionHander_Vision():
                 wandb.log(logs)
             # Step both schedulers at the end of each epoch
             lora_scheduler.step()
-        
+            linear_scheduler.step()
         # Restore best model
         self.model.load_state_dict(best_model_state)
             
             
         training_time = time.time() - start_time
         return self.model, training_time
-            #linear_scheduler.step()
+           
     def save_train_val_loss(self, isTrain, arr, epoch):
         file_name = f'train-{epoch}.pkl'
         if not isTrain:
