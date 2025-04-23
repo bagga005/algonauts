@@ -40,14 +40,14 @@ def run_trainings():
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
     include_viewing_sessions = False
-    movies_train = ["friends-s04","friends-s02"] #"friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s02"]#,"friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
-    movies_val = ["friends-s06"] # @param {allow-input: true}c
+    movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'loravision'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
-    trained_model_name = 'lora-20'
+    trained_model_name = None
     if training_handler != 'loravision':
         trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps

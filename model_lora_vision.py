@@ -121,6 +121,243 @@ class VisionLinearRegressionModel(nn.Module):
         #add batch dimension
         return prediction
 
+# Define setup and cleanup functions for distributed training at module level
+def setup_distributed(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+def cleanup_distributed():
+    dist.destroy_process_group()
+
+# Move train_on_device outside the class to make it picklable
+def train_on_device(rank, world_size, model_params, train_data, val_data, config):
+    # Unpack parameters
+    input_size, output_size, enable_wandb = model_params
+    X_train, y_train = train_data
+    X_val, y_val = val_data
+    batch_size, epochs = config['batch_size'], config['epochs']
+    
+    # Setup distributed process
+    setup_distributed(rank, world_size)
+    torch.cuda.set_device(rank)
+    
+    # Create model and move it to the correct device
+    device = torch.device(f"cuda:{rank}")
+    model = VisionLinearRegressionModel(input_size, output_size, device)
+    model = model.to(device)
+    model = DDP(model, device_ids=[rank])
+    
+    # Create dataset and prepare data loaders with DistributedSampler
+    train_dataset = VideoDataset(X_train, y_train)
+    val_dataset = VideoDataset(X_val, y_val)
+    
+    train_sampler = DistributedSampler(
+        train_dataset,
+        num_replicas=world_size,
+        rank=rank,
+        shuffle=True
+    )
+    
+    val_sampler = DistributedSampler(
+        val_dataset,
+        num_replicas=world_size,
+        rank=rank,
+        shuffle=False
+    )
+    
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        sampler=train_sampler,
+        num_workers=4,
+        pin_memory=True
+    )
+    
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        sampler=val_sampler,
+        num_workers=4,
+        pin_memory=True
+    )
+    
+    # Training settings
+    linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
+    linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
+    linear_weight_decay = config.get('linear_weight_decay', 1e-3)
+    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
+    lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
+    lora_weight_decay = config.get('lora_weight_decay', 1e-3)
+    
+    # Set up optimizers
+    lora_optimizer = torch.optim.AdamW(
+        model.module.visual_model.parameters(),
+        lr=lora_learning_rate_initial,
+        weight_decay=lora_weight_decay,
+        betas=(0.9, 0.999)
+    )
+    
+    lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        lora_optimizer, 
+        T_max=220,
+        eta_min=lora_learning_rate_final
+    )
+    
+    linear_optimizer = torch.optim.Adam(
+        model.parameters(), 
+        lr=linear_learning_rate_initial, 
+        weight_decay=linear_weight_decay
+    )
+    
+    linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        linear_optimizer, 
+        T_max=220,
+        eta_min=linear_learning_rate_final
+    )
+    
+    criterion = torch.nn.MSELoss()
+    
+    # Only log with wandb on the main process
+    if rank == 0 and enable_wandb:
+        wandb_config = {
+            'epochs': epochs,
+            'batch_size': batch_size * world_size,
+            'num_gpus': world_size,
+            'learning_rate_linear': linear_learning_rate_initial,
+            'learning_rate_linear_final': linear_learning_rate_final,
+            'linear_weight_decay': linear_weight_decay,
+            'lora_learning_rate_initial': lora_learning_rate_initial,
+            'lora_learning_rate_final': lora_learning_rate_final,
+            'lora_weight_decay': lora_weight_decay,
+        }
+        model_name = 'lora-vision-s2-multi-gpu'
+        project_name = 'lora-vision-s2-multi-gpu'
+        wandb.init(
+            id=model_name,
+            project=project_name,
+            name=model_name,
+            config=wandb_config,
+            resume="allow",
+        )
+    
+    best_val_loss = float('inf')
+    patience = 10
+    patience_counter = 0
+    best_model_state = None
+    
+    for epoch in range(epochs):
+        # Set epoch for distributed sampler
+        train_loader.sampler.set_epoch(epoch)
+        
+        # Training phase
+        model.train()
+        total_loss = 0
+        in_batch = 1
+        
+        for batch_X, batch_y in train_loader:
+            # Zero gradients for both optimizers
+            lora_optimizer.zero_grad()
+            linear_optimizer.zero_grad()
+            
+            # Move batch to device
+            batch_X = batch_X.to(device)
+            batch_y = batch_y.to(device)
+            
+            # Forward pass
+            outputs = model(batch_X)
+            loss = criterion(outputs, batch_y)
+            
+            # Backward pass
+            loss.backward()
+            
+            # Update weights with both optimizers
+            lora_optimizer.step()
+            linear_optimizer.step()
+            
+            total_loss += loss.item()
+            
+            if in_batch % 100 == 0 or in_batch < 3:
+                if rank == 0:  # Only print from main process
+                    print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
+            
+            in_batch += 1
+        
+        # Calculate average loss across all processes
+        avg_train_loss = total_loss / len(train_loader)
+        train_loss_tensor = torch.tensor(avg_train_loss).to(device)
+        dist.all_reduce(train_loss_tensor, op=dist.ReduceOp.SUM)
+        train_loss = train_loss_tensor.item() / world_size
+        
+        # Validation phase
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            for batch_X, batch_y in val_loader:
+                batch_X = batch_X.to(device)
+                batch_y = batch_y.to(device)
+                y_pred = model(batch_X)
+                loss = criterion(y_pred, batch_y)
+                val_loss += loss.item()
+        
+        avg_val_loss = val_loss / len(val_loader)
+        val_loss_tensor = torch.tensor(avg_val_loss).to(device)
+        dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
+        val_loss = val_loss_tensor.item() / world_size
+        
+        # Print progress on main process
+        if rank == 0 and epoch % 1 == 0:
+            print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
+            
+            # Log to wandb
+            if enable_wandb:
+                logs = {
+                    'train/loss': train_loss,
+                    'train/num_steps': epoch,
+                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                    'test/loss': val_loss,
+                    'test/num_steps': epoch
+                }
+                wandb.log(logs)
+            
+            # Save model periodically
+            if epoch != 0 and epoch % 5 == 0:
+                # Save the DDP model's state dictionary
+                torch.save(model.module.state_dict(), 
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pt'))
+        
+        # Early stopping check (only on rank 0)
+        if rank == 0:
+            if val_loss + 0.001 < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = model.module.state_dict().copy()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+        
+        # Broadcast patience counter to all processes
+        patience_tensor = torch.tensor(patience_counter).to(device)
+        dist.broadcast(patience_tensor, src=0)
+        patience_counter = patience_tensor.item()
+        
+        if patience_counter >= patience:
+            if rank == 0:
+                print(f'\nEarly stopping triggered at epoch {epoch}')
+            break
+        
+        # Step both schedulers at the end of each epoch
+        lora_scheduler.step()
+        linear_scheduler.step()
+    
+    # Save the best model state to a file that can be loaded by the main process
+    if rank == 0 and best_model_state is not None:
+        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
+        torch.save(best_model_state, best_model_path)
+    
+    cleanup_distributed()
+    return best_val_loss if rank == 0 else None
+
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=True):
         self.input_size = input_size
@@ -141,202 +378,6 @@ class RegressionHander_Vision():
             return self.train_single_gpu(features_train, fmri_train, features_train_val, fmri_train_val)
     
     def train_distributed(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus):
-        def setup(rank, world_size):
-            os.environ['MASTER_ADDR'] = 'localhost'
-            os.environ['MASTER_PORT'] = '12355'
-            dist.init_process_group("nccl", rank=rank, world_size=world_size)
-            
-        def cleanup():
-            dist.destroy_process_group()
-            
-        def train_on_device(rank, world_size, features_train, fmri_train, features_val, fmri_val, batch_size, epochs):
-            setup(rank, world_size)
-            torch.cuda.set_device(rank)
-            
-            # Create model and move it to the correct device
-            model = VisionLinearRegressionModel(self.input_size, self.output_size, torch.device(f"cuda:{rank}"))
-            model = model.to(rank)
-            model = DDP(model, device_ids=[rank])
-            
-            # Prepare data loaders with DistributedSampler
-            train_loader = self._prepare_distributed_data(features_train, fmri_train, batch_size, world_size, rank)
-            val_loader = self._prepare_distributed_data(features_val, fmri_val, batch_size, world_size, rank, is_for_training=False)
-            
-            # Training settings
-            linear_learning_rate_initial = 1e-4
-            linear_learning_rate_final = 1e-6
-            linear_weight_decay = 1e-3
-            lora_learning_rate_initial = 1e-4
-            lora_learning_rate_final = 1e-6
-            lora_weight_decay = 1e-3
-            
-            # Set up optimizers
-            lora_optimizer = torch.optim.AdamW(
-                model.module.visual_model.parameters(),
-                lr=lora_learning_rate_initial,
-                weight_decay=lora_weight_decay,
-                betas=(0.9, 0.999)
-            )
-            
-            lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                lora_optimizer, 
-                T_max=220,
-                eta_min=lora_learning_rate_final
-            )
-            
-            linear_optimizer = torch.optim.Adam(
-                model.parameters(), 
-                lr=linear_learning_rate_initial, 
-                weight_decay=linear_weight_decay
-            )
-            
-            linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                linear_optimizer, 
-                T_max=220,
-                eta_min=linear_learning_rate_final
-            )
-            
-            criterion = torch.nn.MSELoss()
-            
-            # Only log with wandb on the main process
-            if rank == 0 and self.enable_wandb:
-                wandb_config = {
-                    'epochs': epochs,
-                    'batch_size': batch_size * world_size,
-                    'num_gpus': world_size,
-                    'learning_rate_linear': linear_learning_rate_initial,
-                    'learning_rate_linear_final': linear_learning_rate_final,
-                    'linear_weight_decay': linear_weight_decay,
-                    'lora_learning_rate_initial': lora_learning_rate_initial,
-                    'lora_learning_rate_final': lora_learning_rate_final,
-                    'lora_weight_decay': lora_weight_decay,
-                }
-                model_name = 'lora-vision-s2-s4-multi-gpu'
-                project_name = 'lora-vision-s2-s4'
-                wandb.init(
-                    id=model_name,
-                    project=project_name,
-                    name=model_name,
-                    config=wandb_config,
-                    resume="allow",
-                )
-            
-            best_val_loss = float('inf')
-            patience = 10
-            patience_counter = 0
-            best_model_state = None
-            
-            for epoch in range(epochs):
-                # Set epoch for distributed sampler
-                train_loader.sampler.set_epoch(epoch)
-                
-                # Training phase
-                model.train()
-                total_loss = 0
-                in_batch = 1
-                
-                for batch_X, batch_y in train_loader:
-                    # Zero gradients for both optimizers
-                    lora_optimizer.zero_grad()
-                    linear_optimizer.zero_grad()
-                    
-                    # Move batch to device
-                    batch_X = batch_X.to(rank)
-                    batch_y = batch_y.to(rank)
-                    
-                    # Forward pass
-                    outputs = model(batch_X)
-                    loss = criterion(outputs, batch_y)
-                    
-                    # Backward pass
-                    loss.backward()
-                    
-                    # Update weights with both optimizers
-                    lora_optimizer.step()
-                    linear_optimizer.step()
-                    
-                    total_loss += loss.item()
-                    
-                    if in_batch % 100 == 0 or in_batch < 3:
-                        if rank == 0:  # Only print from main process
-                            print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    
-                    in_batch += 1
-                
-                # Calculate average loss across all processes
-                avg_train_loss = total_loss / len(train_loader)
-                train_loss_tensor = torch.tensor(avg_train_loss).to(rank)
-                dist.all_reduce(train_loss_tensor, op=dist.ReduceOp.SUM)
-                train_loss = train_loss_tensor.item() / world_size
-                
-                # Validation phase
-                model.eval()
-                val_loss = 0
-                with torch.no_grad():
-                    for batch_X, batch_y in val_loader:
-                        batch_X = batch_X.to(rank)
-                        batch_y = batch_y.to(rank)
-                        y_pred = model(batch_X)
-                        loss = criterion(y_pred, batch_y)
-                        val_loss += loss.item()
-                
-                avg_val_loss = val_loss / len(val_loader)
-                val_loss_tensor = torch.tensor(avg_val_loss).to(rank)
-                dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
-                val_loss = val_loss_tensor.item() / world_size
-                
-                # Print progress on main process
-                if rank == 0 and epoch % 1 == 0:
-                    print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-                    
-                    # Log to wandb
-                    if self.enable_wandb:
-                        logs = {
-                            'train/loss': train_loss,
-                            'train/num_steps': epoch,
-                            "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                            "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                            'test/loss': val_loss,
-                            'test/num_steps': epoch
-                        }
-                        wandb.log(logs)
-                    
-                    # Save model periodically
-                    if epoch != 0 and epoch % 5 == 0:
-                        # Save the DDP model's state dictionary
-                        if rank == 0:
-                            torch.save(model.module.state_dict(), 
-                                      os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pt'))
-                
-                # Early stopping check (only on rank 0)
-                if rank == 0:
-                    if val_loss + 0.001 < best_val_loss:
-                        best_val_loss = val_loss
-                        best_model_state = model.module.state_dict().copy()
-                        patience_counter = 0
-                    else:
-                        patience_counter += 1
-                
-                # Broadcast patience counter to all processes
-                patience_tensor = torch.tensor(patience_counter).to(rank)
-                dist.broadcast(patience_tensor, src=0)
-                patience_counter = patience_tensor.item()
-                
-                if patience_counter >= patience:
-                    if rank == 0:
-                        print(f'\nEarly stopping triggered at epoch {epoch}')
-                    break
-                
-                # Step both schedulers at the end of each epoch
-                lora_scheduler.step()
-                linear_scheduler.step()
-            
-            # Cleanup and return the best model state (only on rank 0)
-            if rank == 0 and best_model_state is not None:
-                self.model.load_state_dict(best_model_state)
-            
-            cleanup()
-        
         # Split the data for training and validation
         X_train, X_val, y_train, y_val = train_test_split(
             features_train, fmri_train, 
@@ -355,38 +396,36 @@ class RegressionHander_Vision():
         
         start_time = time.time()
         
+        # Prepare the parameters to pass to train_on_device
+        model_params = (self.input_size, self.output_size, self.enable_wandb)
+        train_data = (X_train, y_train)
+        val_data = (X_val, y_val)
+        config = {
+            'batch_size': batch_size,
+            'epochs': epochs,
+            'linear_learning_rate_initial': 1e-4,
+            'linear_learning_rate_final': 1e-6,
+            'linear_weight_decay': 1e-3,
+            'lora_learning_rate_initial': 1e-4,
+            'lora_learning_rate_final': 1e-6,
+            'lora_weight_decay': 1e-3,
+        }
+        
         mp.spawn(
             train_on_device,
-            args=(world_size, X_train, y_train, X_val, y_val, batch_size, epochs),
+            args=(world_size, model_params, train_data, val_data, config),
             nprocs=world_size,
             join=True
         )
         
+        # Load the best model saved by rank 0
+        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
+        if os.path.exists(best_model_path):
+            self.model.load_state_dict(torch.load(best_model_path))
+            print(f"Loaded best model from {best_model_path}")
+        
         training_time = time.time() - start_time
         return self.model, training_time
-    
-    def _prepare_distributed_data(self, input_data, target_data, batch_size, world_size, rank, is_for_training=True):
-        # Create dataset
-        dataset = VideoDataset(input_data, target_data)
-        
-        # Create distributed sampler
-        sampler = DistributedSampler(
-            dataset,
-            num_replicas=world_size,
-            rank=rank,
-            shuffle=is_for_training
-        )
-        
-        # Create dataloader with the sampler
-        dataloader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=batch_size,
-            sampler=sampler,
-            num_workers=4,
-            pin_memory=True
-        )
-        
-        return dataloader
     
     def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val):
         start_time = time.time()  
