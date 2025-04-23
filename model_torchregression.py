@@ -67,10 +67,10 @@ class RegressionHander_Pytorch():
         
         ### Record start time ###
         start_time = time.time()
-        batch_size = 1024
+        batch_size = 128
         learning_rate_initial = 1e-4
         #learning_rate_initial_2 = 1e-4
-        learning_rate_final = 1e-5
+        learning_rate_final = 1e-6
         warmup_epochs_1 = 20
         warmup_epochs_2 = 170
         epochs = 1000
@@ -116,7 +116,7 @@ class RegressionHander_Pytorch():
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial, weight_decay=weight_decay)
         linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, 
-            T_max=200,  # Number of epochs
+            T_max=220,  # Number of epochs
             eta_min=learning_rate_final
         )
         
