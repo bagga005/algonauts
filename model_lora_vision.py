@@ -125,6 +125,7 @@ class RegressionHander_Vision():
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
             self.load_model(pretrain_params_name)
+            print(f'loaded params from {pretrain_params_name}')
         self.model.to(self.device)
         self.enable_wandb = enable_wandb
         
