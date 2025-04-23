@@ -130,6 +130,24 @@ def setup_distributed(rank, world_size):
 def cleanup_distributed():
     dist.destroy_process_group()
 
+# Define VideoDataset class here so it's available to train_on_device
+class VideoDataset(torch.utils.data.Dataset):
+    def __init__(self, input_data, targets):
+        self.input_data = input_data
+        self.targets = torch.FloatTensor(targets)
+        
+    def __len__(self):
+        return len(self.input_data)
+    
+    def __getitem__(self, idx):
+        videoname, frame_indices = self.input_data[idx]
+        filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
+        # For example:
+        with h5py.File(filename, 'r') as f:
+            frames = f[videoname]['visual']
+            frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
+        return frames, self.targets[idx]
+
 # Move train_on_device outside the class to make it picklable
 def train_on_device(rank, world_size, model_params, train_data, val_data, config):
     # Unpack parameters
@@ -662,27 +680,6 @@ class RegressionHander_Vision():
 
 
 def prepare_training_data(input, target, batch_size=2, is_for_training=True):
-    # input = [('friends_s02e01a', (0,4)), ('friends_s02e01a', (1,5)), ('friends_s02e01a', (2,6))]
-    # target = np.random.randn(3, 1000).astype(np.float32) 
-    
-    # Create custom Dataset
-    class VideoDataset(torch.utils.data.Dataset):
-        def __init__(self, input_data, targets):
-            self.input_data = input_data
-            self.targets = torch.FloatTensor(targets)
-            
-        def __len__(self):
-            return len(self.input_data)
-        
-        def __getitem__(self, idx):
-            videoname, frame_indices = self.input_data[idx]
-            filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-            # For example:
-            with h5py.File(filename, 'r') as f:
-                frames = f[videoname]['visual']
-                frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-            return frames, self.targets[idx]
-    
     # Create dataset
     dataset = VideoDataset(input, target)
     
