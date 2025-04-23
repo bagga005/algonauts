@@ -164,7 +164,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     device = torch.device(f"cuda:{rank}")
     model = VisionLinearRegressionModel(input_size, output_size, device)
     model = model.to(device)
-    model = DDP(model, device_ids=[rank])
+    model = DDP(model, device_ids=[rank], find_unused_parameters=True)
     
     # Create dataset and prepare data loaders with DistributedSampler
     train_dataset = VideoDataset(X_train, y_train)
