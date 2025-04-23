@@ -549,7 +549,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     elif training_handler == 'transformer':
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
-    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
+    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=4)
     del features_train, fmri_train
     return trainer, training_time
 
