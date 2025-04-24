@@ -13,7 +13,7 @@ class LinearHandler_Sklearn():
         self.model = RidgeCV(alphas=alphas, store_cv_values=True)
         #self.model = LinearRegression()
 
-    def train(self,features_train, fmri_train, features_train_val, fmri_train_val):
+    def train(self,features_train, fmri_train, features_train_val, fmri_train_val, , num_gpus=1):
         ### Record start time ###
         start_time = time.time()    
         self.model.fit(features_train, fmri_train)
