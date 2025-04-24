@@ -45,7 +45,7 @@ class RegressionHander_Pytorch():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = LinearRegressionModel(input_size, output_size).to(self.device)
 
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, , num_gpus=1):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
         """
         Train a linear-regression-based encoding model to predict fMRI responses
         using movie features.
