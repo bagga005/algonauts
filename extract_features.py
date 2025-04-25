@@ -104,7 +104,7 @@ def extract_preprocessed_video_content():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/**/s3/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/movie10/**/*.mkv")
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()
@@ -330,10 +330,14 @@ if __name__ == "__main__":
     # #extract_raw_audio_features()
     # #extract_raw_language_features()
     # #do_pca('language')
-    modality = 'visual'
-    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_fit.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True)
+
+    # modality = 'visual'
+    # inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_fit.npy')
+    # do_pca(inpath, outfile, modality, do_zscore=True)
+
+    extract_preprocessed_video_content()
+
     #print(inpath)
     #print(outfile)
     #extract_preprocessed_video_content()
