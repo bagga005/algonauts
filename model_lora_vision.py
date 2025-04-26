@@ -155,11 +155,20 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     X_train, y_train = train_data
     X_val, y_val = val_data
     batch_size, epochs = config['batch_size'], config['epochs']
-    
+    num_gpus = config['num_gpus']
+    # Get CPU count
+    cpu_count = os.cpu_count()
+    num_workers = 2
+    if cpu_count is not None:
+        # Follow the guideline: min(4 × num_GPUs, num_CPU_cores)
+        num_workers = min(4 * max(1, num_gpus), cpu_count)
+    print(f'num_workers for dataloader: {num_workers}')
+
     # Setup distributed process
     setup_distributed(rank, world_size)
     torch.cuda.set_device(rank)
     
+
     # Create model and move it to the correct device
     device = torch.device(f"cuda:{rank}")
     model = VisionLinearRegressionModel(input_size, output_size, device)
@@ -188,7 +197,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         train_dataset,
         batch_size=batch_size,
         sampler=train_sampler,
-        num_workers=4,
+        num_workers=num_workers,
         pin_memory=True
     )
     
@@ -196,7 +205,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         val_dataset,
         batch_size=batch_size,
         sampler=val_sampler,
-        num_workers=4,
+        num_workers=num_workers,
         pin_memory=True
     )
     
@@ -343,7 +352,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             if epoch != 0 and epoch % 5 == 0:
                 # Save the DDP model's state dictionary
                 torch.save(model.module.state_dict(), 
-                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pt'))
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
         
         # Early stopping check (only on rank 0)
         if rank == 0:
@@ -427,6 +436,7 @@ class RegressionHander_Vision():
             'lora_learning_rate_initial': 1e-4,
             'lora_learning_rate_final': 1e-6,
             'lora_weight_decay': 1e-3,
+            'num_gpus': num_gpus,
         }
         
         mp.spawn(
@@ -437,7 +447,7 @@ class RegressionHander_Vision():
         )
         
         # Load the best model saved by rank 0
-        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
+        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pth')
         if os.path.exists(best_model_path):
             self.model.load_state_dict(torch.load(best_model_path))
             print(f"Loaded best model from {best_model_path}")
@@ -679,7 +689,21 @@ class RegressionHander_Vision():
  
 
 
-def prepare_training_data(input, target, batch_size=2, is_for_training=True):
+def prepare_training_data(input, target, batch_size=2, is_for_training=True, num_gpus=1):
+    # Determine optimal number of workers based on CPU count
+    import os
+    
+    # Get CPU count and set optimal num_workers
+    cpu_count = os.cpu_count()
+    if cpu_count is None:
+        # Fallback if os.cpu_count() returns None
+        num_workers = 2
+    else:
+        # A good rule of thumb is to use min(4 × num_GPUs, num_CPU_cores)
+        # or simply num_CPU_cores // 2 as a starting point
+        num_workers = min(4 * max(1, num_gpus), cpu_count)
+    print(f'num_workers for dataloader: {num_workers}')
+        
     # Create dataset
     dataset = VideoDataset(input, target)
     
@@ -688,7 +712,7 @@ def prepare_training_data(input, target, batch_size=2, is_for_training=True):
         dataset,
         batch_size=batch_size,
         shuffle=is_for_training,
-        num_workers=2,
+        num_workers=num_workers,
         pin_memory=True  # Helps speed up data transfer to GPU
     )
     
