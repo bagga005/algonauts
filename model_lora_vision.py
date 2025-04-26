@@ -227,7 +227,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     
     lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         lora_optimizer, 
-        T_max=220,
+        T_max=25,
         eta_min=lora_learning_rate_final
     )
     
@@ -239,7 +239,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     
     linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         linear_optimizer, 
-        T_max=220,
+        T_max=25,
         eta_min=linear_learning_rate_final
     )
     
@@ -258,8 +258,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             'lora_learning_rate_final': lora_learning_rate_final,
             'lora_weight_decay': lora_weight_decay,
         }
-        model_name = 'lora-vision-s2-multi-gpu'
-        project_name = 'lora-vision-s2-multi-gpu'
+        project_name, model_name = utils.get_wandb_config()
         wandb.init(
             id=model_name,
             project=project_name,
@@ -479,8 +478,7 @@ class RegressionHander_Vision():
             'lora_weight_decay': lora_weight_decay,
             'base_epoch': base_epoch,
         }
-        model_name = 'lora-vision-s2-s4'
-        project_name = 'lora-vision-s2-s4'
+        project_name, model_name = utils.get_wandb_config()
         if self.enable_wandb:
             wandb.init(
                 id=model_name,
