@@ -359,6 +359,8 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 best_val_loss = val_loss
                 best_model_state = model.module.state_dict().copy()
                 patience_counter = 0
+                torch.save(model.module.state_dict(), 
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-best-distributed.pth'))
             else:
                 patience_counter += 1
         
