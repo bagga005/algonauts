@@ -197,7 +197,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         train_dataset,
         batch_size=batch_size,
         sampler=train_sampler,
-        num_workers=num_workers,
+        num_workers=4,
         pin_memory=True
     )
     
@@ -205,7 +205,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         val_dataset,
         batch_size=batch_size,
         sampler=val_sampler,
-        num_workers=num_workers,
+        num_workers=4,
         pin_memory=True
     )
     
