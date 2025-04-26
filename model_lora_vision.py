@@ -227,7 +227,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     
     lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         lora_optimizer, 
-        T_max=25,
+        T_max=20,
         eta_min=lora_learning_rate_final
     )
     
@@ -239,7 +239,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     
     linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         linear_optimizer, 
-        T_max=25,
+        T_max=20,
         eta_min=linear_learning_rate_final
     )
     
