@@ -26,7 +26,7 @@ import logging
 
 def extract_raw_visual_features_r50_ft():
     pre_features_dir = utils.get_stimulus_pre_features_dir()
-    out_data_dir = utils.get_output_dir()
+    out_data_dir = utils.get_stimulus_features_dir()
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
@@ -45,7 +45,7 @@ def extract_raw_visual_features_r50_ft():
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting visual features for {stim_id}", stim_path)
-        fn = os.path.join(out_data_dir, "stimulus_features", "raw_fit", "visual", f"{stim_id}.h5")
+        fn = os.path.join(out_data_dir, "raw_fit", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
         extract_visual_features_r50_ft(stim_path,'lora-20-distributed-s15', device, fn, stim_id)
 
