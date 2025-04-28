@@ -47,7 +47,7 @@ def run_trainings():
     training_handler = 'loravision'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
-    trained_model_name = None
+    trained_model_name = 'lora-15-distributed-s15'
     if training_handler != 'loravision':
         trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
@@ -69,12 +69,12 @@ def run_trainings():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    print('starting for handler:', training_handler, ' with comments: ',experiment_comments)
+    print('starting for handler:', training_handler, 'model name:', trained_model_name, 'with comments: ',experiment_comments)
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
