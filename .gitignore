@@ -13,3 +13,8 @@ extract_features.py
 run_log-language.json
 .netrc
 /wandb
+runpodctl
+.runpod/ssh/RunPod-Key-Go.pub
+.runpod/config.toml
+.wget-hsts
+.runpod/ssh/RunPod-Key-Go
