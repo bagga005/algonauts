@@ -255,7 +255,7 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
     np.save(outfile, data_array)
     
 
-def do_pca(inpath, outfile,modality, do_zscore=True):
+def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
     n_components = 250
@@ -294,12 +294,15 @@ def do_pca(inpath, outfile,modality, do_zscore=True):
     features = np.concatenate(features, axis=0)
     print('features.shape', features.shape)
     
-    prepr_features = preprocess_features(features, zscore=do_zscore)
-    print('prepr_features.shape', prepr_features.shape)
+    if not skip_pca_just_comgine:
+        prepr_features = preprocess_features(features, zscore=do_zscore)
+        print('prepr_features.shape', prepr_features.shape)
 
-    # Perform PCA
-    features_pca = perform_pca(prepr_features, n_components, modality)
-    print('pca features.shape', features_pca.shape)
+        # Perform PCA
+        features_pca = perform_pca(prepr_features, n_components, modality)
+        print('pca features.shape', features_pca.shape)
+    else:
+        features_pca = features
 
     # slice out results
     from_idx =0
@@ -333,8 +336,8 @@ if __name__ == "__main__":
 
     modality = 'visual'
     inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_raw.npy')
+    do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True)
 
     #extract_preprocessed_video_content()
     #extract_raw_visual_features_r50_ft()
