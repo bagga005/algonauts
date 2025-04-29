@@ -659,8 +659,12 @@ class RegressionHander_Vision():
         arr = pickle.load(open(full_path, 'rb'))
         print(arr)
 
-    def save_model(self, model_name):
-        utils.save_model_pytorch(self.model, model_name)
+    def save_model(self, model_name, separate_vision=False):
+        if not separate_vision:
+            utils.save_model_pytorch(self.model, model_name)
+        else:
+            utils.save_model_pytorch(self.model.v_model, f'{model_name}_vision')
+            utils.save_model_pytorch(self.model.linear4, f'{model_name}_linear')
 
     def load_model(self, model_name):
         params = utils.load_model_pytorch(model_name)
