@@ -32,7 +32,7 @@ def extract_raw_visual_features_r50_ft():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{pre_features_dir}/pre/visual/friends_s02*.h5")
+    files = glob(f"{pre_features_dir}/pre/visual/*.h5")
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()

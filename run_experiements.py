@@ -16,14 +16,14 @@ def run_trainings():
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
     include_viewing_sessions = False
-    movies_train = ["friends-s02", "friends-s04"]#,"friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'sklearn'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
-    trained_model_name = 'lora-20-distributed-s15'
+    trained_model_name = None #'lora-20-distributed-s15'
     if training_handler != 'loravision':
         trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
@@ -50,7 +50,7 @@ def run_trainings():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
@@ -83,7 +83,7 @@ def run_trainings():
 
     #model = utils.load_model(f'sub-01_modality-all')
 
-    def run_for_stimulus_window():
+def run_for_stimulus_window():
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
