@@ -331,13 +331,13 @@ if __name__ == "__main__":
     # #extract_raw_language_features()
     # #do_pca('language')
 
-    # modality = 'visual'
-    # inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_fit.npy')
-    # do_pca(inpath, outfile, modality, do_zscore=True)
+    modality = 'visual'
+    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft.npy')
+    do_pca(inpath, outfile, modality, do_zscore=True)
 
     #extract_preprocessed_video_content()
-    extract_raw_visual_features_r50_ft()
+    #extract_raw_visual_features_r50_ft()
     #print(inpath)
     #print(outfile)
     #extract_preprocessed_video_content()
