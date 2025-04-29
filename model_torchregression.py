@@ -68,12 +68,12 @@ class RegressionHander_Pytorch():
         ### Record start time ###
         start_time = time.time()
         batch_size = 128
-        learning_rate_initial = 1e-4
-        #learning_rate_initial_2 = 1e-4
-        learning_rate_final = 1e-6
+        linear_learning_rate_initial = 1e-4
+        linear_learning_rate_final = 1e-6
+        linear_weight_decay = 1e-3
         warmup_epochs_1 = 20
         warmup_epochs_2 = 170
-        epochs = 1000
+        epochs = 20
         max_grad_norm = 1.0
         weight_decay = 1e-3
         #utils.analyze_fmri_distribution(fmri_train)
@@ -113,17 +113,17 @@ class RegressionHander_Pytorch():
         
         #model = LinearRegressionModel(features_train.shape[1], fmri_train.shape[1]).to(device)
         criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate_initial, weight_decay=weight_decay)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=linear_learning_rate_initial, weight_decay=linear_weight_decay)
         linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, 
-            T_max=220,  # Number of epochs
-            eta_min=learning_rate_final
+            T_max=20,  # Number of epochs
+            eta_min=linear_learning_rate_final
         )
         
         print('len dataloader', len(train_loader))
         # Early stopping parameters
         best_val_loss = float('inf')
-        patience = 20
+        patience = 10
         patience_counter = 0
         best_model_state = None
         train_losses = []
@@ -131,6 +131,7 @@ class RegressionHander_Pytorch():
         print('starting training iterations')
         self.model.train()
         total_loss =0
+        setting_best_model = False
         for epoch in range(epochs):
             total_loss =0
             # Increase learning rate linearly during warmup
@@ -178,6 +179,7 @@ class RegressionHander_Pytorch():
                 best_val_loss = val_loss
                 best_model_state = self.model.state_dict().copy()
                 patience_counter = 0
+                setting_best_model = True
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -186,7 +188,8 @@ class RegressionHander_Pytorch():
             linear_scheduler.step()
         
         # Restore best model
-        self.model.load_state_dict(best_model_state)
+        if setting_best_model:
+            self.model.load_state_dict(best_model_state)
             # Early stopping check
             # if avg_loss < best_loss - min_delta:
             #     best_loss = avg_loss

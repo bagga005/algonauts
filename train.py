@@ -690,7 +690,11 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         print('got lora vision handler')
 
     if training_handler != 'loravision':
-        model_name = get_model_name(subject, modality, stimulus_window)
+        if not trained_model_name:
+            model_name = get_model_name(subject, modality, stimulus_window)
+        else:
+            model_name = trained_model_name
+        print('model_name', model_name)
         trainer.load_model(model_name)
 
     fmri_val_pred = trainer.predict(features_val)
