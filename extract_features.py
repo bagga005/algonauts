@@ -5,6 +5,7 @@ from tqdm import tqdm
 import h5py
 import torch
 import numpy as np
+from model_r50_ft import VisionR50FineTuneModel
 USE_LIGHTNING = True
 # try:
 #     from lightning.data import map
@@ -44,13 +45,18 @@ def extract_raw_visual_features_r50_ft(model_name, custom_filter=None):
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    #setup model once
+    model = VisionR50FineTuneModel(8192 * 4, 1000, device)
+    params = utils.load_model_pytorch(model_name)
+    model.load_state_dict(params)
+
      # iterate across all the stimuli movie files
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting visual features for {stim_id}", stim_path)
         fn = os.path.join(out_data_dir, "raw_fit", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
-        extract_visual_features_r50_ft(stim_path,model_name, device, fn, stim_id)
+        extract_visual_features_r50_ft(stim_path, model, device, fn, stim_id)
 
 def extract_raw_visual_features():
     root_data_dir = utils.get_data_root_dir()

@@ -170,7 +170,7 @@ def extract_visual_features_from_preprocessed_video(episode_path, stimId, featur
     # Output
     return visual_features
 
-def extract_visual_features_r50_ft(episode_path, model_name, device, save_file, group_name):
+def extract_visual_features_r50_ft(episode_path, model, device, save_file, group_name):
     """
     Extract visual features from a movie using a pre-trained video model.
 
@@ -204,9 +204,7 @@ def extract_visual_features_r50_ft(episode_path, model_name, device, save_file, 
 
     # Empty features list
     visual_features = []
-    model = VisionR50FineTuneModel(8192 * 4, 1000, device)
-    params = utils.load_model_pytorch(model_name)
-    model.load_state_dict(params)
+    
     model.eval()
     #print('episode_path', episode_path)
     frames = []
