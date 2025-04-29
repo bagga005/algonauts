@@ -24,7 +24,7 @@ import logging
 # logger.addHandler(json_handler)
 # logger.setLevel(logging.INFO)
 
-def extract_raw_visual_features_r50_ft():
+def extract_raw_visual_features_r50_ft(model_name, custom_filter=None):
     pre_features_dir = utils.get_stimulus_pre_features_dir()
     out_data_dir = utils.get_stimulus_features_dir()
 # As an exemple, extract visual features for season 1, episode 1 of Friends
@@ -32,7 +32,10 @@ def extract_raw_visual_features_r50_ft():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{pre_features_dir}/pre/visual/*.h5")
+    if not custom_filter:
+        files = glob(f"{pre_features_dir}/pre/visual/*.h5")
+    else:
+        files = glob(f"{pre_features_dir}/pre/visual/{custom_filter}")
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()
@@ -47,7 +50,7 @@ def extract_raw_visual_features_r50_ft():
         print(f"Extracting visual features for {stim_id}", stim_path)
         fn = os.path.join(out_data_dir, "raw_fit", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
-        extract_visual_features_r50_ft(stim_path,'lora-20-distributed-s15', device, fn, stim_id)
+        extract_visual_features_r50_ft(stim_path,model_name, device, fn, stim_id)
 
 def extract_raw_visual_features():
     root_data_dir = utils.get_data_root_dir()
@@ -334,12 +337,19 @@ if __name__ == "__main__":
     # #extract_raw_language_features()
     # #do_pca('language')
 
-    modality = 'visual'
-    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_raw.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True)
+    # modality = 'visual'
+    # inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_raw.npy')
+    # do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True)
 
     #extract_preprocessed_video_content()
+    model_name = 'lora-20-distributed-s15'
+    custom_filter = "friends_s02*.h5"
+    extract_raw_visual_features_r50_ft(model_name, custom_filter)
+    custom_filter = "friends_s04*.h5"
+    extract_raw_visual_features_r50_ft(model_name, custom_filter)
+    custom_filter = "friends_s06*.h5"
+    extract_raw_visual_features_r50_ft(model_name, custom_filter)
     #extract_raw_visual_features_r50_ft()
     #print(inpath)
     #print(outfile)
