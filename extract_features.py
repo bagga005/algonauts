@@ -264,10 +264,10 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
     np.save(outfile, data_array)
     
 
-def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False):
+def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
-    n_components = 250
+    
     files = glob(f"{inpath}/*.h5")
     # filter_in_name =''
     # if filter_in_name != '':
@@ -343,19 +343,19 @@ if __name__ == "__main__":
     # #extract_raw_language_features()
     # #do_pca('language')
 
-    # modality = 'visual'
-    # inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_raw.npy')
-    # do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True)
+    modality = 'visual'
+    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_1000.npy')
+    do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True, n_components=1000)
 
     #extract_preprocessed_video_content()
-    model_name = 'lora-20-distributed-s15'
-    custom_filter = "friends_s02*.h5"
-    extract_raw_visual_features_r50_ft(model_name, custom_filter)
-    custom_filter = "friends_s04*.h5"
-    extract_raw_visual_features_r50_ft(model_name, custom_filter)
-    custom_filter = "friends_s06*.h5"
-    extract_raw_visual_features_r50_ft(model_name, custom_filter)
+    # model_name = 'lora-20-distributed-s15'
+    # custom_filter = "friends_s02*.h5"
+    # extract_raw_visual_features_r50_ft(model_name, custom_filter)
+    # custom_filter = "friends_s04*.h5"
+    # extract_raw_visual_features_r50_ft(model_name, custom_filter)
+    # custom_filter = "friends_s06*.h5"
+    # extract_raw_visual_features_r50_ft(model_name, custom_filter)
     #extract_raw_visual_features_r50_ft()
     #print(inpath)
     #print(outfile)
