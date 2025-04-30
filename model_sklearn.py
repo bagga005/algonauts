@@ -10,12 +10,14 @@ class LinearHandler_Sklearn():
         self.input_size = input_size
         self.output_size = output_size
         #self.model = Ridge(alpha=alpha, solver='svd') #LinearRegression()
-        self.model = RidgeCV(alphas=alphas, store_cv_values=True)
-        #self.model = LinearRegression()
+        #self.model = RidgeCV(alphas=alphas, store_cv_values=True)
+        self.model = LinearRegression()
 
     def train(self,features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
         ### Record start time ###
         start_time = time.time()    
+        print('features_train.shape', features_train.shape)
+        print('fmri_train.shape', fmri_train.shape)
         self.model.fit(features_train, fmri_train)
         training_time = time.time() - start_time
         return self.model, training_time

@@ -20,7 +20,7 @@ def run_trainings():
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
-    training_handler = 'pytorch'
+    training_handler = 'sklearn'
     experiment_comments = 'train with full vision'
     specific_modalities = ["all"]
     trained_model_name = None #'lora-20-distributed-s15_linear'

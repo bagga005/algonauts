@@ -544,12 +544,16 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name)
         print('got lora vision handler')
     elif training_handler == 'sklearn':
+        print('aligning features and fmri samples')
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
+        print('got features and fmri samples')
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
     elif training_handler == 'transformer':
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
+    print('training')
     model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=4)
+    print('training done')
     del features_train, fmri_train
     return trainer, training_time
 
@@ -563,6 +567,7 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
     for modality in modalities:
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
+        print(f"Got features for modality {modality}...")
         trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence=recurrence, trained_model_name=trained_model_name)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality, stimulus_window)
