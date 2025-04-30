@@ -22,7 +22,7 @@ def run_trainings():
     movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'pytorch'
     experiment_comments = 'train with full vision'
-    specific_modalities = ["visual"]
+    specific_modalities = ["all"]
     trained_model_name = None #'lora-20-distributed-s15_linear'
     # if training_handler != 'loravision':
     #     trained_model_name = None
