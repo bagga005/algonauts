@@ -71,9 +71,7 @@ class RegressionHander_Pytorch():
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
         linear_weight_decay = 1e-3
-        warmup_epochs_1 = 20
-        warmup_epochs_2 = 170
-        epochs = 20
+        epochs = 25
         max_grad_norm = 1.0
         weight_decay = 1e-3
         #utils.analyze_fmri_distribution(fmri_train)
@@ -116,7 +114,7 @@ class RegressionHander_Pytorch():
         optimizer = torch.optim.Adam(self.model.parameters(), lr=linear_learning_rate_initial, weight_decay=linear_weight_decay)
         linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, 
-            T_max=20,  # Number of epochs
+            T_max=epochs,  # Number of epochs
             eta_min=linear_learning_rate_final
         )
         
