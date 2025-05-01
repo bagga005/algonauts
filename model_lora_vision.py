@@ -428,6 +428,7 @@ class RegressionHander_Vision():
         
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
+        print('num_gpus', num_gpus, torch.cuda.device_count())
         if num_gpus > 1 and torch.cuda.device_count() > 1:
             return self.train_distributed(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus)
         else:
