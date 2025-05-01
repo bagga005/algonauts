@@ -14,6 +14,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
+from peft.tuners.lora import LoraModel
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -56,57 +57,44 @@ class VisionLinearRegressionModel(nn.Module):
             ],
             lora_dropout=0.1,          
             bias="none",               
-            task_type="SEQ_CLS",     
+            task_type="FEATURE_EXTRACTION",     
         )
         # 2. Freeze the entire model first
         for param in self.v_model.parameters():
             param.requires_grad = False
 
-        # Create a custom wrapper for the video model
         class VideoModelWrapper(nn.Module):
-            def __init__(self, model, model_layer):
+            def __init__(self, model, target_layer_name):
                 super().__init__()
                 self.model = model
-                self.model_layer = model_layer
-                # Create feature extractor to get intermediate layer outputs
-                self.feature_extractor = create_feature_extractor(
-                    model,
-                    return_nodes=[self.model_layer]
-                )
-            
-            def forward(self, *args, **kwargs):
-                # Extract the input tensor from args
-                if len(args) > 0:
-                    x = args[0]
-                elif 'input_ids' in kwargs:
-                    x = kwargs['input_ids']
-                else:
-                    raise ValueError("No input tensor provided")
-                
-                # Ensure the input is in the correct format
-                if len(x.shape) == 4:  # (batch, channels, height, width)
-                    x = x.unsqueeze(2)  # Add temporal dimension
-                
-                # Use feature extractor to get intermediate layer output
-                features = self.feature_extractor(x)
-                return features[self.model_layer]
+                self.target_layer_name = target_layer_name
+
+            def forward(self, x):
+                if len(x.shape) == 4:
+                    x = x.unsqueeze(2)
+
+                # Run the model up to the desired layer manually
+                x = self.model.blocks[0](x)
+                x = self.model.blocks[1](x)
+                x = self.model.blocks[2](x)
+                x = self.model.blocks[3](x)
+                x = self.model.blocks[4](x)
+                x = self.model.blocks[5].pool(x)  # This is 'blocks.5.pool'
+
+                return x
+
         
-        # Wrap the video model
-        wrapped_model = VideoModelWrapper(self.v_model, self.model_layer)
-        
-        # 5. Create PEFT model with the wrapped model
-        self.visual_model = get_peft_model(wrapped_model, self.lora_config)
+        # 2. Apply LoRA manually
+        self.v_model = LoraModel(self.v_model, self.lora_config, adapter_name="default")
+
+        self.visual_model = VideoModelWrapper(self.v_model, self.model_layer)
         self.visual_model.to(self.device)
 
 
     def forward(self, x):
-        #Remove batch dimension
-        #print('x.shape', x.shape)
         b_size = x.shape[0]
         window = x.shape[1]
         x = x.view(x.shape[1] * x.shape[0], x.shape[2], x.shape[3], x.shape[4], x.shape[5])
-        #x = x.squeeze(0)
-        #print('x.shape post squeeze', x.shape)
         # Pass the input directly to the wrapped model
         layer_output = self.visual_model(x)
         #print('layer_output.shape post visual model', layer_output.shape)
@@ -213,9 +201,9 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
     linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
     linear_weight_decay = config.get('linear_weight_decay', 1e-3)
-    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
+    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-5)
     lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
-    lora_weight_decay = config.get('lora_weight_decay', 1e-3)
+    lora_weight_decay = config.get('lora_weight_decay', 1e-4)
     
     # Set up optimizers
     lora_optimizer = torch.optim.AdamW(
@@ -559,6 +547,15 @@ class RegressionHander_Vision():
         total_params = sum(p.numel() for p in self.model.visual_model.parameters())
         print(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
         print(f"Total parameters: {total_params:,}")
+
+        # def make_hook(name):
+        #     def hook_fn(module, input, output):
+        #         print(f"Layer used: {name}")
+        #     return hook_fn
+
+        # for name, module in self.model.named_modules():
+        #     if "lora_A" in name or "lora_B" or "linear" in name:
+        #         print(f'Adding hook to: {name}')
 
         # print(f'Training lora vision: {X_train.shape[0]:,}')
         # print(f'Validation lora vision: {X_val.shape[0]:,}')
