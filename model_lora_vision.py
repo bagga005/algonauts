@@ -56,7 +56,7 @@ class VisionLinearRegressionModel(nn.Module):
             ],
             lora_dropout=0.1,          
             bias="none",               
-            task_type="FEATURE_EXTRACTION",     
+            task_type="SEQ_CLS",     
         )
         # 2. Freeze the entire model first
         for param in self.v_model.parameters():
@@ -490,7 +490,7 @@ class RegressionHander_Vision():
         print('start training at', start_time)
         base_epoch = 0
         epochs = 30
-        batch_size = 32
+        batch_size = 16
         
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
@@ -609,6 +609,12 @@ class RegressionHander_Vision():
                     print(f'total loading time {total_loading_time:.2f}', f'avg loading time {avg_loading_time:.2f}')
                     in_batch_losses.append(total_loss/in_batch)
                     self.save_train_val_loss(True, in_batch_losses, f'{epoch}-{in_batch}')
+                    print(f'Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
+                    for name, param in self.model.visual_model.named_parameters():
+                        if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
+                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                            param_norm = torch.norm(param).item()
+                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
                 in_batch += 1
                 #print('batch done at ',time.time())
                 load_start = time.time()
