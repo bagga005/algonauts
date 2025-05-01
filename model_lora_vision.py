@@ -334,7 +334,12 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         # Print progress on main process
         if rank == 0 and epoch % 1 == 0:
             print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-            
+            for name, param in model.module.visual_model.named_parameters():
+                if 'lora_B' in name and param.requires_grad:
+                    grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                    param_norm = torch.norm(param).item()
+                    print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                    
             # Log to wandb
             if enable_wandb:
                 logs = {
@@ -345,10 +350,33 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                     'test/loss': val_loss,
                     'test/num_steps': epoch
                 }
+                lora_a_grads = []
+                lora_b_grads = []
+                for name, param in model.module.visual_model.named_parameters():
+                    if param.requires_grad and param.grad is not None:
+                        if 'lora_A' in name:
+                                lora_a_grads.append(torch.norm(param.grad).item())
+                        elif 'lora_B' in name:
+                            lora_b_grads.append(torch.norm(param.grad).item())    
+                if lora_a_grads:
+                    logs.update({
+                        'gradients/lora_A/mean': np.mean(lora_a_grads),
+                        'gradients/lora_A/max': np.max(lora_a_grads),
+                        'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+        
+                if lora_b_grads:
+                    logs.update({
+                        'gradients/lora_B/mean': np.mean(lora_b_grads),
+                        'gradients/lora_B/max': np.max(lora_b_grads),
+                        'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
                 wandb.log(logs)
             
             # Save model periodically
-            if epoch != 0 and epoch % 5 == 0:
+            if epoch % 5 == 0: #epoch != 0 and 
                 # Save the DDP model's state dictionary
                 torch.save(model.module.state_dict(), 
                           os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
@@ -434,9 +462,9 @@ class RegressionHander_Vision():
             'linear_learning_rate_initial': 1e-4,
             'linear_learning_rate_final': 1e-6,
             'linear_weight_decay': 1e-3,
-            'lora_learning_rate_initial': 1e-4,
-            'lora_learning_rate_final': 1e-6,
-            'lora_weight_decay': 1e-3,
+            'lora_learning_rate_initial': 1e-3,
+            'lora_learning_rate_final': 1e-5,
+            'lora_weight_decay': 1e-5,
             'num_gpus': num_gpus,
         }
         

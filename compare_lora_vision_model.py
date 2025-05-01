@@ -75,19 +75,19 @@ if __name__ == "__main__":
     # model2 = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
     # model2.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-5-distributed-s15_vision.pth'))
 
-    # model1 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
-    # #model1.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-5-distributed-s15.pth'))
-    # model2 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
-    # model2.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-20-distributed-s15.pth'))
-    # # Compare vision models with all parameters (including base SlowR50 parameters)
-    # results = compare_two_models(
-    #     model1, 
-    #     model2,
-    #     filter_learnable=True
-    # )
+    model1 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
+    #model1.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-5-distributed-s15.pth'))
+    model2 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
+    model2.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-20-distributed-s15.pth'))
+    # Compare vision models with all parameters (including base SlowR50 parameters)
+    results = compare_two_models(
+        model1, 
+        model2,
+        filter_learnable=True
+    )
 
-    rgv = RegressionHander_Vision(input_size=8192*4, output_size=1000, pretrain_params_name='lora-20-distributed-s15')
-    rgv.save_model('lora-20-distributed-s15', separate_vision=True)
+    # rgv = RegressionHander_Vision(input_size=8192*4, output_size=1000, pretrain_params_name='lora-20-distributed-s15')
+    # rgv.save_model('lora-20-distributed-s15', separate_vision=True)
     
     # You can also compare just the LoRA parameters
     # print("\n\n======== COMPARING ONLY LORA PARAMETERS ========")

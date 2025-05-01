@@ -20,9 +20,9 @@ def run_trainings():
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
-    training_handler = 'sklearn'
+    training_handler = 'loravision'
     experiment_comments = 'train with full vision'
-    specific_modalities = ["all"]
+    specific_modalities = ["visual"]
     trained_model_name = None #'lora-20-distributed-s15_linear'
     # if training_handler != 'loravision':
     #     trained_model_name = None
