@@ -201,10 +201,10 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
     linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
     linear_weight_decay = config.get('linear_weight_decay', 1e-3)
-    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-5)
+    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
     lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
-    lora_weight_decay = config.get('lora_weight_decay', 1e-4)
-    
+    lora_weight_decay = config.get('lora_weight_decay', 1e-3)
+
     # Set up optimizers
     lora_optimizer = torch.optim.AdamW(
         model.module.visual_model.parameters(),
@@ -248,11 +248,11 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         }
         project_name, model_name = utils.get_wandb_config()
         wandb.init(
-            id=model_name,
+            #id=model_name,
             project=project_name,
-            name=model_name,
+            #name=model_name,
             config=wandb_config,
-            resume="allow",
+            #resume="allow",
         )
     
     best_val_loss = float('inf')
@@ -295,7 +295,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 if rank == 0:  # Only print from main process
                     print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
                     for name, param in model.module.visual_model.named_parameters():
-                        if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
+                        if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
                             grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
                             param_norm = torch.norm(param).item()
                             print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
@@ -500,11 +500,11 @@ class RegressionHander_Vision():
         project_name, model_name = utils.get_wandb_config()
         if self.enable_wandb:
             wandb.init(
-                id=model_name,
+                #id=model_name,
                 project=project_name,
-                name=model_name,
+                #name=model_name,
                 config=wandb_config,
-                resume="allow",
+                #resume="allow",
             )
 
         X_train, X_val, y_train, y_val = train_test_split(
