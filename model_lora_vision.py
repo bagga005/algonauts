@@ -306,6 +306,12 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             if in_batch % 100 == 0 or in_batch < 3:
                 if rank == 0:  # Only print from main process
                     print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
+                    for name, param in model.module.visual_model.named_parameters():
+                        if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
+                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                            param_norm = torch.norm(param).item()
+                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+            
             
             in_batch += 1
         
@@ -334,12 +340,6 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         # Print progress on main process
         if rank == 0 and epoch % 1 == 0:
             print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-            for name, param in model.module.visual_model.named_parameters():
-                if 'lora_B' in name and param.requires_grad:
-                    grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                    param_norm = torch.norm(param).item()
-                    print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
-                    
             # Log to wandb
             if enable_wandb:
                 logs = {
