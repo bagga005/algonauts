@@ -405,7 +405,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         if dist.is_initialized():
             cleanup_distributed()
             print(f"[GPU {rank}] Process group cleaned up properly")
-        raise e
+        raise Exception("Error message")
 
     return best_val_loss if rank == 0 else None
 

@@ -23,7 +23,7 @@ def run_trainings():
     training_handler = 'loravision'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
-    trained_model_name = None #'lora-20-distributed-s15_linear'
+    trained_model_name = 'lora-0-distributed'
     # if training_handler != 'loravision':
     #     trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
@@ -50,7 +50,7 @@ def run_trainings():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
