@@ -61,8 +61,8 @@ class VisionLinearRegressionModel(nn.Module):
             task_type="FEATURE_EXTRACTION",     
         )
         # 2. Freeze the entire model first
-        # for param in self.v_model.parameters():
-        #     param.requires_grad = False
+        for param in self.v_model.parameters():
+            param.requires_grad = False
         # Create a custom wrapper for the video model
 
         # 2. Apply LoRA manually
@@ -92,7 +92,7 @@ class VisionLinearRegressionModel(nn.Module):
             layer_output = layer_output.reshape(layer_output.shape[0], -1)
             layer_output = layer_output.reshape(b_size, -1)
             
-            prediction = self.linear4(layer_output)
+            prediction = checkpoint(self.linear4, layer_output, use_reentrant=False)
 
         return prediction
 
@@ -144,259 +144,268 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     print(f'num_workers for dataloader: {num_workers}')
 
     
+    try:
+        # Setup distributed process
+        setup_distributed(rank, world_size)
+        torch.cuda.set_device(rank)
+        
 
-    # Setup distributed process
-    setup_distributed(rank, world_size)
-    torch.cuda.set_device(rank)
-    
-
-    # Create model and move it to the correct device
-    device = torch.device(f"cuda:{rank}")
-    model = VisionLinearRegressionModel(input_size, output_size, device)
-    model = model.to(device)
-    model = DDP(model, device_ids=[rank])
-    
-    # Create dataset and prepare data loaders with DistributedSampler
-    train_dataset = VideoDataset(X_train, y_train)
-    val_dataset = VideoDataset(X_val, y_val)
-    
-    train_sampler = DistributedSampler(
-        train_dataset,
-        num_replicas=world_size,
-        rank=rank,
-        shuffle=True
-    )
-    
-    val_sampler = DistributedSampler(
-        val_dataset,
-        num_replicas=world_size,
-        rank=rank,
-        shuffle=False
-    )
-    
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        sampler=train_sampler,
-        num_workers=4,
-        pin_memory=True
-    )
-    
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        sampler=val_sampler,
-        num_workers=4,
-        pin_memory=True
-    )
-    
-    # Training settings
-    linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
-    linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
-    linear_weight_decay = config.get('linear_weight_decay', 1e-3)
-    lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
-    lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
-    lora_weight_decay = config.get('lora_weight_decay', 1e-3)
-
-    # Set up optimizers
-    lora_optimizer = torch.optim.AdamW(
-        model.module.visual_model.parameters(),
-        lr=lora_learning_rate_initial,
-        weight_decay=lora_weight_decay,
-        betas=(0.9, 0.999)
-    )
-    
-    lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        lora_optimizer, 
-        T_max=20,
-        eta_min=lora_learning_rate_final
-    )
-    
-    linear_optimizer = torch.optim.Adam(
-        model.parameters(), 
-        lr=linear_learning_rate_initial, 
-        weight_decay=linear_weight_decay
-    )
-    
-    linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        linear_optimizer, 
-        T_max=20,
-        eta_min=linear_learning_rate_final
-    )
-    
-    criterion = torch.nn.MSELoss()
-    
-    # Only log with wandb on the main process
-    if rank == 0 and enable_wandb:
-        wandb_config = {
-            'epochs': epochs,
-            'batch_size': batch_size * world_size,
-            'num_gpus': world_size,
-            'learning_rate_linear': linear_learning_rate_initial,
-            'learning_rate_linear_final': linear_learning_rate_final,
-            'linear_weight_decay': linear_weight_decay,
-            'lora_learning_rate_initial': lora_learning_rate_initial,
-            'lora_learning_rate_final': lora_learning_rate_final,
-            'lora_weight_decay': lora_weight_decay,
-        }
-        project_name, model_name, _ = utils.get_wandb_config()
-        wandb.init(
-            #id=model_name,
-            project=project_name,
-            #name=model_name,
-            config=wandb_config,
-            #resume="allow",
+        # Create model and move it to the correct device
+        device = torch.device(f"cuda:{rank}")
+        model = VisionLinearRegressionModel(input_size, output_size, device)
+        model = model.to(device)
+        model = DDP(model, device_ids=[rank])
+        
+        # Create dataset and prepare data loaders with DistributedSampler
+        train_dataset = VideoDataset(X_train, y_train)
+        val_dataset = VideoDataset(X_val, y_val)
+        
+        train_sampler = DistributedSampler(
+            train_dataset,
+            num_replicas=world_size,
+            rank=rank,
+            shuffle=True
         )
-    
-    best_val_loss = float('inf')
-    patience = 10
-    patience_counter = 0
-    best_model_state = None
-    
-    for epoch in range(epochs):
-        # Set epoch for distributed sampler
-        train_loader.sampler.set_epoch(epoch)
         
-        # Training phase
-        model.train()
-        total_loss = 0
-        in_batch = 1
+        val_sampler = DistributedSampler(
+            val_dataset,
+            num_replicas=world_size,
+            rank=rank,
+            shuffle=False
+        )
         
-        for batch_X, batch_y in train_loader:
-            # Zero gradients for both optimizers
-            lora_optimizer.zero_grad()
-            linear_optimizer.zero_grad()
-            
-            # Move batch to device
-            batch_X = batch_X.to(device)
-            batch_y = batch_y.to(device)
-            
-            # Forward pass
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_y)
-            
-            # Backward pass
-            loss.backward()
-            
-            # Update weights with both optimizers
-            lora_optimizer.step()
-            linear_optimizer.step()
-            
-            total_loss += loss.item()
-            
-            if in_batch % 100 == 0 or in_batch < 3:
-                if rank == 0:  # Only print from main process
-                    print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    for name, param in model.module.named_parameters():
-                        if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
-                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                            param_norm = torch.norm(param).item()
-                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
-            
-            
-            in_batch += 1
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            sampler=train_sampler,
+            num_workers=4,
+            pin_memory=True
+        )
         
-        # Calculate average loss across all processes
-        avg_train_loss = total_loss / len(train_loader)
-        train_loss_tensor = torch.tensor(avg_train_loss).to(device)
-        dist.all_reduce(train_loss_tensor, op=dist.ReduceOp.SUM)
-        train_loss = train_loss_tensor.item() / world_size
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            sampler=val_sampler,
+            num_workers=4,
+            pin_memory=True
+        )
         
-        # Validation phase
-        model.eval()
-        val_loss = 0
-        with torch.no_grad():
-            for batch_X, batch_y in val_loader:
+        # Training settings
+        linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
+        linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
+        linear_weight_decay = config.get('linear_weight_decay', 1e-3)
+        lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
+        lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
+        lora_weight_decay = config.get('lora_weight_decay', 1e-3)
+
+        # Set up optimizers
+        lora_optimizer = torch.optim.AdamW(
+            model.module.visual_model.parameters(),
+            lr=lora_learning_rate_initial,
+            weight_decay=lora_weight_decay,
+            betas=(0.9, 0.999)
+        )
+        
+        lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            lora_optimizer, 
+            T_max=20,
+            eta_min=lora_learning_rate_final
+        )
+        
+        linear_optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=linear_learning_rate_initial, 
+            weight_decay=linear_weight_decay
+        )
+        
+        linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            linear_optimizer, 
+            T_max=20,
+            eta_min=linear_learning_rate_final
+        )
+        
+        criterion = torch.nn.MSELoss()
+        
+        # Only log with wandb on the main process
+        if rank == 0 and enable_wandb:
+            wandb_config = {
+                'epochs': epochs,
+                'batch_size': batch_size * world_size,
+                'num_gpus': world_size,
+                'learning_rate_linear': linear_learning_rate_initial,
+                'learning_rate_linear_final': linear_learning_rate_final,
+                'linear_weight_decay': linear_weight_decay,
+                'lora_learning_rate_initial': lora_learning_rate_initial,
+                'lora_learning_rate_final': lora_learning_rate_final,
+                'lora_weight_decay': lora_weight_decay,
+            }
+            project_name, model_name, _ = utils.get_wandb_config()
+            wandb.init(
+                #id=model_name,
+                project=project_name,
+                #name=model_name,
+                config=wandb_config,
+                #resume="allow",
+            )
+        
+        best_val_loss = float('inf')
+        patience = 10
+        patience_counter = 0
+        best_model_state = None
+        
+        for epoch in range(epochs):
+            # Set epoch for distributed sampler
+            train_loader.sampler.set_epoch(epoch)
+            
+            # Training phase
+            model.train()
+            total_loss = 0
+            in_batch = 1
+            
+            for batch_X, batch_y in train_loader:
+                # Zero gradients for both optimizers
+                lora_optimizer.zero_grad()
+                linear_optimizer.zero_grad()
+                
+                # Move batch to device
                 batch_X = batch_X.to(device)
                 batch_y = batch_y.to(device)
-                y_pred = model(batch_X)
-                loss = criterion(y_pred, batch_y)
-                val_loss += loss.item()
-        
-        avg_val_loss = val_loss / len(val_loader)
-        val_loss_tensor = torch.tensor(avg_val_loss).to(device)
-        dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
-        val_loss = val_loss_tensor.item() / world_size
-        
-        # Print progress on main process
-        if rank == 0 and epoch % 1 == 0:
-            print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-            # Log to wandb
-            if enable_wandb:
-                logs = {
-                    'train/loss': train_loss,
-                    'train/num_steps': epoch,
-                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                    'test/loss': val_loss,
-                    'test/num_steps': epoch
-                }
-                lora_a_grads = []
-                lora_b_grads = []
-                linear_grads = []
-                for name, param in model.module.named_parameters():
-                    if param.requires_grad and param.grad is not None:
-                        if 'lora_A' in name:
-                            lora_a_grads.append(torch.norm(param.grad).item())
-                        elif 'lora_B' in name:
-                            lora_b_grads.append(torch.norm(param.grad).item())    
-                        elif 'linear' in name:
-                            linear_grads.append(torch.norm(param.grad).item())  
-
-                if lora_a_grads:
-                    logs.update({
-                        'gradients/lora_A/mean': np.mean(lora_a_grads),
-                        'gradients/lora_A/max': np.max(lora_a_grads),
-                        'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
-                        'batch': epoch * len(train_loader) + in_batch
-                    })
-        
-                if lora_b_grads:
-                    logs.update({
-                        'gradients/lora_B/mean': np.mean(lora_b_grads),
-                        'gradients/lora_B/max': np.max(lora_b_grads),
-                        'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
-                        'batch': epoch * len(train_loader) + in_batch
-                    })
-                wandb.log(logs)
+                
+                # Forward pass
+                outputs = model(batch_X)
+                loss = criterion(outputs, batch_y)
+                
+                # Backward pass
+                loss.backward()
+                
+                # Update weights with both optimizers
+                lora_optimizer.step()
+                linear_optimizer.step()
+                
+                total_loss += loss.item()
+                
+                if in_batch % 100 == 0 or in_batch < 3:
+                    if rank == 0:  # Only print from main process
+                        print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
+                        for name, param in model.module.named_parameters():
+                            if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
+                                grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                                param_norm = torch.norm(param).item()
+                                print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                
+                
+                in_batch += 1
             
-            # Save model periodically
-            if epoch % 5 == 0: #epoch != 0 and 
-                # Save the DDP model's state dictionary
-                torch.save(model.module.state_dict(), 
-                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
-        
-        # Early stopping check (only on rank 0)
-        if rank == 0:
-            if val_loss + 0.001 < best_val_loss:
-                best_val_loss = val_loss
-                best_model_state = model.module.state_dict().copy()
-                patience_counter = 0
-                torch.save(model.module.state_dict(), 
-                          os.path.join(utils.get_output_dir(), 'models', f'lora-best-distributed.pth'))
-            else:
-                patience_counter += 1
-        
-        # Broadcast patience counter to all processes
-        patience_tensor = torch.tensor(patience_counter).to(device)
-        dist.broadcast(patience_tensor, src=0)
-        patience_counter = patience_tensor.item()
-        
-        if patience_counter >= patience:
+            # Calculate average loss across all processes
+            avg_train_loss = total_loss / len(train_loader)
+            train_loss_tensor = torch.tensor(avg_train_loss).to(device)
+            dist.all_reduce(train_loss_tensor, op=dist.ReduceOp.SUM)
+            train_loss = train_loss_tensor.item() / world_size
+            
+            # Validation phase
+            model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    batch_X = batch_X.to(device)
+                    batch_y = batch_y.to(device)
+                    y_pred = model(batch_X)
+                    loss = criterion(y_pred, batch_y)
+                    val_loss += loss.item()
+            
+            avg_val_loss = val_loss / len(val_loader)
+            val_loss_tensor = torch.tensor(avg_val_loss).to(device)
+            dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
+            val_loss = val_loss_tensor.item() / world_size
+            
+            # Print progress on main process
+            if rank == 0 and epoch % 1 == 0:
+                print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
+                # Log to wandb
+                if enable_wandb:
+                    logs = {
+                        'train/loss': train_loss,
+                        'train/num_steps': epoch,
+                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                        'test/loss': val_loss,
+                        'test/num_steps': epoch
+                    }
+                    lora_a_grads = []
+                    lora_b_grads = []
+                    linear_grads = []
+                    for name, param in model.module.named_parameters():
+                        if param.requires_grad and param.grad is not None:
+                            if 'lora_A' in name:
+                                lora_a_grads.append(torch.norm(param.grad).item())
+                            elif 'lora_B' in name:
+                                lora_b_grads.append(torch.norm(param.grad).item())    
+                            elif 'linear' in name:
+                                linear_grads.append(torch.norm(param.grad).item())  
+
+                    if lora_a_grads:
+                        logs.update({
+                            'gradients/lora_A/mean': np.mean(lora_a_grads),
+                            'gradients/lora_A/max': np.max(lora_a_grads),
+                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+            
+                    if lora_b_grads:
+                        logs.update({
+                            'gradients/lora_B/mean': np.mean(lora_b_grads),
+                            'gradients/lora_B/max': np.max(lora_b_grads),
+                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    wandb.log(logs)
+                
+                # Save model periodically
+                if epoch % 5 == 0: #epoch != 0 and 
+                    # Save the DDP model's state dictionary
+                    torch.save(model.module.state_dict(), 
+                            os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
+            
+            # Early stopping check (only on rank 0)
             if rank == 0:
-                print(f'\nEarly stopping triggered at epoch {epoch}')
-            break
+                if val_loss + 0.001 < best_val_loss:
+                    best_val_loss = val_loss
+                    best_model_state = model.module.state_dict().copy()
+                    patience_counter = 0
+                    torch.save(model.module.state_dict(), 
+                            os.path.join(utils.get_output_dir(), 'models', f'lora-best-distributed.pth'))
+                else:
+                    patience_counter += 1
+            
+            # Broadcast patience counter to all processes
+            patience_tensor = torch.tensor(patience_counter).to(device)
+            dist.broadcast(patience_tensor, src=0)
+            patience_counter = patience_tensor.item()
+            
+            if patience_counter >= patience:
+                if rank == 0:
+                    print(f'\nEarly stopping triggered at epoch {epoch}')
+                break
+            
+            # Step both schedulers at the end of each epoch
+            lora_scheduler.step()
+            linear_scheduler.step()
         
-        # Step both schedulers at the end of each epoch
-        lora_scheduler.step()
-        linear_scheduler.step()
+        # Save the best model state to a file that can be loaded by the main process
+        if rank == 0 and best_model_state is not None:
+            best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
+            torch.save(best_model_state, best_model_path)
     
-    # Save the best model state to a file that can be loaded by the main process
-    if rank == 0 and best_model_state is not None:
-        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
-        torch.save(best_model_state, best_model_path)
-    
-    cleanup_distributed()
+    except KeyboardInterrupt:
+        print(f"[GPU {rank}] Training interrupted by user")
+    except Exception as e:
+        print(f"[GPU {rank}] Error during training: {str(e)}")
+    finally:
+        # Make sure cleanup happens regardless of how the function exits
+        if dist.is_initialized():
+            cleanup_distributed()
+            print(f"[GPU {rank}] Process group cleaned up properly")
+
     return best_val_loss if rank == 0 else None
 
 class RegressionHander_Vision():
@@ -668,9 +677,9 @@ class RegressionHander_Vision():
             lora_scheduler.step()
             linear_scheduler.step()
         # Restore best model
-        self.model.load_state_dict(best_model_state)
-            
-            
+        if best_model_state is not None:
+            self.model.load_state_dict(best_model_state)
+        
         training_time = time.time() - start_time
         return self.model, training_time
            
