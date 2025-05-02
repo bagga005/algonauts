@@ -16,6 +16,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from peft.tuners.lora import LoraModel
 from torch.utils.checkpoint import checkpoint
+import random
+import sys
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -128,13 +130,53 @@ class VideoDataset(torch.utils.data.Dataset):
         return frames, self.targets[idx]
 
 # Move train_on_device outside the class to make it picklable
+def save_checkpoint(state, is_best, filename):
+    """Save checkpoint to disk"""
+    torch.save(state, filename)
+    if is_best:
+        best_filename = filename.replace('.pth', '_best.pth')
+        torch.save(state, best_filename)
+        print(f"Saved best model to {best_filename}")
+
+def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, linear_scheduler, filename):
+    """Load checkpoint from disk"""
+    if os.path.isfile(filename):
+        print(f"Loading checkpoint '{filename}'")
+        checkpoint = torch.load(filename)
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
+        linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
+        lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
+        linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
+        best_val_loss = checkpoint['best_val_loss']
+        patience_counter = checkpoint['patience_counter']
+        train_losses = checkpoint.get('train_losses', [])
+        val_losses = checkpoint.get('val_losses', [])
+        # Also restore random states if they were saved
+        if 'torch_rng_state' in checkpoint:
+            torch.set_rng_state(checkpoint['torch_rng_state'])
+        if 'numpy_rng_state' in checkpoint:
+            np.random.set_state(checkpoint['numpy_rng_state'])
+        if 'python_rng_state' in checkpoint and random is not None:
+            import random
+            random.setstate(checkpoint['python_rng_state'])
+        
+        print(f"Loaded checkpoint '{filename}' (epoch {checkpoint['epoch']})")
+        return start_epoch, best_val_loss, patience_counter, train_losses, val_losses
+    else:
+        print(f"No checkpoint found at '{filename}'")
+        return 0, float('inf'), 0, [], []
+
 def train_on_device(rank, world_size, model_params, train_data, val_data, config):
     # Unpack parameters
     input_size, output_size, enable_wandb = model_params
     X_train, y_train = train_data
     X_val, y_val = val_data
-    batch_size, epochs, base_epoch = config['batch_size'], config['epochs'], config['base_epoch ']
+    batch_size, epochs= config['batch_size'], config['epochs']
     num_gpus = config['num_gpus']
+    resume = config.get('resume', False)
+    resume_checkpoint = config.get('resume_checkpoint', None)
     # Get CPU count
     cpu_count = os.cpu_count()
     num_workers = 2
@@ -226,6 +268,53 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         
         criterion = torch.nn.MSELoss()
         
+        # Initialize training state
+        best_val_loss = float('inf')
+        patience = 10
+        patience_counter = 0
+        best_model_state = None
+        train_losses = []
+        val_losses = []
+        start_epoch = 0
+        
+        # Load checkpoint if resuming
+        if resume and resume_checkpoint and rank == 0:
+            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint)
+            if os.path.exists(checkpoint_path):
+                checkpoint = torch.load(checkpoint_path, map_location=device)
+                model.module.load_state_dict(checkpoint['state_dict'])
+                # Broadcast model parameters from rank 0 to all other processes
+                for param in model.parameters():
+                    dist.broadcast(param.data, src=0)
+                
+                # Only load optimizer states on rank 0 to avoid issues
+                if rank == 0:
+                    lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
+                    linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
+                    lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
+                    linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
+                    best_val_loss = checkpoint['best_val_loss']
+                    patience_counter = checkpoint['patience_counter']
+                    start_epoch = checkpoint['epoch'] + 1
+                    if 'train_losses' in checkpoint:
+                        train_losses = checkpoint['train_losses']
+                    if 'val_losses' in checkpoint:
+                        val_losses = checkpoint['val_losses']
+                    print(f"Resuming from epoch {start_epoch}")
+        
+        # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
+        start_epoch_tensor = torch.tensor(start_epoch).to(device)
+        best_val_loss_tensor = torch.tensor(best_val_loss).to(device)
+        patience_counter_tensor = torch.tensor(patience_counter).to(device)
+        
+        dist.broadcast(start_epoch_tensor, src=0)
+        dist.broadcast(best_val_loss_tensor, src=0)
+        dist.broadcast(patience_counter_tensor, src=0)
+        
+        start_epoch = start_epoch_tensor.item()
+        best_val_loss = best_val_loss_tensor.item()
+        patience_counter = patience_counter_tensor.item()
+        
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
             wandb_config = {
@@ -248,12 +337,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 #resume="allow",
             )
         
-        best_val_loss = float('inf')
-        patience = 10
-        patience_counter = 0
-        best_model_state = None
-        
-        for epoch in range(epochs):
+        for epoch in range(start_epoch, epochs):
             # Set epoch for distributed sampler
             train_loader.sampler.set_epoch(epoch)
             
@@ -325,11 +409,11 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 if enable_wandb:
                     logs = {
                         'train/loss': train_loss,
-                        'train/num_steps': base_epoch + epoch,
+                        'train/num_steps': epoch,
                         "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
                         "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
                         'test/loss': val_loss,
-                        'test/num_steps': base_epoch + epoch
+                        'test/num_steps': epoch
                     }
                     lora_a_grads = []
                     lora_a_norms = []
@@ -392,11 +476,25 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                         })
                     wandb.log(logs)
 
-                # Save model periodically
-                if epoch % 5 == 0: #epoch != 0 and 
-                    # Save the DDP model's state dictionary
-                    torch.save(model.module.state_dict(), 
-                            os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
+                # Save checkpoint from the main process
+                if rank == 0:
+                    checkpoint = {
+                        'epoch': epoch,
+                        'state_dict': model.module.state_dict(),
+                        'lora_optimizer': lora_optimizer.state_dict(),
+                        'linear_optimizer': linear_optimizer.state_dict(),
+                        'lora_scheduler': lora_scheduler.state_dict(),
+                        'linear_scheduler': linear_scheduler.state_dict(),
+                        'best_val_loss': best_val_loss,
+                        'patience_counter': patience_counter,
+                        'train_losses': train_losses,
+                        'val_losses': val_losses,
+                        'torch_rng_state': torch.get_rng_state(),
+                        'numpy_rng_state': np.random.get_state(),
+                    }
+                    
+                    checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
+                    save_checkpoint(checkpoint, val_loss < best_val_loss, checkpoint_path)
             
             # Early stopping check (only on rank 0)
             if rank == 0:
@@ -443,6 +541,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
 
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
+        print('Initializing RegressionHander_Vision')
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -454,14 +553,14 @@ class RegressionHander_Vision():
         self.enable_wandb = enable_wandb
         
 
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1, resume=False, resume_checkpoint=None):
         print('num_gpus', num_gpus, torch.cuda.device_count())
         if num_gpus > 1 and torch.cuda.device_count() > 1:
-            return self.train_distributed(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus)
+            return self.train_distributed(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus, resume, resume_checkpoint)
         else:
-            return self.train_single_gpu(features_train, fmri_train, features_train_val, fmri_train_val)
+            return self.train_single_gpu(features_train, fmri_train, features_train_val, fmri_train_val, resume, resume_checkpoint)
     
-    def train_distributed(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus):
+    def train_distributed(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus, resume=False, resume_checkpoint=None):
         # Split the data for training and validation
         X_train, X_val, y_train, y_val = train_test_split(
             features_train, fmri_train, 
@@ -472,7 +571,6 @@ class RegressionHander_Vision():
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
         batch_size = 32  # This is per GPU
-        base_epoch = 0
         epochs = 20
         
         # Spawn processes for each GPU
@@ -488,7 +586,6 @@ class RegressionHander_Vision():
         config = {
             'batch_size': batch_size,
             'epochs': epochs,
-            'base_epoch': base_epoch,
             'linear_learning_rate_initial': 1e-4,
             'linear_learning_rate_final': 1e-6,
             'linear_weight_decay': 1e-3,
@@ -496,6 +593,8 @@ class RegressionHander_Vision():
             'lora_learning_rate_final': 1e-5,
             'lora_weight_decay': 1e-5,
             'num_gpus': num_gpus,
+            'resume': resume,
+            'resume_checkpoint': resume_checkpoint,
         }
         
         mp.spawn(
@@ -514,10 +613,9 @@ class RegressionHander_Vision():
         training_time = time.time() - start_time
         return self.model, training_time
     
-    def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val):
+    def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val, resume=False, resume_checkpoint=None):
         start_time = time.time()  
         print('start training at', start_time)
-        base_epoch = 0
         epochs = 30
         batch_size = 2
         
@@ -536,7 +634,6 @@ class RegressionHander_Vision():
             'lora_learning_rate_initial': lora_learning_rate_initial,
             'lora_learning_rate_final': lora_learning_rate_final,
             'lora_weight_decay': lora_weight_decay,
-            'base_epoch': base_epoch,
         }
         project_name, model_name, _ = utils.get_wandb_config()
         print('single gpu train self.enable_wandb', self.enable_wandb)
@@ -555,6 +652,11 @@ class RegressionHander_Vision():
             random_state=42
         )   
         print('start preparing data at ', time.time())
+        if utils.isMockMode():
+            X_train = X_train[:batch_size*2]
+            y_train = y_train[:batch_size*2]
+            X_val = X_val[:batch_size*2]
+            y_val = y_val[:batch_size*2]
         train_loader = prepare_training_data(X_train, y_train, batch_size=batch_size)
         val_loader = prepare_training_data(X_val, y_val, batch_size=batch_size)
         print('done preparing data at ', time.time())
@@ -609,10 +711,20 @@ class RegressionHander_Vision():
         best_model_state = None
         train_losses = []
         val_losses = []
-        total_loss =0
-        for epoch in range(epochs):
-            total_loss =0
-            in_batch=1
+        start_epoch = 0
+        
+        # Load checkpoint if resuming training
+        if resume and resume_checkpoint:
+            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint)
+            start_epoch, best_val_loss, patience_counter, train_losses, val_losses = load_checkpoint(
+                self.model, lora_optimizer, linear_optimizer, lora_scheduler, linear_scheduler, checkpoint_path
+            )
+            print(f"Resuming from epoch {start_epoch}")
+        
+        total_loss = 0
+        for epoch in range(start_epoch, epochs):
+            total_loss = 0
+            in_batch = 1
             in_batch_losses = []
             load_start = time.time()
             total_loading_time = 0
@@ -680,7 +792,7 @@ class RegressionHander_Vision():
 
             # save model
             if epoch != 0 and epoch % 5 == 0:
-                self.save_model(f'lora-{epoch+base_epoch}')
+                self.save_model(f'lora-{epoch}')
 
             # Print average loss every 1 epochs
             # Print progress
@@ -701,11 +813,11 @@ class RegressionHander_Vision():
             if self.enable_wandb:
                     logs = {
                         'train/loss': train_loss,
-                        'train/num_steps': base_epoch + epoch,
+                        'train/num_steps': epoch,
                         "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
                         "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
                         'test/loss': val_loss,
-                        'test/num_steps': base_epoch + epoch
+                        'test/num_steps': epoch
                     }
                     lora_a_grads = []
                     lora_a_norms = []
@@ -770,6 +882,107 @@ class RegressionHander_Vision():
             # Step both schedulers at the end of each epoch
             lora_scheduler.step()
             linear_scheduler.step()
+
+            # Save checkpoint
+            checkpoint = {
+                'epoch': epoch,
+                'state_dict': self.model.state_dict(),
+                'lora_optimizer': lora_optimizer.state_dict(),
+                'linear_optimizer': linear_optimizer.state_dict(),
+                'lora_scheduler': lora_scheduler.state_dict(),
+                'linear_scheduler': linear_scheduler.state_dict(),
+                'best_val_loss': best_val_loss,
+                'patience_counter': patience_counter,
+                'train_losses': train_losses,
+                'val_losses': val_losses,
+                'torch_rng_state': torch.get_rng_state(),
+                'numpy_rng_state': np.random.get_state(),
+                'python_rng_state': random.getstate() if 'random' in sys.modules else None,
+            }
+            
+            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
+            save_checkpoint(checkpoint, val_loss < best_val_loss, checkpoint_path)
+            
+            # Early stopping check
+            if val_loss + 0.001 < best_val_loss:
+                best_val_loss = val_loss
+                best_model_state = self.model.state_dict().copy()
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f'\nEarly stopping triggered at epoch {epoch}')
+                    break
+            
+            if self.enable_wandb:
+                    logs = {
+                        'train/loss': train_loss,
+                        'train/num_steps': epoch,
+                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                        'test/loss': val_loss,
+                        'test/num_steps': epoch
+                    }
+                    lora_a_grads = []
+                    lora_a_norms = []
+                    lora_b_grads = []
+                    lora_b_norms = []
+                    linear_grads = []
+                    linear_norms = []
+                    for name, param in model.module.named_parameters():
+                        if param.requires_grad and param.grad is not None:
+                            if 'lora_A' in name:
+                                lora_a_grads.append(torch.norm(param.grad).item())
+                                lora_a_norms.append(torch.norm(param).item())
+                            elif 'lora_B' in name:
+                                lora_b_grads.append(torch.norm(param.grad).item())    
+                                lora_b_norms.append(torch.norm(param).item())
+                            elif 'linear4' in name:
+                                linear_grads.append(torch.norm(param.grad).item())  
+                                linear_norms.append(torch.norm(param).item())
+                    if linear_grads:
+                        logs.update({
+                            'gradients/linear4/mean': np.mean(linear_grads),
+                            'gradients/linear4/max': np.max(linear_grads),
+                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if linear_norms:
+                        logs.update({
+                            'norms/linear4/mean': np.mean(linear_norms),
+                            'norms/linear4/max': np.max(linear_norms),
+                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_a_grads:
+                        logs.update({
+                            'gradients/lora_A/mean': np.mean(lora_a_grads),
+                            'gradients/lora_A/max': np.max(lora_a_grads),
+                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_a_norms:
+                        logs.update({
+                            'norms/lora_A/mean': np.mean(lora_a_norms),
+                            'norms/lora_A/max': np.max(lora_a_norms),
+                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_b_grads:
+                        logs.update({
+                            'gradients/lora_B/mean': np.mean(lora_b_grads),
+                            'gradients/lora_B/max': np.max(lora_b_grads),
+                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_b_norms:
+                        logs.update({
+                            'norms/lora_B/mean': np.mean(lora_b_norms),
+                            'norms/lora_B/max': np.max(lora_b_norms),
+                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    wandb.log(logs)
         # Restore best model
         if best_model_state is not None:
             self.model.load_state_dict(best_model_state)
