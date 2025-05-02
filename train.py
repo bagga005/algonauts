@@ -506,9 +506,16 @@ def get_features(modality):
     return features
 
 def get_fmri(subject):
-    root_data_dir = utils.get_data_root_dir()
-    fmri = load_fmri(root_data_dir, subject)
-    return fmri
+    if utils.isMockMode():
+        fmri = {}
+        fmri['s01e01a'] = np.random.randn(592, 1000)
+        # print('fmri.shape', fmri.keys())
+        # print('fmri.shape', fmri['s01e01a'].shape)
+        return fmri
+    else:
+        root_data_dir = utils.get_data_root_dir()
+        fmri = load_fmri(root_data_dir, subject)
+        return fmri
 def add_recurrent_features(features,fmri,recurrence):
     #print('features.shape', features.shape)
     #print('fmri.shape', fmri.shape)
