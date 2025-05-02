@@ -616,7 +616,7 @@ class RegressionHander_Vision():
     def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val, resume=False, resume_checkpoint=None):
         start_time = time.time()  
         print('start training at', start_time)
-        epochs = 30
+        epochs = 5
         batch_size = 2
         
         linear_learning_rate_initial = 1e-4
@@ -825,7 +825,7 @@ class RegressionHander_Vision():
                     lora_b_norms = []
                     linear_grads = []
                     linear_norms = []
-                    for name, param in model.module.named_parameters():
+                    for name, param in self.model.module.named_parameters():
                         if param.requires_grad and param.grad is not None:
                             if 'lora_A' in name:
                                 lora_a_grads.append(torch.norm(param.grad).item())
