@@ -133,7 +133,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     input_size, output_size, enable_wandb = model_params
     X_train, y_train = train_data
     X_val, y_val = val_data
-    batch_size, epochs = config['batch_size'], config['epochs']
+    batch_size, epochs, base_epoch = config['batch_size'], config['epochs'], config['base_epoch ']
     num_gpus = config['num_gpus']
     # Get CPU count
     cpu_count = os.cpu_count()
@@ -325,24 +325,43 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 if enable_wandb:
                     logs = {
                         'train/loss': train_loss,
-                        'train/num_steps': epoch,
+                        'train/num_steps': base_epoch + epoch,
                         "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
                         "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
                         'test/loss': val_loss,
-                        'test/num_steps': epoch
+                        'test/num_steps': base_epoch + epoch
                     }
                     lora_a_grads = []
+                    lora_a_norms = []
                     lora_b_grads = []
+                    lora_b_norms = []
                     linear_grads = []
+                    linear_norms = []
                     for name, param in model.module.named_parameters():
                         if param.requires_grad and param.grad is not None:
                             if 'lora_A' in name:
                                 lora_a_grads.append(torch.norm(param.grad).item())
+                                lora_a_norms.append(torch.norm(param).item())
                             elif 'lora_B' in name:
                                 lora_b_grads.append(torch.norm(param.grad).item())    
-                            elif 'linear' in name:
+                                lora_b_norms.append(torch.norm(param).item())
+                            elif 'linear4' in name:
                                 linear_grads.append(torch.norm(param.grad).item())  
-
+                                linear_norms.append(torch.norm(param).item())
+                    if linear_grads:
+                        logs.update({
+                            'gradients/linear4/mean': np.mean(linear_grads),
+                            'gradients/linear4/max': np.max(linear_grads),
+                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if linear_norms:
+                        logs.update({
+                            'norms/linear4/mean': np.mean(linear_norms),
+                            'norms/linear4/max': np.max(linear_norms),
+                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
                     if lora_a_grads:
                         logs.update({
                             'gradients/lora_A/mean': np.mean(lora_a_grads),
@@ -350,7 +369,13 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                             'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
                             'batch': epoch * len(train_loader) + in_batch
                         })
-            
+                    if lora_a_norms:
+                        logs.update({
+                            'norms/lora_A/mean': np.mean(lora_a_norms),
+                            'norms/lora_A/max': np.max(lora_a_norms),
+                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
                     if lora_b_grads:
                         logs.update({
                             'gradients/lora_B/mean': np.mean(lora_b_grads),
@@ -358,8 +383,15 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                             'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
                             'batch': epoch * len(train_loader) + in_batch
                         })
+                    if lora_b_norms:
+                        logs.update({
+                            'norms/lora_B/mean': np.mean(lora_b_norms),
+                            'norms/lora_B/max': np.max(lora_b_norms),
+                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
                     wandb.log(logs)
-                
+
                 # Save model periodically
                 if epoch % 5 == 0: #epoch != 0 and 
                     # Save the DDP model's state dictionary
@@ -440,6 +472,7 @@ class RegressionHander_Vision():
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
         batch_size = 32  # This is per GPU
+        base_epoch = 0
         epochs = 20
         
         # Spawn processes for each GPU
@@ -455,6 +488,7 @@ class RegressionHander_Vision():
         config = {
             'batch_size': batch_size,
             'epochs': epochs,
+            'base_epoch': base_epoch,
             'linear_learning_rate_initial': 1e-4,
             'linear_learning_rate_final': 1e-6,
             'linear_weight_decay': 1e-3,
@@ -665,15 +699,74 @@ class RegressionHander_Vision():
                     break
             
             if self.enable_wandb:
-                logs = {
-                    'train/loss': train_loss,
-                    'train/num_steps': base_epoch + epoch,
-                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                    'test/loss': val_loss,
-                    'test/num_steps': base_epoch + epoch
-                }
-                wandb.log(logs)
+                    logs = {
+                        'train/loss': train_loss,
+                        'train/num_steps': base_epoch + epoch,
+                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                        'test/loss': val_loss,
+                        'test/num_steps': base_epoch + epoch
+                    }
+                    lora_a_grads = []
+                    lora_a_norms = []
+                    lora_b_grads = []
+                    lora_b_norms = []
+                    linear_grads = []
+                    linear_norms = []
+                    for name, param in model.module.named_parameters():
+                        if param.requires_grad and param.grad is not None:
+                            if 'lora_A' in name:
+                                lora_a_grads.append(torch.norm(param.grad).item())
+                                lora_a_norms.append(torch.norm(param).item())
+                            elif 'lora_B' in name:
+                                lora_b_grads.append(torch.norm(param.grad).item())    
+                                lora_b_norms.append(torch.norm(param).item())
+                            elif 'linear4' in name:
+                                linear_grads.append(torch.norm(param.grad).item())  
+                                linear_norms.append(torch.norm(param).item())
+                    if linear_grads:
+                        logs.update({
+                            'gradients/linear4/mean': np.mean(linear_grads),
+                            'gradients/linear4/max': np.max(linear_grads),
+                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if linear_norms:
+                        logs.update({
+                            'norms/linear4/mean': np.mean(linear_norms),
+                            'norms/linear4/max': np.max(linear_norms),
+                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_a_grads:
+                        logs.update({
+                            'gradients/lora_A/mean': np.mean(lora_a_grads),
+                            'gradients/lora_A/max': np.max(lora_a_grads),
+                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_a_norms:
+                        logs.update({
+                            'norms/lora_A/mean': np.mean(lora_a_norms),
+                            'norms/lora_A/max': np.max(lora_a_norms),
+                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_b_grads:
+                        logs.update({
+                            'gradients/lora_B/mean': np.mean(lora_b_grads),
+                            'gradients/lora_B/max': np.max(lora_b_grads),
+                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    if lora_b_norms:
+                        logs.update({
+                            'norms/lora_B/mean': np.mean(lora_b_norms),
+                            'norms/lora_B/max': np.max(lora_b_norms),
+                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
+                            'batch': epoch * len(train_loader) + in_batch
+                        })
+                    wandb.log(logs)
             # Step both schedulers at the end of each epoch
             lora_scheduler.step()
             linear_scheduler.step()
@@ -713,7 +806,7 @@ class RegressionHander_Vision():
     def predict(self, features_val):
         print('prediction called')
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
-        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32, is_for_training=False)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=8, is_for_training=False)
         self.model.eval()
         fmri_val_pred = []
         with torch.no_grad():
