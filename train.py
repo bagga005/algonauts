@@ -553,16 +553,22 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         print('train enable_wandb', enable_wandb)
         trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name, enable_wandb=enable_wandb)
         print('got lora vision handler')
+        resume = True
+        checkpoint = 'lora-1-checkpoint.pth'
+        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count(), resume= resume, resume_checkpoint=checkpoint)
     elif training_handler == 'sklearn':
         print('aligning features and fmri samples')
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
         print('got features and fmri samples')
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
+        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
     elif training_handler == 'transformer':
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
+        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     print('training')
-    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
+    
+    
     print('training done')
     del features_train, fmri_train
     return trainer, training_time

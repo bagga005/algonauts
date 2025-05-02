@@ -2,6 +2,7 @@ import torch
 from torchvision.models.feature_extraction import create_feature_extractor
 import os
 import utils
+import random
 import numpy as np
 from torch import nn
 from peft import LoraConfig, get_peft_model
@@ -159,7 +160,6 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
         if 'numpy_rng_state' in checkpoint:
             np.random.set_state(checkpoint['numpy_rng_state'])
         if 'python_rng_state' in checkpoint and random is not None:
-            import random
             random.setstate(checkpoint['python_rng_state'])
         
         print(f"Loaded checkpoint '{filename}' (epoch {checkpoint['epoch']})")
@@ -371,11 +371,11 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 if in_batch % 100 == 0 or in_batch < 3:
                     if rank == 0:  # Only print from main process
                         print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                        for name, param in model.module.named_parameters():
-                            if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
-                                grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                                param_norm = torch.norm(param).item()
-                                print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                        # for name, param in model.module.named_parameters():
+                        #     if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
+                        #         grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                        #         param_norm = torch.norm(param).item()
+                        #         print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
                 
                 
                 in_batch += 1
@@ -742,14 +742,10 @@ class RegressionHander_Vision():
                 batch_y = batch_y.to(self.device)
 
                 # Forward pass
-                #print('start forward at', time.time())
                 outputs = self.model(batch_X)
-                #print('start loss at', time.time())
                 loss = criterion(outputs, batch_y)
-                #print('start backward at', time.time())
                 # Backward pass
                 loss.backward()
-                #print('start optimize at', time.time())
                 # Update weights with both optimizers
                 lora_optimizer.step()
                 linear_optimizer.step()
@@ -761,11 +757,11 @@ class RegressionHander_Vision():
                     in_batch_losses.append(total_loss/in_batch)
                     self.save_train_val_loss(True, in_batch_losses, f'{epoch}-{in_batch}')
                     print(f'Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    for name, param in self.model.named_parameters():
-                        if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
-                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                            param_norm = torch.norm(param).item()
-                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                    # for name, param in self.model.named_parameters():
+                    #     if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
+                    #         grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                    #         param_norm = torch.norm(param).item()
+                    #         print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
                 in_batch += 1
                 #print('batch done at ',time.time())
                 load_start = time.time()
