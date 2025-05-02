@@ -78,7 +78,7 @@ if __name__ == "__main__":
     model1 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
     #model1.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-5-distributed-s15.pth'))
     model2 = VisionLinearRegressionModel(input_size=8192*4, output_size=1000, device='cpu')
-    model2.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-20-distributed-s15.pth'))
+    model2.load_state_dict(torch.load('/home/bagga005/algo/comp_data/models/lora-20-distributed-s15.pth', map_location=torch.device('cpu')))
     # Compare vision models with all parameters (including base SlowR50 parameters)
     results = compare_two_models(
         model1, 
