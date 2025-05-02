@@ -33,7 +33,7 @@ def get_output_dir():
     return os.getenv("OUTPUT_DIR")
 
 def get_wandb_config():
-    return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME")
+    return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 
 def get_accuracy_json_file():
     return os.path.join(get_output_dir(), 'accuracy.json')

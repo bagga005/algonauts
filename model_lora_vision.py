@@ -246,7 +246,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             'lora_learning_rate_final': lora_learning_rate_final,
             'lora_weight_decay': lora_weight_decay,
         }
-        project_name, model_name = utils.get_wandb_config()
+        project_name, model_name, _ = utils.get_wandb_config()
         wandb.init(
             #id=model_name,
             project=project_name,
@@ -403,7 +403,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     return best_val_loss if rank == 0 else None
 
 class RegressionHander_Vision():
-    def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=True):
+    def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
         self.input_size = input_size
         self.output_size = output_size
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -478,7 +478,7 @@ class RegressionHander_Vision():
         print('start training at', start_time)
         base_epoch = 0
         epochs = 30
-        batch_size = 16
+        batch_size = 32
         
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
@@ -497,7 +497,8 @@ class RegressionHander_Vision():
             'lora_weight_decay': lora_weight_decay,
             'base_epoch': base_epoch,
         }
-        project_name, model_name = utils.get_wandb_config()
+        project_name, model_name, _ = utils.get_wandb_config()
+        print('single gpu train self.enable_wandb', self.enable_wandb)
         if self.enable_wandb:
             wandb.init(
                 #id=model_name,
@@ -607,11 +608,11 @@ class RegressionHander_Vision():
                     in_batch_losses.append(total_loss/in_batch)
                     self.save_train_val_loss(True, in_batch_losses, f'{epoch}-{in_batch}')
                     print(f'Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    for name, param in self.model.visual_model.named_parameters():
-                        if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
-                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                            param_norm = torch.norm(param).item()
-                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                    # for name, param in self.model.visual_model.named_parameters():
+                    #     if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
+                    #         grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                    #         param_norm = torch.norm(param).item()
+                    #         print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
                 in_batch += 1
                 #print('batch done at ',time.time())
                 load_start = time.time()

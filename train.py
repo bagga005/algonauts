@@ -541,7 +541,9 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         #print('feautres_train', features_train[:500])
         print('create trainer')
         del features
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name)
+        _,_, enable_wandb = utils.get_wandb_config()
+        print('train enable_wandb', enable_wandb)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name, enable_wandb=enable_wandb)
         print('got lora vision handler')
     elif training_handler == 'sklearn':
         print('aligning features and fmri samples')
@@ -552,7 +554,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
     print('training')
-    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=4)
+    model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     print('training done')
     del features_train, fmri_train
     return trainer, training_time
@@ -691,7 +693,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         #print('feautres_train', features_train[:500])
         print('create trainer')
         del features
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=trained_model_name, enable_wandb=False)
+        _,_, enable_wandb = utils.get_wandb_config()
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=trained_model_name, enable_wandb=enable_wandb)
         print('got lora vision handler')
 
     if training_handler != 'loravision':
