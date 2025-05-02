@@ -142,7 +142,7 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
     """Load checkpoint from disk"""
     if os.path.isfile(filename):
         print(f"Loading checkpoint '{filename}'")
-        checkpoint = torch.load(filename)
+        checkpoint = torch.load(filename, weights_only=False)
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
