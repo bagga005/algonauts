@@ -48,7 +48,10 @@ def get_roi_network_map():
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_output_dir(), 'models', file_name)
+    
     torch.save(model.state_dict(), full_path)
+def str_to_bool(s):
+    return s.lower() in ("true", "1", "t", "yes", "y")
 
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'

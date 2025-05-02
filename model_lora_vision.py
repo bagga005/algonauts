@@ -152,6 +152,8 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         num_workers = min(4 * max(1, num_gpus), cpu_count)
     print(f'num_workers for dataloader: {num_workers}')
 
+    
+
     # Setup distributed process
     setup_distributed(rank, world_size)
     torch.cuda.set_device(rank)
@@ -161,7 +163,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     device = torch.device(f"cuda:{rank}")
     model = VisionLinearRegressionModel(input_size, output_size, device)
     model = model.to(device)
-    model = DDP(model, device_ids=[rank], find_unused_parameters=True)
+    model = DDP(model, device_ids=[rank])
     
     # Create dataset and prepare data loaders with DistributedSampler
     train_dataset = VideoDataset(X_train, y_train)
@@ -432,8 +434,8 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 32  # This is per GPU
-        epochs = 30
+        batch_size = 16  # This is per GPU
+        epochs = 20
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())

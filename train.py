@@ -542,6 +542,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         print('create trainer')
         del features
         _,_, enable_wandb = utils.get_wandb_config()
+        enable_wandb = utils.str_to_bool(enable_wandb)
         print('train enable_wandb', enable_wandb)
         trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name, enable_wandb=enable_wandb)
         print('got lora vision handler')
