@@ -53,6 +53,11 @@ def save_model_pytorch(model, model_name):
 def str_to_bool(s):
     return s.lower() in ("true", "1", "t", "yes", "y")
 
+def isMockMode():
+    strm = os.getenv("MOCK_MODE")
+    if strm:
+        return str_to_bool(strm)
+
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_output_dir(), 'models', file_name)

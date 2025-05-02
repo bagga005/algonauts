@@ -15,6 +15,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from peft.tuners.lora import LoraModel
+from torch.utils.checkpoint import checkpoint
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
@@ -60,54 +61,41 @@ class VisionLinearRegressionModel(nn.Module):
             task_type="FEATURE_EXTRACTION",     
         )
         # 2. Freeze the entire model first
-        for param in self.v_model.parameters():
-            param.requires_grad = False
+        # for param in self.v_model.parameters():
+        #     param.requires_grad = False
+        # Create a custom wrapper for the video model
 
-        class VideoModelWrapper(nn.Module):
-            def __init__(self, model, target_layer_name):
-                super().__init__()
-                self.model = model
-                self.target_layer_name = target_layer_name
-
-            def forward(self, x):
-                if len(x.shape) == 4:
-                    x = x.unsqueeze(2)
-
-                # Run the model up to the desired layer manually
-                x = self.model.blocks[0](x)
-                x = self.model.blocks[1](x)
-                x = self.model.blocks[2](x)
-                x = self.model.blocks[3](x)
-                x = self.model.blocks[4](x)
-                x = self.model.blocks[5].pool(x)  # This is 'blocks.5.pool'
-
-                return x
-
-        
         # 2. Apply LoRA manually
-        self.v_model = LoraModel(self.v_model, self.lora_config, adapter_name="default")
-
-        self.visual_model = VideoModelWrapper(self.v_model, self.model_layer)
+        #self.visual_model = LoraModel(self.v_model, self.lora_config, adapter_name="default")
+        self.visual_model = get_peft_model(self.v_model, self.lora_config)
         self.visual_model.to(self.device)
 
 
     def forward(self, x):
-        b_size = x.shape[0]
-        window = x.shape[1]
-        x = x.view(x.shape[1] * x.shape[0], x.shape[2], x.shape[3], x.shape[4], x.shape[5])
-        # Pass the input directly to the wrapped model
-        layer_output = self.visual_model(x)
-        #print('layer_output.shape post visual model', layer_output.shape)
-        layer_output = layer_output.reshape(layer_output.shape[0], layer_output.shape[1] * layer_output.shape[2] * layer_output.shape[3] * layer_output.shape[4])
-        #layer_output = layer_output.flatten().unsqueeze(0)
-        #print('layer_output.shape post flatten 1', layer_output.shape)
-        layer_output = layer_output.reshape(int(layer_output.shape[0]/window),  int(layer_output.shape[1]*window))
-        #print('layer_output.shape post flatten 2', layer_output.shape)
-        #make prediction with linear layer
-        prediction = self.linear4(layer_output)
-        #print('prediction.shape', prediction.shape)
-        #add batch dimension
+        b_size, window = x.shape[:2]
+        x = x.view(b_size * window, *x.shape[2:])
+
+        if len(x.shape) == 4:
+            x = x.unsqueeze(2)
+
+        with torch.no_grad():
+            x = self.visual_model.model.blocks[0](x)
+            x = self.visual_model.model.blocks[1](x)
+            x = self.visual_model.model.blocks[2](x)
+        with torch.enable_grad():
+            # Blocks 3 and 4 contain LoRA parameters and require gradients
+            x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
+            x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
+
+        
+            layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
+            layer_output = layer_output.reshape(layer_output.shape[0], -1)
+            layer_output = layer_output.reshape(b_size, -1)
+            
+            prediction = self.linear4(layer_output)
+
         return prediction
+
 
 # Define setup and cleanup functions for distributed training at module level
 def setup_distributed(rank, world_size):
@@ -130,6 +118,9 @@ class VideoDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         videoname, frame_indices = self.input_data[idx]
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
+
+        if utils.isMockMode():
+            return torch.randn(4,3,8,256,256), self.targets[idx]
         # For example:
         with h5py.File(filename, 'r') as f:
             frames = f[videoname]['visual']
@@ -296,7 +287,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             if in_batch % 100 == 0 or in_batch < 3:
                 if rank == 0:  # Only print from main process
                     print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    for name, param in model.module.visual_model.named_parameters():
+                    for name, param in model.module.named_parameters():
                         if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
                             grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
                             param_norm = torch.norm(param).item()
@@ -342,12 +333,16 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 }
                 lora_a_grads = []
                 lora_b_grads = []
-                for name, param in model.module.visual_model.named_parameters():
+                linear_grads = []
+                for name, param in model.module.named_parameters():
                     if param.requires_grad and param.grad is not None:
                         if 'lora_A' in name:
-                                lora_a_grads.append(torch.norm(param.grad).item())
+                            lora_a_grads.append(torch.norm(param.grad).item())
                         elif 'lora_B' in name:
                             lora_b_grads.append(torch.norm(param.grad).item())    
+                        elif 'linear' in name:
+                            linear_grads.append(torch.norm(param.grad).item())  
+
                 if lora_a_grads:
                     logs.update({
                         'gradients/lora_A/mean': np.mean(lora_a_grads),
@@ -480,7 +475,7 @@ class RegressionHander_Vision():
         print('start training at', start_time)
         base_epoch = 0
         epochs = 30
-        batch_size = 32
+        batch_size = 2
         
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
@@ -610,11 +605,11 @@ class RegressionHander_Vision():
                     in_batch_losses.append(total_loss/in_batch)
                     self.save_train_val_loss(True, in_batch_losses, f'{epoch}-{in_batch}')
                     print(f'Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
-                    # for name, param in self.model.visual_model.named_parameters():
-                    #     if ('lora_B' in name or 'lora_A' in name) and param.requires_grad:
-                    #         grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
-                    #         param_norm = torch.norm(param).item()
-                    #         print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
+                    for name, param in self.model.named_parameters():
+                        if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
+                            grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
+                            param_norm = torch.norm(param).item()
+                            print(f"{name}: grad_norm={grad_norm:.6f}, param_norm={param_norm:.6f}")
                 in_batch += 1
                 #print('batch done at ',time.time())
                 load_start = time.time()
