@@ -299,7 +299,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
                 best_val_loss = checkpoint['best_val_loss']
                 patience_counter = checkpoint['patience_counter']
-                start_epoch = checkpoint['epoch'] + 1
+                start_epoch = checkpoint['epoch'] 
                 print(f"Resuming from epoch {start_epoch}")
                 checkpoint_loaded = True
             else:
@@ -317,16 +317,15 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         # Broadcast training state from rank 0 to all processes in a more robust way
         if rank == 0:
             print(f"Rank 0 broadcasting: start_epoch={start_epoch}, patience_counter={patience_counter}, best_val_loss={best_val_loss}")
-            # Pack all values into a single tensor for more reliable broadcast
-            state_tensor = torch.tensor([start_epoch, patience_counter], dtype=torch.long).to(device)
-            val_loss_tensor = torch.tensor([best_val_loss], dtype=torch.float32).to(device)
+            state_tensor = torch.tensor([int(start_epoch), int(patience_counter)], dtype=torch.int64, device=device)
+            val_loss_tensor = torch.tensor([float(best_val_loss)], dtype=torch.float32, device=device)
         else:
-            # Other ranks initialize empty tensors to receive the broadcast
-            state_tensor = torch.zeros(2, dtype=torch.long).to(device)
-            val_loss_tensor = torch.zeros(1, dtype=torch.float32).to(device)
+            state_tensor = torch.zeros(2, dtype=torch.int64, device=device)
+            val_loss_tensor = torch.zeros(1, dtype=torch.float32, device=device)
         dist.barrier()
         dist.broadcast(state_tensor, src=0)
         dist.broadcast(val_loss_tensor, src=0)
+        print(f'Rank {rank} received state_tensor: {state_tensor}, val_loss_tensor: {val_loss_tensor}')
         # Unpack values
         start_epoch = int(state_tensor[0].item())
         patience_counter = int(state_tensor[1].item())
