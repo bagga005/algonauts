@@ -533,7 +533,7 @@ def add_recurrent_features(features,fmri,recurrence):
     #print('fmri.shape', fmri.shape)
     return recurrent_features, fmri
 
-def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, recurrence=1, trained_model_name=None):
+def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, config):
     print('run training')
     
     #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
@@ -551,11 +551,9 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         _,_, enable_wandb = utils.get_wandb_config()
         enable_wandb = utils.str_to_bool(enable_wandb)
         print('train enable_wandb', enable_wandb)
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], trained_model_name, enable_wandb=enable_wandb)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], config['trained_model_name'], enable_wandb=enable_wandb)
         print('got lora vision handler')
-        resume = True
-        checkpoint = 'lora-1-checkpoint.pth'
-        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count(), resume= resume, resume_checkpoint=checkpoint)
+        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count(), resume_checkpoint=config['resume_checkpoint'])
     elif training_handler == 'sklearn':
         print('aligning features and fmri samples')
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
@@ -573,7 +571,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     del features_train, fmri_train
     return trainer, training_time
 
-def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, recurrence=1, trained_model_name=None):
+def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
@@ -584,14 +582,14 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
         print(f"Got features for modality {modality}...")
-        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, recurrence=recurrence, trained_model_name=trained_model_name)
+        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,viewing_session, config)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality, stimulus_window)
         trainer.save_model(model_name)
         del features, trainer
 
 
-def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities=None, skip_if_accuracy_exists=False, recurrence=1):
+def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None, skip_if_accuracy_exists=False):
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
@@ -603,7 +601,7 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
                 continue
         fmri = get_fmri(subject)
         #viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
-        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
+        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
         subject_time = time.time() - subject_start
         print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
@@ -611,22 +609,22 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, recurrence=1, trained_model_name=None):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, trained_model_name=trained_model_name)
+        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, recurrence=1):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False):
     for subject in [1, 2, 3, 5]:
         fmri = get_fmri(subject)
-        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, write_accuracy, write_accuracy_to_csv, plot_encoding_fig, break_up_by_network, recurrence)
+        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, write_accuracy, write_accuracy_to_csv, plot_encoding_fig, break_up_by_network)
         del fmri
 
-def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1):
+def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -672,7 +670,7 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
     return accuracy
 
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, recurrence=1, trained_model_name=None):
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, config, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -708,14 +706,14 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         print('create trainer')
         del features
         _,_, enable_wandb = utils.get_wandb_config()
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=trained_model_name, enable_wandb=enable_wandb)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=enable_wandb)
         print('got lora vision handler')
 
     if training_handler != 'loravision':
-        if not trained_model_name:
+        if not config['trained_model_name']:
             model_name = get_model_name(subject, modality, stimulus_window)
         else:
-            model_name = trained_model_name
+            model_name = config['trained_model_name']
         print('model_name', model_name)
         trainer.load_model(model_name)
 
