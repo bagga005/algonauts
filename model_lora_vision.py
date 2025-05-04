@@ -334,7 +334,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 project=project_name,
                 #name=model_name,
                 config=wandb_config,
-                #resume="allow",
+                resume="allow",
             )
         
         for epoch in range(start_epoch, epochs):
@@ -643,7 +643,7 @@ class RegressionHander_Vision():
                 project=project_name,
                 #name=model_name,
                 config=wandb_config,
-                #resume="allow",
+                resume="allow",
             )
 
         X_train, X_val, y_train, y_val = train_test_split(
