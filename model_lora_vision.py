@@ -312,17 +312,22 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         if rank == 0: print('distributed: checkpoint done')
 
         # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
-        start_epoch_tensor = torch.tensor(start_epoch).to(device)
-        patience_counter_tensor = torch.tensor(patience_counter).to(device)
+        start_epoch_tensor = torch.tensor([start_epoch], dtype=torch.long).to(device)
+        best_val_loss_tensor = torch.tensor([best_val_loss], dtype=torch.float).to(device)
+        patience_counter_tensor = torch.tensor([patience_counter], dtype=torch.long).to(device)
         if rank == 0: print('distributed: communicate 1')
         dist.broadcast(start_epoch_tensor, src=0)
         if rank == 0: print('distributed: communicate 2')
-        dist.broadcast(patience_counter_tensor, src=0)
+        dist.broadcast(best_val_loss_tensor, src=0)
         if rank == 0: print('distributed: communicate 3')
-        start_epoch = start_epoch_tensor.item()
+        dist.broadcast(patience_counter_tensor, src=0)
         if rank == 0: print('distributed: communicate 4')
-        patience_counter = patience_counter_tensor.item()
+        start_epoch = start_epoch_tensor[0].item()
+        best_val_loss = best_val_loss_tensor[0].item()
+        patience_counter = patience_counter_tensor[0].item()
         if rank == 0: print('distributed: communicate 5')
+        
+        print(f'rank {rank} start_epoch {start_epoch}, best_val_loss {best_val_loss:.6f}, patience_counter {patience_counter}')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
