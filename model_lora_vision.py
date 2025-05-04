@@ -541,7 +541,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         if exception_raised:
             raise Exception("Error message")
 
-    return (None, time.time() - start_time) if rank == 0 else None, None
+    return None if rank == 0 else None
 
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
@@ -582,8 +582,8 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 32  # This is per GPU
-        epochs = 20
+        batch_size = 2  # This is per GPU
+        epochs = 5
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())
@@ -617,7 +617,7 @@ class RegressionHander_Vision():
         )
         
         # Load the best model saved by rank 0
-        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pth')
+        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'lora-best-distributed.pth')
         if os.path.exists(best_model_path):
             self.model.load_state_dict(torch.load(best_model_path))
             print(f"Loaded best model from {best_model_path}")
