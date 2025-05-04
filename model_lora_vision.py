@@ -306,17 +306,17 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         if rank == 0: print('distributed: checkpoint done')
 
         # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
-        # start_epoch_tensor = torch.tensor(start_epoch).to(device)
-        # patience_counter_tensor = torch.tensor(patience_counter).to(device)
-        # if rank == 0: print('distributed: communicate 1')
-        # dist.broadcast(start_epoch_tensor, src=0)
-        # if rank == 0: print('distributed: communicate 2')
-        # dist.broadcast(patience_counter_tensor, src=0)
-        # if rank == 0: print('distributed: communicate 3')
-        # start_epoch = start_epoch_tensor.item()
-        # if rank == 0: print('distributed: communicate 4')
-        # patience_counter = patience_counter_tensor.item()
-        # if rank == 0: print('distributed: communicate 5')
+        start_epoch_tensor = torch.tensor(start_epoch).to(device)
+        patience_counter_tensor = torch.tensor(patience_counter).to(device)
+        if rank == 0: print('distributed: communicate 1')
+        dist.broadcast(start_epoch_tensor, src=0)
+        if rank == 0: print('distributed: communicate 2')
+        dist.broadcast(patience_counter_tensor, src=0)
+        if rank == 0: print('distributed: communicate 3')
+        start_epoch = start_epoch_tensor.item()
+        if rank == 0: print('distributed: communicate 4')
+        patience_counter = patience_counter_tensor.item()
+        if rank == 0: print('distributed: communicate 5')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
@@ -592,7 +592,7 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 16  # This is per GPU
+        batch_size = 4  # This is per GPU
         epochs = 5
         
         # Spawn processes for each GPU
