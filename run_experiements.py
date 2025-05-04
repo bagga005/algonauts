@@ -1,7 +1,7 @@
 import train
 import h5py
 import numpy as np
-from utils import load_viewing_session_for_subject, get_accuracy_json_file
+from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode
 
 
 def run_trainings():
@@ -16,14 +16,17 @@ def run_trainings():
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 3
     include_viewing_sessions = False
-    movies_train = ["friends-s02", "friends-s04"]#[["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s04"]#[["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'loravision'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
-    trained_model_name = None
+    config = {
+        'trained_model_name': None,
+        'resume_checkpoint': None,#'lora-4-checkpoint',
+    }
     # if training_handler != 'loravision':
     #     trained_model_name = None
     recurrence = 0 #not needed as feature extraction includes option to include features from previous time steps
@@ -45,19 +48,21 @@ def run_trainings():
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
     #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
-    print('starting for handler:', training_handler, 'model name:', trained_model_name, 'with comments: ',experiment_comments)
+    if isMockMode():
+        print('******************* MOCK MODE *******************')
+    print('starting for handler:', training_handler, 'model name:', config['trained_model_name'], 'with comments: ',experiment_comments)
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions,specific_modalities, recurrence, trained_model_name)
-    #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, specific_modalities)
-    #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, specific_modalities,  recurrence)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, specific_modalities, recurrence)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, trained_model_name=trained_model_name)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
+    #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
+    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
+    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
+    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")

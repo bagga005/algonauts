@@ -131,13 +131,9 @@ class VideoDataset(torch.utils.data.Dataset):
         return frames, self.targets[idx]
 
 # Move train_on_device outside the class to make it picklable
-def save_checkpoint(state, is_best, filename):
+def save_checkpoint(state, filename):
     """Save checkpoint to disk"""
     torch.save(state, filename)
-    if is_best:
-        best_filename = filename.replace('.pth', '_best.pth')
-        torch.save(state, best_filename)
-        print(f"Saved best model to {best_filename}")
 
 def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, linear_scheduler, filename):
     """Load checkpoint from disk"""
@@ -152,8 +148,6 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
         linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
         best_val_loss = checkpoint['best_val_loss']
         patience_counter = checkpoint['patience_counter']
-        train_losses = checkpoint.get('train_losses', [])
-        val_losses = checkpoint.get('val_losses', [])
         # Also restore random states if they were saved
         if 'torch_rng_state' in checkpoint:
             torch.set_rng_state(checkpoint['torch_rng_state'])
@@ -163,13 +157,14 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
             random.setstate(checkpoint['python_rng_state'])
         
         print(f"Loaded checkpoint '{filename}' (epoch {checkpoint['epoch']})")
-        return start_epoch, best_val_loss, patience_counter, train_losses, val_losses
+        return start_epoch, best_val_loss, patience_counter
     else:
         print(f"No checkpoint found at '{filename}'")
         return 0, float('inf'), 0, [], []
 
 def train_on_device(rank, world_size, model_params, train_data, val_data, config):
     # Unpack parameters
+    start_time = time.time() 
     input_size, output_size, enable_wandb = model_params
     X_train, y_train = train_data
     X_val, y_val = val_data
@@ -185,7 +180,14 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         num_workers = min(4 * max(1, num_gpus), cpu_count)
     print(f'num_workers for dataloader: {num_workers}')
 
-    
+    # make epochs small if mode mode
+    if utils.isMockMode():
+        X_train = X_train[:batch_size*2]
+        y_train = y_train[:batch_size*2]
+        X_val = X_val[:batch_size*2]
+        y_val = y_val[:batch_size*2]
+
+    exception_raised = False
     try:
         # Setup distributed process
         setup_distributed(rank, world_size)
@@ -273,13 +275,11 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         patience = 10
         patience_counter = 0
         best_model_state = None
-        train_losses = []
-        val_losses = []
         start_epoch = 0
         
         # Load checkpoint if resuming
         if resume and resume_checkpoint and rank == 0:
-            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint)
+            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint, '.pth')
             if os.path.exists(checkpoint_path):
                 checkpoint = torch.load(checkpoint_path, map_location=device)
                 model.module.load_state_dict(checkpoint['state_dict'])
@@ -296,23 +296,16 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                     best_val_loss = checkpoint['best_val_loss']
                     patience_counter = checkpoint['patience_counter']
                     start_epoch = checkpoint['epoch'] + 1
-                    if 'train_losses' in checkpoint:
-                        train_losses = checkpoint['train_losses']
-                    if 'val_losses' in checkpoint:
-                        val_losses = checkpoint['val_losses']
                     print(f"Resuming from epoch {start_epoch}")
         
         # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
         start_epoch_tensor = torch.tensor(start_epoch).to(device)
-        best_val_loss_tensor = torch.tensor(best_val_loss).to(device)
         patience_counter_tensor = torch.tensor(patience_counter).to(device)
         
         dist.broadcast(start_epoch_tensor, src=0)
-        dist.broadcast(best_val_loss_tensor, src=0)
         dist.broadcast(patience_counter_tensor, src=0)
         
         start_epoch = start_epoch_tensor.item()
-        best_val_loss = best_val_loss_tensor.item()
         patience_counter = patience_counter_tensor.item()
         
         # Only log with wandb on the main process
@@ -330,9 +323,9 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             }
             project_name, model_name, _ = utils.get_wandb_config()
             wandb.init(
-                #id=model_name,
+                id=model_name,
                 project=project_name,
-                #name=model_name,
+                name=model_name,
                 config=wandb_config,
                 resume="allow",
             )
@@ -370,7 +363,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 
                 if in_batch % 100 == 0 or in_batch < 3:
                     if rank == 0:  # Only print from main process
-                        print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss: {loss.item():.4f}')
+                        print(f'GPU {rank} | Epoch {epoch} | Batch {in_batch} | Loss(last batch): {loss.item():.4f} | Loss (Avg in epoch): {total_loss/in_batch:.4f}')
                         # for name, param in model.module.named_parameters():
                         #     if ('lora_B' in name or 'lora_A' in name or 'linear4' in name) and param.requires_grad:
                         #         grad_norm = torch.norm(param.grad).item() if param.grad is not None else 0
@@ -405,102 +398,16 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             # Print progress on main process
             if rank == 0 and epoch % 1 == 0:
                 print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
-                # Log to wandb
-                if enable_wandb:
-                    logs = {
-                        'train/loss': train_loss,
-                        'train/num_steps': epoch,
-                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                        'test/loss': val_loss,
-                        'test/num_steps': epoch
-                    }
-                    lora_a_grads = []
-                    lora_a_norms = []
-                    lora_b_grads = []
-                    lora_b_norms = []
-                    linear_grads = []
-                    linear_norms = []
-                    for name, param in model.module.named_parameters():
-                        if param.requires_grad and param.grad is not None:
-                            if 'lora_A' in name:
-                                lora_a_grads.append(torch.norm(param.grad).item())
-                                lora_a_norms.append(torch.norm(param).item())
-                            elif 'lora_B' in name:
-                                lora_b_grads.append(torch.norm(param.grad).item())    
-                                lora_b_norms.append(torch.norm(param).item())
-                            elif 'linear4' in name:
-                                linear_grads.append(torch.norm(param.grad).item())  
-                                linear_norms.append(torch.norm(param).item())
-                    if linear_grads:
-                        logs.update({
-                            'gradients/linear4/mean': np.mean(linear_grads),
-                            'gradients/linear4/max': np.max(linear_grads),
-                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if linear_norms:
-                        logs.update({
-                            'norms/linear4/mean': np.mean(linear_norms),
-                            'norms/linear4/max': np.max(linear_norms),
-                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_grads:
-                        logs.update({
-                            'gradients/lora_A/mean': np.mean(lora_a_grads),
-                            'gradients/lora_A/max': np.max(lora_a_grads),
-                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_norms:
-                        logs.update({
-                            'norms/lora_A/mean': np.mean(lora_a_norms),
-                            'norms/lora_A/max': np.max(lora_a_norms),
-                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_grads:
-                        logs.update({
-                            'gradients/lora_B/mean': np.mean(lora_b_grads),
-                            'gradients/lora_B/max': np.max(lora_b_grads),
-                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_norms:
-                        logs.update({
-                            'norms/lora_B/mean': np.mean(lora_b_norms),
-                            'norms/lora_B/max': np.max(lora_b_norms),
-                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    wandb.log(logs)
 
-                # Save checkpoint from the main process
-                if rank == 0:
-                    checkpoint = {
-                        'epoch': epoch,
-                        'state_dict': model.module.state_dict(),
-                        'lora_optimizer': lora_optimizer.state_dict(),
-                        'linear_optimizer': linear_optimizer.state_dict(),
-                        'lora_scheduler': lora_scheduler.state_dict(),
-                        'linear_scheduler': linear_scheduler.state_dict(),
-                        'best_val_loss': best_val_loss,
-                        'patience_counter': patience_counter,
-                        'train_losses': train_losses,
-                        'val_losses': val_losses,
-                        'torch_rng_state': torch.get_rng_state(),
-                        'numpy_rng_state': np.random.get_state(),
-                    }
-                    
-                    checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
-                    save_checkpoint(checkpoint, val_loss < best_val_loss, checkpoint_path)
-            
+            # Step both schedulers at the end of each epoch
+            lora_scheduler.step()
+            linear_scheduler.step()
+
             # Early stopping check (only on rank 0)
             if rank == 0:
                 if val_loss + 0.001 < best_val_loss:
                     best_val_loss = val_loss
-                    best_model_state = model.module.state_dict().copy()
+                    #best_model_state = model.module.state_dict().copy()
                     patience_counter = 0
                     torch.save(model.module.state_dict(), 
                             os.path.join(utils.get_output_dir(), 'models', f'lora-best-distributed.pth'))
@@ -511,33 +418,130 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             patience_tensor = torch.tensor(patience_counter).to(device)
             dist.broadcast(patience_tensor, src=0)
             patience_counter = patience_tensor.item()
+
+            # Save checkpoint from the main process
+            if rank == 0:
+                checkpoint = {
+                    'epoch': epoch,
+                    'state_dict': model.module.state_dict(),
+                    'lora_optimizer': lora_optimizer.state_dict(),
+                    'linear_optimizer': linear_optimizer.state_dict(),
+                    'lora_scheduler': lora_scheduler.state_dict(),
+                    'linear_scheduler': linear_scheduler.state_dict(),
+                    'best_val_loss': best_val_loss,
+                    'patience_counter': patience_counter,
+                    'torch_rng_state': torch.get_rng_state(),
+                    'numpy_rng_state': np.random.get_state(),
+                }
+                
+                checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
+                save_checkpoint(checkpoint, checkpoint_path)
+            
+            # Save model periodically
+            if rank == 0 and epoch % 1 == 0: #epoch != 0 and 
+                # Save the DDP model's state dictionary
+                torch.save(model.module.state_dict(), 
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
+            
+
+            # Log to wandb
+            if rank == 0 and enable_wandb:
+                logs = {
+                    'train/loss': train_loss,
+                    'train/num_steps': epoch,
+                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                    'test/loss': val_loss,
+                    'test/num_steps': epoch
+                }
+                lora_a_grads = []
+                lora_a_norms = []
+                lora_b_grads = []
+                lora_b_norms = []
+                linear_grads = []
+                linear_norms = []
+                for name, param in model.module.named_parameters():
+                    if param.requires_grad and param.grad is not None:
+                        if 'lora_A' in name:
+                            lora_a_grads.append(torch.norm(param.grad).item())
+                            lora_a_norms.append(torch.norm(param).item())
+                        elif 'lora_B' in name:
+                            lora_b_grads.append(torch.norm(param.grad).item())    
+                            lora_b_norms.append(torch.norm(param).item())
+                        elif 'linear4' in name:
+                            linear_grads.append(torch.norm(param.grad).item())  
+                            linear_norms.append(torch.norm(param).item())
+                if linear_grads:
+                    logs.update({
+                        'gradients/linear4/mean': np.mean(linear_grads),
+                        'gradients/linear4/max': np.max(linear_grads),
+                        'gradients/linear4/histogram': wandb.Histogram(linear_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if linear_norms:
+                    logs.update({
+                        'norms/linear4/mean': np.mean(linear_norms),
+                        'norms/linear4/max': np.max(linear_norms),
+                        'norms/linear4/histogram': wandb.Histogram(linear_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_a_grads:
+                    logs.update({
+                        'gradients/lora_A/mean': np.mean(lora_a_grads),
+                        'gradients/lora_A/max': np.max(lora_a_grads),
+                        'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_a_norms:
+                    logs.update({
+                        'norms/lora_A/mean': np.mean(lora_a_norms),
+                        'norms/lora_A/max': np.max(lora_a_norms),
+                        'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_b_grads:
+                    logs.update({
+                        'gradients/lora_B/mean': np.mean(lora_b_grads),
+                        'gradients/lora_B/max': np.max(lora_b_grads),
+                        'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_b_norms:
+                    logs.update({
+                        'norms/lora_B/mean': np.mean(lora_b_norms),
+                        'norms/lora_B/max': np.max(lora_b_norms),
+                        'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                wandb.log(logs)
             
             if patience_counter >= patience:
                 if rank == 0:
                     print(f'\nEarly stopping triggered at epoch {epoch}')
                 break
             
-            # Step both schedulers at the end of each epoch
-            lora_scheduler.step()
-            linear_scheduler.step()
+            
         
         # Save the best model state to a file that can be loaded by the main process
-        if rank == 0 and best_model_state is not None:
-            best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pt')
-            torch.save(best_model_state, best_model_path)
-    
+        # if rank == 0 and best_model_state is not None:
+        #     best_model_path = os.path.join(utils.get_output_dir(), 'models', 'best_distributed_model.pth')
+        #     torch.save(best_model_state, best_model_path)
+        
     except KeyboardInterrupt:
         print(f"[GPU {rank}] Training interrupted by user")
+        exception_raised = True
     except Exception as e:
         print(f"[GPU {rank}] Error during training: {str(e)}")
+        exception_raised = True
     finally:
         # Make sure cleanup happens regardless of how the function exits
         if dist.is_initialized():
             cleanup_distributed()
             print(f"[GPU {rank}] Process group cleaned up properly")
-        raise Exception("Error message")
+        if exception_raised:
+            raise Exception("Error message")
 
-    return best_val_loss if rank == 0 else None
+    return (None, time.time() - start_time) if rank == 0 else None, None
 
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
@@ -548,13 +552,21 @@ class RegressionHander_Vision():
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
             self.load_model(pretrain_params_name)
-            print(f'loaded params from {pretrain_params_name}')
+            print(f'loaded params from model {pretrain_params_name}')
+        else:
+            print('not loading existing model')
         self.model.to(self.device)
         self.enable_wandb = enable_wandb
         
 
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1, resume=False, resume_checkpoint=None):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1, resume_checkpoint=None):
         print('num_gpus', num_gpus, torch.cuda.device_count())
+        if resume_checkpoint:
+            resume = True
+            print('doing a resume from checkpoint:', resume_checkpoint)
+        else:
+            resume = False
+            print('not resumeing from checkpoint')
         if num_gpus > 1 and torch.cuda.device_count() > 1:
             return self.train_distributed(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus, resume, resume_checkpoint)
         else:
@@ -616,7 +628,7 @@ class RegressionHander_Vision():
     def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val, resume=False, resume_checkpoint=None):
         start_time = time.time()  
         print('start training at', start_time)
-        epochs = 5
+        epochs = 10
         batch_size = 2
         
         linear_learning_rate_initial = 1e-4
@@ -639,9 +651,9 @@ class RegressionHander_Vision():
         print('single gpu train self.enable_wandb', self.enable_wandb)
         if self.enable_wandb:
             wandb.init(
-                #id=model_name,
+                id=model_name,
                 project=project_name,
-                #name=model_name,
+                name=model_name,
                 config=wandb_config,
                 resume="allow",
             )
@@ -652,6 +664,7 @@ class RegressionHander_Vision():
             random_state=42
         )   
         print('start preparing data at ', time.time())
+        # make epochs small if mode mode
         if utils.isMockMode():
             X_train = X_train[:batch_size*2]
             y_train = y_train[:batch_size*2]
@@ -674,14 +687,14 @@ class RegressionHander_Vision():
         # 7. Learning rate scheduler - use cosine annealing
         lora_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             lora_optimizer, 
-            T_max=220,  # Number of epochs
+            T_max=20,  # Number of epochs
             eta_min=lora_learning_rate_final
         )
 
         linear_optimizer = torch.optim.Adam(self.model.parameters(), lr=linear_learning_rate_initial, weight_decay=linear_weight_decay)
         linear_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             linear_optimizer, 
-            T_max=220,  # Number of epochs
+            T_max=20,  # Number of epochs
             eta_min=linear_learning_rate_final
         )
 
@@ -709,16 +722,15 @@ class RegressionHander_Vision():
         patience = 10
         patience_counter = 0
         best_model_state = None
-        train_losses = []
-        val_losses = []
         start_epoch = 0
         
         # Load checkpoint if resuming training
         if resume and resume_checkpoint:
             checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint)
-            start_epoch, best_val_loss, patience_counter, train_losses, val_losses = load_checkpoint(
-                self.model, lora_optimizer, linear_optimizer, lora_scheduler, linear_scheduler, checkpoint_path
+            start_epoch, best_val_loss, patience_counter = load_checkpoint(
+                self.model, lora_optimizer, linear_optimizer, lora_scheduler, linear_scheduler, f'{checkpoint_path}.pth'
             )
+            start_epoch += 1    
             print(f"Resuming from epoch {start_epoch}")
         
         total_loss = 0
@@ -767,8 +779,6 @@ class RegressionHander_Vision():
                 load_start = time.time()
             
             train_loss = total_loss / len(train_loader)
-            train_losses.append(train_loss)
-            self.save_train_val_loss(True, train_losses, epoch)
 
 
             # Validation phase
@@ -783,8 +793,7 @@ class RegressionHander_Vision():
                     val_loss += loss.item()
             
             val_loss = val_loss / len(val_loader)
-            val_losses.append(val_loss)
-            self.save_train_val_loss(False, val_losses, epoch)
+
 
             # save model
             if epoch != 0 and epoch % 5 == 0:
@@ -795,90 +804,20 @@ class RegressionHander_Vision():
             if epoch % 1 == 0:
                 print(f'Epoch {epoch:3d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}')
             
-             # Early stopping check
+
+            # Step both schedulers at the end of each epoch
+            lora_scheduler.step()
+            linear_scheduler.step()
+
+            # Early stopping check
             if val_loss + 0.001 < best_val_loss:
                 best_val_loss = val_loss
                 best_model_state = self.model.state_dict().copy()
                 patience_counter = 0
             else:
                 patience_counter += 1
-                if patience_counter >= patience:
-                    print(f'\nEarly stopping triggered at epoch {epoch}')
-                    break
-            
-            if self.enable_wandb:
-                    logs = {
-                        'train/loss': train_loss,
-                        'train/num_steps': epoch,
-                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                        'test/loss': val_loss,
-                        'test/num_steps': epoch
-                    }
-                    lora_a_grads = []
-                    lora_a_norms = []
-                    lora_b_grads = []
-                    lora_b_norms = []
-                    linear_grads = []
-                    linear_norms = []
-                    for name, param in self.model.module.named_parameters():
-                        if param.requires_grad and param.grad is not None:
-                            if 'lora_A' in name:
-                                lora_a_grads.append(torch.norm(param.grad).item())
-                                lora_a_norms.append(torch.norm(param).item())
-                            elif 'lora_B' in name:
-                                lora_b_grads.append(torch.norm(param.grad).item())    
-                                lora_b_norms.append(torch.norm(param).item())
-                            elif 'linear4' in name:
-                                linear_grads.append(torch.norm(param.grad).item())  
-                                linear_norms.append(torch.norm(param).item())
-                    if linear_grads:
-                        logs.update({
-                            'gradients/linear4/mean': np.mean(linear_grads),
-                            'gradients/linear4/max': np.max(linear_grads),
-                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if linear_norms:
-                        logs.update({
-                            'norms/linear4/mean': np.mean(linear_norms),
-                            'norms/linear4/max': np.max(linear_norms),
-                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_grads:
-                        logs.update({
-                            'gradients/lora_A/mean': np.mean(lora_a_grads),
-                            'gradients/lora_A/max': np.max(lora_a_grads),
-                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_norms:
-                        logs.update({
-                            'norms/lora_A/mean': np.mean(lora_a_norms),
-                            'norms/lora_A/max': np.max(lora_a_norms),
-                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_grads:
-                        logs.update({
-                            'gradients/lora_B/mean': np.mean(lora_b_grads),
-                            'gradients/lora_B/max': np.max(lora_b_grads),
-                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_norms:
-                        logs.update({
-                            'norms/lora_B/mean': np.mean(lora_b_norms),
-                            'norms/lora_B/max': np.max(lora_b_norms),
-                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    wandb.log(logs)
-            # Step both schedulers at the end of each epoch
-            lora_scheduler.step()
-            linear_scheduler.step()
 
+            
             # Save checkpoint
             checkpoint = {
                 'epoch': epoch,
@@ -889,99 +828,97 @@ class RegressionHander_Vision():
                 'linear_scheduler': linear_scheduler.state_dict(),
                 'best_val_loss': best_val_loss,
                 'patience_counter': patience_counter,
-                'train_losses': train_losses,
-                'val_losses': val_losses,
                 'torch_rng_state': torch.get_rng_state(),
                 'numpy_rng_state': np.random.get_state(),
                 'python_rng_state': random.getstate() if 'random' in sys.modules else None,
             }
             
             checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
-            save_checkpoint(checkpoint, val_loss < best_val_loss, checkpoint_path)
-            
-            # Early stopping check
-            if val_loss + 0.001 < best_val_loss:
-                best_val_loss = val_loss
-                best_model_state = self.model.state_dict().copy()
-                patience_counter = 0
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    print(f'\nEarly stopping triggered at epoch {epoch}')
-                    break
+            save_checkpoint(checkpoint, checkpoint_path)
+
+            # Save model periodically
+            if epoch != 0 and epoch % 5 == 0: #epoch != 0 and 
+                # Save the DDP model's state dictionary
+                torch.save(self.model.state_dict(), 
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
             
             if self.enable_wandb:
-                    logs = {
-                        'train/loss': train_loss,
-                        'train/num_steps': epoch,
-                        "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
-                        "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
-                        'test/loss': val_loss,
-                        'test/num_steps': epoch
-                    }
-                    lora_a_grads = []
-                    lora_a_norms = []
-                    lora_b_grads = []
-                    lora_b_norms = []
-                    linear_grads = []
-                    linear_norms = []
-                    for name, param in model.module.named_parameters():
-                        if param.requires_grad and param.grad is not None:
-                            if 'lora_A' in name:
-                                lora_a_grads.append(torch.norm(param.grad).item())
-                                lora_a_norms.append(torch.norm(param).item())
-                            elif 'lora_B' in name:
-                                lora_b_grads.append(torch.norm(param.grad).item())    
-                                lora_b_norms.append(torch.norm(param).item())
-                            elif 'linear4' in name:
-                                linear_grads.append(torch.norm(param.grad).item())  
-                                linear_norms.append(torch.norm(param).item())
-                    if linear_grads:
-                        logs.update({
-                            'gradients/linear4/mean': np.mean(linear_grads),
-                            'gradients/linear4/max': np.max(linear_grads),
-                            'gradients/linear4/histogram': wandb.Histogram(linear_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if linear_norms:
-                        logs.update({
-                            'norms/linear4/mean': np.mean(linear_norms),
-                            'norms/linear4/max': np.max(linear_norms),
-                            'norms/linear4/histogram': wandb.Histogram(linear_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_grads:
-                        logs.update({
-                            'gradients/lora_A/mean': np.mean(lora_a_grads),
-                            'gradients/lora_A/max': np.max(lora_a_grads),
-                            'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_a_norms:
-                        logs.update({
-                            'norms/lora_A/mean': np.mean(lora_a_norms),
-                            'norms/lora_A/max': np.max(lora_a_norms),
-                            'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_grads:
-                        logs.update({
-                            'gradients/lora_B/mean': np.mean(lora_b_grads),
-                            'gradients/lora_B/max': np.max(lora_b_grads),
-                            'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    if lora_b_norms:
-                        logs.update({
-                            'norms/lora_B/mean': np.mean(lora_b_norms),
-                            'norms/lora_B/max': np.max(lora_b_norms),
-                            'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
-                            'batch': epoch * len(train_loader) + in_batch
-                        })
-                    wandb.log(logs)
-        # Restore best model
-        if best_model_state is not None:
-            self.model.load_state_dict(best_model_state)
+                logs = {
+                    'train/loss': train_loss,
+                    'train/num_steps': epoch,
+                    "train/lr_lora": lora_optimizer.param_groups[0]['lr'],
+                    "train/lr_linear": linear_optimizer.param_groups[0]['lr'],
+                    'test/loss': val_loss,
+                    'test/num_steps': epoch
+                }
+                lora_a_grads = []
+                lora_a_norms = []
+                lora_b_grads = []
+                lora_b_norms = []
+                linear_grads = []
+                linear_norms = []
+                for name, param in self.model.named_parameters():
+                    if param.requires_grad and param.grad is not None:
+                        if 'lora_A' in name:
+                            lora_a_grads.append(torch.norm(param.grad).item())
+                            lora_a_norms.append(torch.norm(param).item())
+                        elif 'lora_B' in name:
+                            lora_b_grads.append(torch.norm(param.grad).item())    
+                            lora_b_norms.append(torch.norm(param).item())
+                        elif 'linear4' in name:
+                            linear_grads.append(torch.norm(param.grad).item())  
+                            linear_norms.append(torch.norm(param).item())
+                if linear_grads:
+                    logs.update({
+                        'gradients/linear4/mean': np.mean(linear_grads),
+                        'gradients/linear4/max': np.max(linear_grads),
+                        'gradients/linear4/histogram': wandb.Histogram(linear_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if linear_norms:
+                    logs.update({
+                        'norms/linear4/mean': np.mean(linear_norms),
+                        'norms/linear4/max': np.max(linear_norms),
+                        'norms/linear4/histogram': wandb.Histogram(linear_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_a_grads:
+                    logs.update({
+                        'gradients/lora_A/mean': np.mean(lora_a_grads),
+                        'gradients/lora_A/max': np.max(lora_a_grads),
+                        'gradients/lora_A/histogram': wandb.Histogram(lora_a_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_a_norms:
+                    logs.update({
+                        'norms/lora_A/mean': np.mean(lora_a_norms),
+                        'norms/lora_A/max': np.max(lora_a_norms),
+                        'norms/lora_A/histogram': wandb.Histogram(lora_a_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_b_grads:
+                    logs.update({
+                        'gradients/lora_B/mean': np.mean(lora_b_grads),
+                        'gradients/lora_B/max': np.max(lora_b_grads),
+                        'gradients/lora_B/histogram': wandb.Histogram(lora_b_grads),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                if lora_b_norms:
+                    logs.update({
+                        'norms/lora_B/mean': np.mean(lora_b_norms),
+                        'norms/lora_B/max': np.max(lora_b_norms),
+                        'norms/lora_B/histogram': wandb.Histogram(lora_b_norms),
+                        'batch': epoch * len(train_loader) + in_batch
+                    })
+                wandb.log(logs)
+            #now that logging is done, do early stopping if needed
+            if patience_counter >= patience:
+                print(f'\nEarly stopping triggered at epoch {epoch}')
+                break
+
+        # # Restore best model
+        # if best_model_state is not None:
+        #     self.model.load_state_dict(best_model_state)
         
         training_time = time.time() - start_time
         return self.model, training_time
