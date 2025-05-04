@@ -628,8 +628,8 @@ class RegressionHander_Vision():
     def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val, resume=False, resume_checkpoint=None):
         start_time = time.time()  
         print('start training at', start_time)
-        epochs = 10
-        batch_size = 2
+        epochs = 2
+        batch_size = 32
         
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
