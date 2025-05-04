@@ -592,7 +592,7 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 4  # This is per GPU
+        batch_size = 16  # This is per GPU
         epochs = 5
         
         # Spawn processes for each GPU
