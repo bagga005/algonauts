@@ -284,10 +284,12 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         
         # Load checkpoint if resuming
         if resume and resume_checkpoint and rank == 0:
-            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint, '.pth')
+            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '.pth')
+            print(checkpoint_path)
             if os.path.exists(checkpoint_path):
-                checkpoint = torch.load(checkpoint_path, map_location=device)
+                checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
                 model.module.load_state_dict(checkpoint['state_dict'])
+                print('checkpoint restored')
                 # Broadcast model parameters from rank 0 to all other processes
                 for param in model.parameters():
                     dist.broadcast(param.data, src=0)
@@ -302,6 +304,10 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                     patience_counter = checkpoint['patience_counter']
                     start_epoch = checkpoint['epoch'] + 1
                     print(f"Resuming from epoch {start_epoch}")
+            else:
+                print('checkpoint not found')
+                raise Exception("Checkpoint file not found") 
+
         
         if rank == 0: print('distributed: checkpoint done')
 
@@ -339,7 +345,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 config=wandb_config,
                 resume="allow",
             )
-        
+        print(f'rank {rank} start_epoch {start_epoch}')
         for epoch in range(start_epoch, epochs):
             # Set epoch for distributed sampler
             train_loader.sampler.set_epoch(epoch)
