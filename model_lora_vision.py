@@ -178,16 +178,16 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     if cpu_count is not None:
         # Follow the guideline: min(4 × num_GPUs, num_CPU_cores)
         num_workers = min(4 * max(1, num_gpus), cpu_count)
-        num_workers = num_gpus
+        num_workers = 1
     print(f'num_workers for dataloader: {num_workers}')
     print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank}')
 
     # make epochs small if mode mode
-    if utils.isMockMode():
-        X_train = X_train[:batch_size*2]
-        y_train = y_train[:batch_size*2]
-        X_val = X_val[:batch_size*2]
-        y_val = y_val[:batch_size*2]
+    # if utils.isMockMode():
+    #     X_train = X_train[:batch_size*2]
+    #     y_train = y_train[:batch_size*2]
+    #     X_val = X_val[:batch_size*2]
+    #     y_val = y_val[:batch_size*2]
 
     exception_raised = False
     try:
@@ -306,17 +306,17 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         if rank == 0: print('distributed: checkpoint done')
 
         # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
-        start_epoch_tensor = torch.tensor(start_epoch).to(device)
-        patience_counter_tensor = torch.tensor(patience_counter).to(device)
-        if rank == 0: print('distributed: communicate 1')
-        dist.broadcast(start_epoch_tensor, src=0)
-        if rank == 0: print('distributed: communicate 2')
-        dist.broadcast(patience_counter_tensor, src=0)
-        if rank == 0: print('distributed: communicate 3')
-        start_epoch = start_epoch_tensor.item()
-        if rank == 0: print('distributed: communicate 4')
-        patience_counter = patience_counter_tensor.item()
-        if rank == 0: print('distributed: communicate 5')
+        # start_epoch_tensor = torch.tensor(start_epoch).to(device)
+        # patience_counter_tensor = torch.tensor(patience_counter).to(device)
+        # if rank == 0: print('distributed: communicate 1')
+        # dist.broadcast(start_epoch_tensor, src=0)
+        # if rank == 0: print('distributed: communicate 2')
+        # dist.broadcast(patience_counter_tensor, src=0)
+        # if rank == 0: print('distributed: communicate 3')
+        # start_epoch = start_epoch_tensor.item()
+        # if rank == 0: print('distributed: communicate 4')
+        # patience_counter = patience_counter_tensor.item()
+        # if rank == 0: print('distributed: communicate 5')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
