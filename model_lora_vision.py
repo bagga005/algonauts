@@ -311,23 +311,26 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         
         if rank == 0: print('distributed: checkpoint done')
 
-        # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
-        start_epoch_tensor = torch.tensor([start_epoch], dtype=torch.long).to(device)
-        best_val_loss_tensor = torch.tensor([best_val_loss], dtype=torch.float).to(device)
-        patience_counter_tensor = torch.tensor([patience_counter], dtype=torch.long).to(device)
-        if rank == 0: print('distributed: communicate 1')
-        dist.broadcast(start_epoch_tensor, src=0)
-        if rank == 0: print('distributed: communicate 2')
-        dist.broadcast(best_val_loss_tensor, src=0)
-        if rank == 0: print('distributed: communicate 3')
-        dist.broadcast(patience_counter_tensor, src=0)
-        if rank == 0: print('distributed: communicate 4')
-        start_epoch = start_epoch_tensor[0].item()
-        best_val_loss = best_val_loss_tensor[0].item()
-        patience_counter = patience_counter_tensor[0].item()
-        if rank == 0: print('distributed: communicate 5')
+        # Broadcast training state from rank 0 to all processes in a more robust way
+        if rank == 0:
+            # Pack all values into a single tensor for more reliable broadcast
+            state_tensor = torch.tensor([start_epoch, patience_counter], dtype=torch.long).to(device)
+            val_loss_tensor = torch.tensor([best_val_loss], dtype=torch.float32).to(device)
+        else:
+            # Other ranks initialize empty tensors to receive the broadcast
+            state_tensor = torch.zeros(2, dtype=torch.long).to(device)
+            val_loss_tensor = torch.zeros(1, dtype=torch.float32).to(device)
         
-        print(f'rank {rank} start_epoch {start_epoch}, best_val_loss {best_val_loss:.6f}, patience_counter {patience_counter}')
+        # Perform synchronous broadcasts
+        dist.broadcast(state_tensor, src=0)
+        dist.broadcast(val_loss_tensor, src=0)
+        
+        # Unpack values
+        start_epoch = int(state_tensor[0].item())
+        patience_counter = int(state_tensor[1].item())
+        best_val_loss = float(val_loss_tensor[0].item())
+        
+        print(f'Rank {rank}: start_epoch={start_epoch}, best_val_loss={best_val_loss:.6f}, patience_counter={patience_counter}')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
