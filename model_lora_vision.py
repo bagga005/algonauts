@@ -326,7 +326,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         dist.broadcast(state_tensor, src=0)
         dist.broadcast(val_loss_tensor, src=0)
         print(f'Rank {rank} received state_tensor: {state_tensor}, val_loss_tensor: {val_loss_tensor}')
-        # Unpack values
+        # Extract as Python values
         start_epoch = int(state_tensor[0].item())
         patience_counter = int(state_tensor[1].item())
         best_val_loss = float(val_loss_tensor[0].item())
