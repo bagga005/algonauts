@@ -178,7 +178,9 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     if cpu_count is not None:
         # Follow the guideline: min(4 × num_GPUs, num_CPU_cores)
         num_workers = min(4 * max(1, num_gpus), cpu_count)
+        num_workers = num_gpus
     print(f'num_workers for dataloader: {num_workers}')
+    print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank}')
 
     # make epochs small if mode mode
     if utils.isMockMode():
@@ -189,21 +191,23 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
 
     exception_raised = False
     try:
+        if rank == 0: print('distributed: start setup')
         # Setup distributed process
         setup_distributed(rank, world_size)
         torch.cuda.set_device(rank)
         
-
+        if rank == 0: print('distributed: step 1')
         # Create model and move it to the correct device
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
         model = model.to(device)
         model = DDP(model, device_ids=[rank])
-        
+
+        if rank == 0: print('distributed: model setup')
         # Create dataset and prepare data loaders with DistributedSampler
         train_dataset = VideoDataset(X_train, y_train)
         val_dataset = VideoDataset(X_val, y_val)
-        
+        if rank == 0: print('distributed: dataset setup')
         train_sampler = DistributedSampler(
             train_dataset,
             num_replicas=world_size,
@@ -217,12 +221,13 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             rank=rank,
             shuffle=False
         )
+        if rank == 0: print('distributed: DistributedSampler setup')
         
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=batch_size,
             sampler=train_sampler,
-            num_workers=4,
+            num_workers=num_workers,
             pin_memory=True
         )
         
@@ -230,10 +235,10 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             val_dataset,
             batch_size=batch_size,
             sampler=val_sampler,
-            num_workers=4,
+            num_workers=num_workers,
             pin_memory=True
         )
-        
+        if rank == 0: print('distributed: DataLoader setup')
         # Training settings
         linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
         linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
@@ -241,7 +246,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
         lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
         lora_weight_decay = config.get('lora_weight_decay', 1e-3)
-
+        if rank == 0: print('distributed: config setup')
         # Set up optimizers
         lora_optimizer = torch.optim.AdamW(
             model.module.visual_model.parameters(),
@@ -267,7 +272,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
             T_max=20,
             eta_min=linear_learning_rate_final
         )
-        
+        if rank == 0: print('distributed: linear_scheduler setup')
         criterion = torch.nn.MSELoss()
         
         # Initialize training state
@@ -298,15 +303,20 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                     start_epoch = checkpoint['epoch'] + 1
                     print(f"Resuming from epoch {start_epoch}")
         
+        if rank == 0: print('distributed: checkpoint done')
+
         # Broadcast start_epoch, best_val_loss, and patience_counter from rank 0 to all processes
         start_epoch_tensor = torch.tensor(start_epoch).to(device)
         patience_counter_tensor = torch.tensor(patience_counter).to(device)
-        
+        if rank == 0: print('distributed: communicate 1')
         dist.broadcast(start_epoch_tensor, src=0)
+        if rank == 0: print('distributed: communicate 2')
         dist.broadcast(patience_counter_tensor, src=0)
-        
+        if rank == 0: print('distributed: communicate 3')
         start_epoch = start_epoch_tensor.item()
+        if rank == 0: print('distributed: communicate 4')
         patience_counter = patience_counter_tensor.item()
+        if rank == 0: print('distributed: communicate 5')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
@@ -582,7 +592,7 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 2  # This is per GPU
+        batch_size = 4  # This is per GPU
         epochs = 5
         
         # Spawn processes for each GPU
