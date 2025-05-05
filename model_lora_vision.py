@@ -191,7 +191,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
     if cpu_count is not None:
         # Follow the guideline: min(4 × num_GPUs, num_CPU_cores)
         num_workers = min(4 * max(1, num_gpus), cpu_count)
-        num_workers = 1
+        num_workers = 2
     print(f'num_workers for dataloader: {num_workers}')
     print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank}')
 
