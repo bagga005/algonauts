@@ -245,12 +245,12 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         )
         if rank == 0: print('distributed: DataLoader setup')
         # Training settings
-        linear_learning_rate_initial = config.get('linear_learning_rate_initial', 1e-4)
-        linear_learning_rate_final = config.get('linear_learning_rate_final', 1e-6)
-        linear_weight_decay = config.get('linear_weight_decay', 1e-3)
-        lora_learning_rate_initial = config.get('lora_learning_rate_initial', 1e-4)
-        lora_learning_rate_final = config.get('lora_learning_rate_final', 1e-6)
-        lora_weight_decay = config.get('lora_weight_decay', 1e-3)
+        linear_learning_rate_initial = config['linear_learning_rate_initial']
+        linear_learning_rate_final = config['linear_learning_rate_final']
+        linear_weight_decay = config['linear_weight_decay']
+        lora_learning_rate_initial = config['lora_learning_rate_initial']
+        lora_learning_rate_final = config['lora_learning_rate_final']
+        lora_weight_decay = config['lora_weight_decay']
         if rank == 0: print('distributed: config setup')
 
 
@@ -299,57 +299,6 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         patience = 10
         patience_counter = 0
         best_model_state = None
-        
-        
-        # Load checkpoint if resuming
-        # checkpoint_loaded = False
-        # if resume and resume_checkpoint and rank == 0:
-        #     checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '.pth')
-        #     if os.path.exists(checkpoint_path):
-        #         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        #         model.module.load_state_dict(checkpoint['state_dict'])
-        #         print('checkpoint restored')
-        #         # Broadcast model parameters from rank 0 to all other processes
-        #         for param in model.parameters():
-        #             dist.broadcast(param.data, src=0)
-        #         lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
-        #         linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
-        #         lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
-        #         linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
-        #         # best_val_loss = checkpoint['best_val_loss']
-        #         # patience_counter = checkpoint['patience_counter']
-        #         # start_epoch = checkpoint['epoch'] 
-        #         print(f"Resuming from epoch {start_epoch}")
-        #         checkpoint_loaded = True
-        #     else:
-        #         print('checkpoint not found')
-        #         # Don't raise here, let all ranks know
-        #         checkpoint_loaded = False
-
-        # Broadcast a flag to all ranks indicating if checkpoint was loaded
-        # checkpoint_flag = torch.tensor([int(checkpoint_loaded)], dtype=torch.long).to(device) if rank == 0 else torch.zeros(1, dtype=torch.long).to(device)
-        # dist.barrier()
-        # dist.broadcast(checkpoint_flag, src=0)
-        # if checkpoint_flag.item() == 0:
-        #     raise Exception("Checkpoint not loaded on rank 0")
-
-        # # Broadcast training state from rank 0 to all processes in a more robust way
-        # if rank == 0:
-        #     print(f"Rank 0 broadcasting: start_epoch={start_epoch}, patience_counter={patience_counter}, best_val_loss={best_val_loss}")
-        #     state_tensor = torch.tensor([int(start_epoch), int(patience_counter)], dtype=torch.int64, device='cpu')
-        #     val_loss_tensor = torch.tensor([float(best_val_loss)], dtype=torch.float32, device='cpu')
-        # else:
-        #     state_tensor = torch.zeros(2, dtype=torch.int64, device='cpu')
-        #     val_loss_tensor = torch.zeros(1, dtype=torch.float32, device='cpu')
-        # dist.barrier()
-        # dist.broadcast(state_tensor, src=0)
-        # dist.broadcast(val_loss_tensor, src=0)
-        # print(f'Rank {rank} received state_tensor: {state_tensor}, val_loss_tensor: {val_loss_tensor}')
-        # # Extract as Python values
-        # start_epoch = int(state_tensor[0].item())
-        # patience_counter = int(state_tensor[1].item())
-        # best_val_loss = float(val_loss_tensor[0].item())
-        print(f'Rank {rank}: start_epoch={start_epoch}, best_val_loss={best_val_loss:.6f}, patience_counter={patience_counter}')
         
         # Only log with wandb on the main process
         if rank == 0 and enable_wandb:
@@ -667,9 +616,9 @@ class RegressionHander_Vision():
             'linear_learning_rate_initial': 1e-4,
             'linear_learning_rate_final': 1e-6,
             'linear_weight_decay': 1e-3,
-            'lora_learning_rate_initial': 1e-3,
-            'lora_learning_rate_final': 1e-5,
-            'lora_weight_decay': 1e-5,
+            'lora_learning_rate_initial': 1e-4,
+            'lora_learning_rate_final': 1e-7,
+            'lora_weight_decay': 1e-3,
             'num_gpus': num_gpus,
             'params_path': params_path,
         }
