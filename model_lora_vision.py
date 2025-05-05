@@ -200,6 +200,8 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         # Create model and move it to the correct device
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
+        params = utils.load_model_pytorch('lora-1-distributed')
+        model.load_state_dict(params)
         model = model.to(device)
         model = DDP(model, device_ids=[rank])
 
