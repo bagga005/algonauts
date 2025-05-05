@@ -61,6 +61,9 @@ def isMockMode():
 def get_lora_config():
     return int(os.getenv("LORA_BATCH_SIZE")), int(os.getenv("LORA_EPOCH")), int(os.getenv("LORA_START_EPOCH"))
 
+def get_model_checkpoint():
+    return os.getenv("MODEL_CHECKPOINT")
+
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_output_dir(), 'models', file_name)

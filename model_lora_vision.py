@@ -602,13 +602,12 @@ class RegressionHander_Vision():
         self.enable_wandb = enable_wandb
         
 
-    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1, resume_checkpoint=None):
+    def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
         print('num_gpus', num_gpus, torch.cuda.device_count())
-        params_path = None
-        if resume_checkpoint:
+        resume_checkpoint = utils.get_model_checkpoint()
+        if resume_checkpoint is not None and resume_checkpoint != '':
             resume = True
             print('doing a resume from checkpoint:', resume_checkpoint)
-            params_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '-params.pth')
         else:
             resume = False
             print('not resumeing from checkpoint')

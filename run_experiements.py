@@ -25,7 +25,7 @@ def run_trainings():
     specific_modalities = ["visual"]
     config = {
         'trained_model_name': None,
-        'resume_checkpoint': None, #'lora-2-checkpoint',
+        #'resume_checkpoint': None, #'',
     }
     # if training_handler != 'loravision':
     #     trained_model_name = None

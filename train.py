@@ -553,7 +553,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         print('train enable_wandb', enable_wandb)
         trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], config['trained_model_name'], enable_wandb=enable_wandb)
         print('got lora vision handler')
-        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count(), resume_checkpoint=config['resume_checkpoint'])
+        model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     elif training_handler == 'sklearn':
         print('aligning features and fmri samples')
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
