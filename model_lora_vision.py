@@ -479,7 +479,7 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
             if rank == 0 and epoch % 1 == 0: #epoch != 0 and 
                 # Save the DDP model's state dictionary
                 torch.save(model.module.state_dict(), 
-                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-distributed.pth'))
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint-params.pth'))
             
 
             # Log to wandb
