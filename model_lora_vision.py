@@ -284,6 +284,9 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
             lora_optimizer.load_state_dict(lora_optimizer_state_dict)
             lora_scheduler.load_state_dict(lora_scheduler_state_dict)
         if rank == 0: print('distributed: linear_scheduler setup')
+        #wait for everyone to reach here
+        dist.barrier()
+
         criterion = torch.nn.MSELoss()
         
         # Initialize training state
@@ -291,7 +294,7 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         patience = 10
         patience_counter = 0
         best_model_state = None
-        start_epoch = 0
+        start_epoch = 3
         
         # Load checkpoint if resuming
         checkpoint_loaded = False
