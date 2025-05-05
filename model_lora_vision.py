@@ -195,14 +195,14 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         # Setup distributed process
         setup_distributed(rank, world_size)
         torch.cuda.set_device(rank)
-        
-        if rank == 0: print('distributed: step 1')
+        p_path = config['params_path']
+        if rank == 0: print(f'distributed: step 1, params_path {p_path}')
         # Create model and move it to the correct device
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
         if config['params_path'] is not None:
             print('distributed: loading params from', config['params_path'])
-            params = utils.load_model_pytorch(config['params_path'])
+            params = torch.load(config['params_path'])
             model.load_state_dict(params)
         model = model.to(device)
         model = DDP(model, device_ids=[rank])
