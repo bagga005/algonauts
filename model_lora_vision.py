@@ -164,7 +164,6 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
 
 def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data, config):
     # Unpack parameters
-    start_time = time.time() 
     input_size, output_size, enable_wandb = model_params
     lora_optimizer_state_dict, lora_scheduler_state_dict = lora_p
     X_train, y_train = train_data
@@ -202,6 +201,7 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
         if config['params_path'] is not None:
+            print('distributed: loading params from', config['params_path'])
             params = utils.load_model_pytorch(config['params_path'])
             model.load_state_dict(params)
         model = model.to(device)
@@ -280,6 +280,7 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         )
         # Set up optimizers
         if rank == 0 and lora_optimizer_state_dict is not None and lora_scheduler_state_dict is not None:
+            print('distributed: loading lora_optimizer_state_dict')
             lora_optimizer.load_state_dict(lora_optimizer_state_dict)
             lora_scheduler.load_state_dict(lora_scheduler_state_dict)
         if rank == 0: print('distributed: linear_scheduler setup')
@@ -662,7 +663,7 @@ class RegressionHander_Vision():
             'resume_checkpoint': resume_checkpoint,
             'params_path': params_path,
         }
-        
+        print(f'distributed: starting training resume_checkpoint {resume_checkpoint} params_path {params_path}')
         mp.spawn(
             train_on_device,
             args=(world_size, model_params,lora_p, train_data, val_data, config),
