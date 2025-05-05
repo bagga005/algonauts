@@ -14,9 +14,9 @@ def run_trainings():
     excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
     hrf_delay = 2  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
-    subject = 3
+    subject = 1
     include_viewing_sessions = False
-    movies_train = ["friends-s02", "friends-s04"]#, "friends-s04"]#[["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
@@ -24,7 +24,7 @@ def run_trainings():
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name': 'lora-best-distributed',
+        'trained_model_name': None,#'lora-best-distributed',
         #'resume_checkpoint': None, #'',
     }
     # if training_handler != 'loravision':
@@ -55,14 +55,14 @@ def run_trainings():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
+    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
