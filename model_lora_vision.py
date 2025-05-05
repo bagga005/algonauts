@@ -183,11 +183,11 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
     print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank}')
 
     # make epochs small if mode mode
-    # if utils.isMockMode():
-    #     X_train = X_train[:batch_size*2]
-    #     y_train = y_train[:batch_size*2]
-    #     X_val = X_val[:batch_size*2]
-    #     y_val = y_val[:batch_size*2]
+    if utils.isMockMode():
+        X_train = X_train[:batch_size*2]
+        y_train = y_train[:batch_size*2]
+        X_val = X_val[:batch_size*2]
+        y_val = y_val[:batch_size*2]
 
     exception_raised = False
     try:
@@ -280,7 +280,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         patience = 10
         patience_counter = 0
         best_model_state = None
-        start_epoch = 0
+        start_epoch = 3
         
         # Load checkpoint if resuming
         checkpoint_loaded = False
@@ -297,9 +297,9 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
                 lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
                 linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
-                best_val_loss = checkpoint['best_val_loss']
-                patience_counter = checkpoint['patience_counter']
-                start_epoch = checkpoint['epoch'] 
+                # best_val_loss = checkpoint['best_val_loss']
+                # patience_counter = checkpoint['patience_counter']
+                # start_epoch = checkpoint['epoch'] 
                 print(f"Resuming from epoch {start_epoch}")
                 checkpoint_loaded = True
             else:
@@ -308,28 +308,28 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
                 checkpoint_loaded = False
 
         # Broadcast a flag to all ranks indicating if checkpoint was loaded
-        checkpoint_flag = torch.tensor([int(checkpoint_loaded)], dtype=torch.long).to(device) if rank == 0 else torch.zeros(1, dtype=torch.long).to(device)
-        dist.barrier()
-        dist.broadcast(checkpoint_flag, src=0)
-        if checkpoint_flag.item() == 0:
-            raise Exception("Checkpoint not loaded on rank 0")
+        # checkpoint_flag = torch.tensor([int(checkpoint_loaded)], dtype=torch.long).to(device) if rank == 0 else torch.zeros(1, dtype=torch.long).to(device)
+        # dist.barrier()
+        # dist.broadcast(checkpoint_flag, src=0)
+        # if checkpoint_flag.item() == 0:
+        #     raise Exception("Checkpoint not loaded on rank 0")
 
-        # Broadcast training state from rank 0 to all processes in a more robust way
-        if rank == 0:
-            print(f"Rank 0 broadcasting: start_epoch={start_epoch}, patience_counter={patience_counter}, best_val_loss={best_val_loss}")
-            state_tensor = torch.tensor([int(start_epoch), int(patience_counter)], dtype=torch.int64, device='cpu')
-            val_loss_tensor = torch.tensor([float(best_val_loss)], dtype=torch.float32, device='cpu')
-        else:
-            state_tensor = torch.zeros(2, dtype=torch.int64, device='cpu')
-            val_loss_tensor = torch.zeros(1, dtype=torch.float32, device='cpu')
-        dist.barrier()
-        dist.broadcast(state_tensor, src=0)
-        dist.broadcast(val_loss_tensor, src=0)
-        print(f'Rank {rank} received state_tensor: {state_tensor}, val_loss_tensor: {val_loss_tensor}')
-        # Extract as Python values
-        start_epoch = int(state_tensor[0].item())
-        patience_counter = int(state_tensor[1].item())
-        best_val_loss = float(val_loss_tensor[0].item())
+        # # Broadcast training state from rank 0 to all processes in a more robust way
+        # if rank == 0:
+        #     print(f"Rank 0 broadcasting: start_epoch={start_epoch}, patience_counter={patience_counter}, best_val_loss={best_val_loss}")
+        #     state_tensor = torch.tensor([int(start_epoch), int(patience_counter)], dtype=torch.int64, device='cpu')
+        #     val_loss_tensor = torch.tensor([float(best_val_loss)], dtype=torch.float32, device='cpu')
+        # else:
+        #     state_tensor = torch.zeros(2, dtype=torch.int64, device='cpu')
+        #     val_loss_tensor = torch.zeros(1, dtype=torch.float32, device='cpu')
+        # dist.barrier()
+        # dist.broadcast(state_tensor, src=0)
+        # dist.broadcast(val_loss_tensor, src=0)
+        # print(f'Rank {rank} received state_tensor: {state_tensor}, val_loss_tensor: {val_loss_tensor}')
+        # # Extract as Python values
+        # start_epoch = int(state_tensor[0].item())
+        # patience_counter = int(state_tensor[1].item())
+        # best_val_loss = float(val_loss_tensor[0].item())
         print(f'Rank {rank}: start_epoch={start_epoch}, best_val_loss={best_val_loss:.6f}, patience_counter={patience_counter}')
         
         # Only log with wandb on the main process
