@@ -162,13 +162,14 @@ def load_checkpoint(model, lora_optimizer, linear_optimizer, lora_scheduler, lin
         print(f"No checkpoint found at '{filename}'")
         return 0, float('inf'), 0, [], []
 
-def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data, config):
+def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, val_data, config):
     # Unpack parameters
     input_size, output_size, enable_wandb = model_params
     lora_optimizer_state_dict, lora_scheduler_state_dict = lora_p
+    lin_optimizer_state_dict, lin_scheduler_state_dict = lin_p
     X_train, y_train = train_data
     X_val, y_val = val_data
-    batch_size, epochs= config['batch_size'], config['epochs']
+    batch_size, epochs, start_epoch = config['batch_size'], config['epochs'], config['start_epoch']
     num_gpus = config['num_gpus']
     resume = config.get('resume', False)
     resume_checkpoint = config.get('resume_checkpoint', None)
@@ -283,6 +284,10 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
             print('distributed: loading lora_optimizer_state_dict')
             lora_optimizer.load_state_dict(lora_optimizer_state_dict)
             lora_scheduler.load_state_dict(lora_scheduler_state_dict)
+        if rank == 0 and lin_optimizer_state_dict is not None and lin_scheduler_state_dict is not None:
+            print('distributed: loading lin_optimizer_state_dict')
+            linear_optimizer.load_state_dict(lin_optimizer_state_dict)
+            linear_scheduler.load_state_dict(lin_scheduler_state_dict)
         if rank == 0: print('distributed: linear_scheduler setup')
         #wait for everyone to reach here
         dist.barrier()
@@ -294,7 +299,7 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         patience = 10
         patience_counter = 0
         best_model_state = None
-        start_epoch = 3
+        
         
         # Load checkpoint if resuming
         # checkpoint_loaded = False
@@ -622,8 +627,7 @@ class RegressionHander_Vision():
         
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
-        batch_size = 4  # This is per GPU
-        epochs = 5
+        batch_size, epochs, start_epoch = utils.get_lora_config()  # This is per GPU
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())
@@ -634,6 +638,8 @@ class RegressionHander_Vision():
 
         lr_scheduler_state_dict = None
         lr_optimizer_state_dict = None
+        lin_scheduler_state_dict = None
+        lin_optimizer_state_dict = None
         if resume_checkpoint:
             checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '.pth')
             if os.path.exists(checkpoint_path):
@@ -642,6 +648,8 @@ class RegressionHander_Vision():
                 # linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
                 lr_scheduler_state_dict = checkpoint['lora_scheduler']
                 lr_optimizer_state_dict = checkpoint['lora_optimizer']
+                lin_scheduler_state_dict = checkpoint['linear_scheduler']
+                lin_optimizer_state_dict = checkpoint['linear_optimizer']
             else:
                 raise ValueError(f'checkpoint file {checkpoint_path} does not exist')
             params_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '-params.pth')
@@ -650,11 +658,13 @@ class RegressionHander_Vision():
         # Prepare the parameters to pass to train_on_device
         model_params = (self.input_size, self.output_size, self.enable_wandb)
         lora_p = (lr_optimizer_state_dict, lr_scheduler_state_dict)
+        lin_p = (lin_optimizer_state_dict, lin_scheduler_state_dict)
         train_data = (X_train, y_train)
         val_data = (X_val, y_val)
         config = {
             'batch_size': batch_size,
             'epochs': epochs,
+            'start_epoch': start_epoch,
             'linear_learning_rate_initial': 1e-4,
             'linear_learning_rate_final': 1e-6,
             'linear_weight_decay': 1e-3,
@@ -662,14 +672,12 @@ class RegressionHander_Vision():
             'lora_learning_rate_final': 1e-5,
             'lora_weight_decay': 1e-5,
             'num_gpus': num_gpus,
-            'resume': False,
-            'resume_checkpoint': None,
             'params_path': params_path,
         }
         print(f'distributed: starting training resume_checkpoint {resume_checkpoint} params_path {params_path}')
         mp.spawn(
             train_on_device,
-            args=(world_size, model_params,lora_p, train_data, val_data, config),
+            args=(world_size, model_params,lora_p, lin_p, train_data, val_data, config),
             nprocs=world_size,
             join=True
         )
