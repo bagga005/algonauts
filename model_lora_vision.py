@@ -33,31 +33,43 @@ class VisionLinearRegressionModel(nn.Module):
             r=8,                       # LoRA rank
             lora_alpha=16,             # LoRA alpha scaling factor
             target_modules=[           
-                # Block 3 temporal convolutions (3×1×1)
-                "blocks.3.res_blocks.0.branch2.conv_a",
-                "blocks.3.res_blocks.1.branch2.conv_a",
-                "blocks.3.res_blocks.2.branch2.conv_a",
-                "blocks.3.res_blocks.3.branch2.conv_a",
-                "blocks.3.res_blocks.4.branch2.conv_a",
-                "blocks.3.res_blocks.5.branch2.conv_a",
+                # # Block 3 temporal convolutions (3×1×1)
+                # "blocks.3.res_blocks.0.branch2.conv_a",
+                # "blocks.3.res_blocks.1.branch2.conv_a",
+                # "blocks.3.res_blocks.2.branch2.conv_a",
+                # "blocks.3.res_blocks.3.branch2.conv_a",
+                # "blocks.3.res_blocks.4.branch2.conv_a",
+                # "blocks.3.res_blocks.5.branch2.conv_a",
                 
-                # Block 3 spatial convolutions (1×3×3)
-                "blocks.3.res_blocks.0.branch2.conv_b",
-                "blocks.3.res_blocks.1.branch2.conv_b",
-                "blocks.3.res_blocks.2.branch2.conv_b",
-                "blocks.3.res_blocks.3.branch2.conv_b",
-                "blocks.3.res_blocks.4.branch2.conv_b",
-                "blocks.3.res_blocks.5.branch2.conv_b",
+                # # Block 3 spatial convolutions (1×3×3)
+                # "blocks.3.res_blocks.0.branch2.conv_b",
+                # "blocks.3.res_blocks.1.branch2.conv_b",
+                # "blocks.3.res_blocks.2.branch2.conv_b",
+                # "blocks.3.res_blocks.3.branch2.conv_b",
+                # "blocks.3.res_blocks.4.branch2.conv_b",
+                # "blocks.3.res_blocks.5.branch2.conv_b",
                 
-                # Block 4 temporal convolutions (3×1×1)
-                "blocks.4.res_blocks.0.branch2.conv_a",
-                "blocks.4.res_blocks.1.branch2.conv_a",
-                "blocks.4.res_blocks.2.branch2.conv_a",
+                # # Block 4 temporal convolutions (3×1×1)
+                # "blocks.4.res_blocks.0.branch2.conv_a",
+                # "blocks.4.res_blocks.1.branch2.conv_a",
+                # "blocks.4.res_blocks.2.branch2.conv_a",
                 
-                # Block 4 spatial convolutions (1×3×3)
+                # # Block 4 spatial convolutions (1×3×3)
+                # "blocks.4.res_blocks.0.branch2.conv_b",
+                # "blocks.4.res_blocks.1.branch2.conv_b",
+                # "blocks.4.res_blocks.2.branch2.conv_b",
+                # res5
                 "blocks.4.res_blocks.0.branch2.conv_b",
+                "blocks.4.res_blocks.0.branch2.conv_c",
                 "blocks.4.res_blocks.1.branch2.conv_b",
+                "blocks.4.res_blocks.1.branch2.conv_c",
                 "blocks.4.res_blocks.2.branch2.conv_b",
+                "blocks.4.res_blocks.2.branch2.conv_c",
+                # res4 – only conv_c for a lighter touch
+                "blocks.3.res_blocks.0.branch2.conv_c",
+                "blocks.3.res_blocks.1.branch2.conv_c",
+                "blocks.3.res_blocks.2.branch2.conv_c",
+                "blocks.3.res_blocks.3.branch2.conv_c",
             ],
             lora_dropout=0.1,          
             bias="none",               
