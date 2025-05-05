@@ -297,29 +297,29 @@ def train_on_device(rank, world_size, model_params, lora_p, train_data, val_data
         start_epoch = 3
         
         # Load checkpoint if resuming
-        checkpoint_loaded = False
-        if resume and resume_checkpoint and rank == 0:
-            checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '.pth')
-            if os.path.exists(checkpoint_path):
-                checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-                model.module.load_state_dict(checkpoint['state_dict'])
-                print('checkpoint restored')
-                # Broadcast model parameters from rank 0 to all other processes
-                for param in model.parameters():
-                    dist.broadcast(param.data, src=0)
-                lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
-                linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
-                lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
-                linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
-                # best_val_loss = checkpoint['best_val_loss']
-                # patience_counter = checkpoint['patience_counter']
-                # start_epoch = checkpoint['epoch'] 
-                print(f"Resuming from epoch {start_epoch}")
-                checkpoint_loaded = True
-            else:
-                print('checkpoint not found')
-                # Don't raise here, let all ranks know
-                checkpoint_loaded = False
+        # checkpoint_loaded = False
+        # if resume and resume_checkpoint and rank == 0:
+        #     checkpoint_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '.pth')
+        #     if os.path.exists(checkpoint_path):
+        #         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        #         model.module.load_state_dict(checkpoint['state_dict'])
+        #         print('checkpoint restored')
+        #         # Broadcast model parameters from rank 0 to all other processes
+        #         for param in model.parameters():
+        #             dist.broadcast(param.data, src=0)
+        #         lora_optimizer.load_state_dict(checkpoint['lora_optimizer'])
+        #         linear_optimizer.load_state_dict(checkpoint['linear_optimizer'])
+        #         lora_scheduler.load_state_dict(checkpoint['lora_scheduler'])
+        #         linear_scheduler.load_state_dict(checkpoint['linear_scheduler'])
+        #         # best_val_loss = checkpoint['best_val_loss']
+        #         # patience_counter = checkpoint['patience_counter']
+        #         # start_epoch = checkpoint['epoch'] 
+        #         print(f"Resuming from epoch {start_epoch}")
+        #         checkpoint_loaded = True
+        #     else:
+        #         print('checkpoint not found')
+        #         # Don't raise here, let all ranks know
+        #         checkpoint_loaded = False
 
         # Broadcast a flag to all ranks indicating if checkpoint was loaded
         # checkpoint_flag = torch.tensor([int(checkpoint_loaded)], dtype=torch.long).to(device) if rank == 0 else torch.zeros(1, dtype=torch.long).to(device)
@@ -644,7 +644,7 @@ class RegressionHander_Vision():
                 lr_optimizer_state_dict = checkpoint['lora_optimizer']
             else:
                 raise ValueError(f'checkpoint file {checkpoint_path} does not exist')
-            params_path = os.path.join(utils.get_output_dir(), 'models', 'lora-1-distributed-params.pth')
+            params_path = os.path.join(utils.get_output_dir(), 'models', resume_checkpoint + '-params.pth')
             if not os.path.exists(params_path):
                 raise ValueError(f'params file {params_path} does not exist')
         # Prepare the parameters to pass to train_on_device
@@ -662,8 +662,8 @@ class RegressionHander_Vision():
             'lora_learning_rate_final': 1e-5,
             'lora_weight_decay': 1e-5,
             'num_gpus': num_gpus,
-            'resume': resume,
-            'resume_checkpoint': resume_checkpoint,
+            'resume': False,
+            'resume_checkpoint': None,
             'params_path': params_path,
         }
         print(f'distributed: starting training resume_checkpoint {resume_checkpoint} params_path {params_path}')
