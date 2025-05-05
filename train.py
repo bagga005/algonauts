@@ -706,7 +706,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         print('create trainer')
         del features
         _,_, enable_wandb = utils.get_wandb_config()
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=enable_wandb)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=False)
         print('got lora vision handler')
 
     if training_handler != 'loravision':
