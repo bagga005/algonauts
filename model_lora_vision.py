@@ -200,7 +200,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         # Create model and move it to the correct device
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
-        params = utils.load_model_pytorch('lora-1-distributed')
+        params = utils.load_model_pytorch('lora-4-distributed')
         model.load_state_dict(params)
         model = model.to(device)
         model = DDP(model, device_ids=[rank])
@@ -282,7 +282,7 @@ def train_on_device(rank, world_size, model_params, train_data, val_data, config
         patience = 10
         patience_counter = 0
         best_model_state = None
-        start_epoch = 3
+        start_epoch = 5
         
         # Load checkpoint if resuming
         checkpoint_loaded = False
@@ -609,7 +609,7 @@ class RegressionHander_Vision():
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
         batch_size = 4  # This is per GPU
-        epochs = 5
+        epochs = 10
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())
