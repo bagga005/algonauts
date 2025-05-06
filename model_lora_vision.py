@@ -97,17 +97,17 @@ class VisionLinearRegressionModel(nn.Module):
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
             x = self.visual_model.model.blocks[2](x)
-        with torch.enable_grad():
+        #with torch.enable_grad():
             # Blocks 3 and 4 contain LoRA parameters and require gradients
-            x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
-            x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
+            x = self.visual_model.model.blocks[3](x)
+            x = self.visual_model.model.blocks[4](x)
 
         
-            layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
+            layer_output = self.visual_model.model.blocks[5].pool(x)
             layer_output = layer_output.reshape(layer_output.shape[0], -1)
             layer_output = layer_output.reshape(b_size, -1)
             
-            prediction = checkpoint(self.linear4, layer_output, use_reentrant=False)
+        prediction = self.linear4(layer_output)
 
         return prediction
 
