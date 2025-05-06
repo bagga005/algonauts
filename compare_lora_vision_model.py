@@ -1,6 +1,7 @@
 from model_lora_vision import VisionLinearRegressionModel, RegressionHander_Vision
 import torch
 import pandas as pd
+import numpy as np
 
 
 def compare_two_models(model1: torch.nn.Module, model2: torch.nn.Module, filter_learnable: bool = False, show_structure_only: bool = False):
@@ -62,7 +63,20 @@ def compare_two_models(model1: torch.nn.Module, model2: torch.nn.Module, filter_
     
     df = df.sort_values("Layer").reset_index(drop=True)
     
-    print(df.to_string(index=False))
+    # Add average row for numerical columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    avg_row = {"Layer": "AVERAGE"}
+    
+    for col in df.columns:
+        if col in numeric_cols:
+            avg_row[col] = df[col].mean()
+        else:
+            avg_row[col] = ""
+            
+    # Append average row to dataframe
+    df_with_avg = pd.concat([df, pd.DataFrame([avg_row])], ignore_index=True)
+    
+    print(df_with_avg.to_string(index=False))
     
     # Summary
     total_layers = len(df)
