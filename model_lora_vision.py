@@ -978,7 +978,7 @@ class RegressionHander_Vision():
     def predict(self, features_val):
         print('prediction called')
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
-        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=16, is_for_training=False)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32, is_for_training=False)
         self.model.eval()
         fmri_val_pred = []
         with torch.no_grad():
