@@ -183,6 +183,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
     X_val, y_val = val_data
     batch_size, epochs, start_epoch = config['batch_size'], config['epochs'], config['start_epoch']
     num_gpus = config['num_gpus']
+    train_only_linear = config['train_only_linear']
     resume = config.get('resume', False)
     resume_checkpoint = config.get('resume_checkpoint', None)
     # Get CPU count
@@ -218,6 +219,18 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
             params = torch.load(config['params_path'])
             model.load_state_dict(params)
         model = model.to(device)
+        if train_only_linear:
+            if rank == 0:
+                print("Training only linear layer - freezing LoRA parameters")
+            for name, param in model.named_parameters():
+                if 'lora_' in name:
+                    param.requires_grad = False
+            
+            if rank == 0:
+                # Log trainable parameter count after freezing
+                trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                total_params = sum(p.numel() for p in model.parameters())
+                print(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
         model = DDP(model, device_ids=[rank])
 
         if rank == 0: print('distributed: model setup')
@@ -345,7 +358,8 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
             
             for batch_X, batch_y in train_loader:
                 # Zero gradients for both optimizers
-                lora_optimizer.zero_grad()
+                if not train_only_linear:
+                    lora_optimizer.zero_grad()
                 linear_optimizer.zero_grad()
                 
                 # Move batch to device
@@ -360,7 +374,8 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                 loss.backward()
                 
                 # Update weights with both optimizers
-                lora_optimizer.step()
+                if not train_only_linear:
+                    lora_optimizer.step()
                 linear_optimizer.step()
                 
                 total_loss += loss.item()
@@ -588,6 +603,7 @@ class RegressionHander_Vision():
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
         batch_size, epochs, start_epoch = utils.get_lora_config()  # This is per GPU
+        train_only_linear = True
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())
@@ -633,6 +649,7 @@ class RegressionHander_Vision():
             'lora_weight_decay': 1e-3,
             'num_gpus': num_gpus,
             'params_path': params_path,
+            'train_only_linear': train_only_linear,
         }
         print(f'distributed: starting training resume_checkpoint {resume_checkpoint} params_path {params_path}')
         mp.spawn(
