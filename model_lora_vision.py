@@ -26,7 +26,12 @@ class VisionLinearRegressionModel(nn.Module):
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
         self.model_layer = 'blocks.5.pool'
         self.device = device
-        self.linear4 = nn.Linear(input_size, output_size)
+        self.linear3 = nn.Linear(input_size, 2048)
+        self.batchnorm3 = nn.BatchNorm1d(2048)
+        self.dropout3 = nn.Dropout(dropout_rate)
+        self.activation = nn.GELU()
+        self.linear4 = nn.Linear(2048, output_size)
+        nn.init.kaiming_normal_(self.linear3.weight)
         nn.init.kaiming_normal_(self.linear4.weight)
 
         self.lora_config = LoraConfig(
@@ -106,7 +111,8 @@ class VisionLinearRegressionModel(nn.Module):
             layer_output = self.visual_model.model.blocks[5].pool(x)
             layer_output = layer_output.reshape(layer_output.shape[0], -1)
             layer_output = layer_output.reshape(b_size, -1)
-            
+        
+        layer_output = self.dropout3(self.activation(self.batchnorm3(self.linear3(layer_output))))
         prediction = self.linear4(layer_output)
 
         return prediction
