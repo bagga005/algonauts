@@ -22,6 +22,8 @@ import sys
 
 # Add this line to allowlist the numpy reconstruct function
 torch.serialization.add_safe_globals(['numpy.core.multiarray._reconstruct'])
+# Add this line to allowlist the random module for serialization
+torch.serialization.add_safe_globals(['random'])
 
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
