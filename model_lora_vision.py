@@ -603,7 +603,7 @@ class RegressionHander_Vision():
         # Determine batch size - we can use a larger batch size with multiple GPUs
         # The effective batch size will be batch_size * num_gpus
         batch_size, epochs, start_epoch = utils.get_lora_config()  # This is per GPU
-        train_only_linear = True
+        train_only_linear = False
         
         # Spawn processes for each GPU
         world_size = min(num_gpus, torch.cuda.device_count())
