@@ -215,7 +215,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         model = VisionLinearRegressionModel(input_size, output_size, device)
         if config['params_path'] is not None:
             print('distributed: loading params from', config['params_path'])
-            params = torch.load(config['params_path'], weights_only=True)
+            params = torch.load(config['params_path'], weights_only=False)
             model.load_state_dict(params)
         model = model.to(device)
         if train_only_linear:
