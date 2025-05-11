@@ -26,12 +26,7 @@ class VisionLinearRegressionModel(nn.Module):
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
         self.model_layer = 'blocks.5.pool'
         self.device = device
-        self.linear3 = nn.Linear(input_size, 2048)
-        self.batchnorm3 = nn.BatchNorm1d(2048)
-        self.dropout3 = nn.Dropout(dropout_rate)
-        self.activation = nn.GELU()
-        self.linear4 = nn.Linear(2048, output_size)
-        nn.init.kaiming_normal_(self.linear3.weight)
+        self.linear4 = nn.Linear(input_size, output_size)
         nn.init.kaiming_normal_(self.linear4.weight)
 
         self.lora_config = LoraConfig(
@@ -102,18 +97,17 @@ class VisionLinearRegressionModel(nn.Module):
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
             x = self.visual_model.model.blocks[2](x)
-        #with torch.enable_grad():
+        with torch.enable_grad():
             # Blocks 3 and 4 contain LoRA parameters and require gradients
-            x = self.visual_model.model.blocks[3](x)
-            x = self.visual_model.model.blocks[4](x)
+            x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
+            x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
 
         
-            layer_output = self.visual_model.model.blocks[5].pool(x)
+            layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
             layer_output = layer_output.reshape(layer_output.shape[0], -1)
             layer_output = layer_output.reshape(b_size, -1)
-        
-        layer_output = self.dropout3(self.activation(self.batchnorm3(self.linear3(layer_output))))
-        prediction = self.linear4(layer_output)
+            
+            prediction = checkpoint(self.linear4, layer_output, use_reentrant=False)
 
         return prediction
 
@@ -674,6 +668,7 @@ class RegressionHander_Vision():
         training_time = time.time() - start_time
         return self.model, training_time
     
+    #DOES NOT HAVE LATEST UPDATES. use train_distributed instead    
     def train_single_gpu(self, features_train, fmri_train, features_train_val, fmri_train_val, resume=False, resume_checkpoint=None):
         start_time = time.time()  
         print('start training at', start_time)
@@ -1001,7 +996,7 @@ class RegressionHander_Vision():
     def predict(self, features_val):
         print('prediction called')
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
-        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=16, is_for_training=False)
+        pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=32, is_for_training=False)
         self.model.eval()
         fmri_val_pred = []
         with torch.no_grad():
