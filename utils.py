@@ -35,6 +35,9 @@ def get_output_dir():
 def get_wandb_config():
     return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 
+def get_runpod_config():
+    return os.getenv("RUNPOD_ID"), str_to_bool(os.getenv("RUNPOD_TERMINATE_ON_EXIT"))
+
 def get_accuracy_json_file():
     return os.path.join(get_output_dir(), 'accuracy.json')
 
