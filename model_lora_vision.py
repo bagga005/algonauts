@@ -20,6 +20,9 @@ from torch.utils.checkpoint import checkpoint
 import random
 import sys
 
+# Add this line to allowlist the numpy reconstruct function
+torch.serialization.add_safe_globals(['numpy.core.multiarray._reconstruct'])
+
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
         super(VisionLinearRegressionModel, self).__init__()
