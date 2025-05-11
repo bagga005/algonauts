@@ -184,8 +184,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
     batch_size, epochs, start_epoch = config['batch_size'], config['epochs'], config['start_epoch']
     num_gpus = config['num_gpus']
     train_only_linear = config['train_only_linear']
-    resume = config.get('resume', False)
-    resume_checkpoint = config.get('resume_checkpoint', None)
+
     # Get CPU count
     cpu_count = os.cpu_count()
     num_workers = 2
@@ -442,7 +441,6 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
             if rank == 0:
                 checkpoint = {
                     'epoch': epoch,
-                    'state_dict': model.module.state_dict(),
                     'lora_optimizer': lora_optimizer.state_dict(),
                     'linear_optimizer': linear_optimizer.state_dict(),
                     'lora_scheduler': lora_scheduler.state_dict(),
