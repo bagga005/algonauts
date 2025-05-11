@@ -70,7 +70,7 @@ def get_model_checkpoint():
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
     full_path = os.path.join(get_output_dir(), 'models', file_name)
-    return torch.load(full_path, map_location=torch.device('cpu'), weights_only=False)
+    return torch.load(full_path, map_location=torch.device('cpu'))
 
 def save_model_sklearn(model, model_name):
     file_name = f'{model_name}.pkl'
