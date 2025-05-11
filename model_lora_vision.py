@@ -20,11 +20,6 @@ from torch.utils.checkpoint import checkpoint
 import random
 import sys
 
-# Add this line to allowlist the numpy reconstruct function
-torch.serialization.add_safe_globals(['numpy.core.multiarray._reconstruct'])
-# Add this line to allowlist the random module for serialization
-torch.serialization.add_safe_globals(['random'])
-
 class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
         super(VisionLinearRegressionModel, self).__init__()
@@ -573,7 +568,7 @@ class RegressionHander_Vision():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
-            self.load_model(pretrain_params_name)
+            self.load_model(pretrain_params_name, weights_only=False)
             print(f'loaded params from model {pretrain_params_name}')
         else:
             print('not loading existing model')
