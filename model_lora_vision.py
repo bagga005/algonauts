@@ -568,7 +568,7 @@ class RegressionHander_Vision():
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
-            self.load_model(pretrain_params_name, weights_only=False)
+            self.load_model(pretrain_params_name)
             print(f'loaded params from model {pretrain_params_name}')
         else:
             print('not loading existing model')
