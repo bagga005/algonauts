@@ -294,7 +294,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         )
         
         linear_optimizer = torch.optim.Adam(
-            model.parameters(), 
+            model.module.linear4.parameters(), 
             lr=linear_learning_rate_initial, 
             weight_decay=linear_weight_decay
         )
