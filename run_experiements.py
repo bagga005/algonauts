@@ -2,6 +2,7 @@ import train
 import h5py
 import numpy as np
 from datetime import datetime
+import traceback
 from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir
 import os
 import subprocess
@@ -38,6 +39,25 @@ def run_trainings():
     # #print('features.keys()', features.keys())
     
     fmri = train.get_fmri(subject)
+    # fmri2 = train.get_fmri(2)
+    # fmri3 = train.get_fmri(3)
+    # fmri5 = train.get_fmri(5)
+    # fmri1, fmri2, fmri3, fmri5 = train.align_fmri_for_all_subjects(fmri1, fmri2, fmri3, fmri5)
+    # print('key length', len(fmri1.keys()))
+    # print('key length', len(fmri2.keys()))
+    # print('key length', len(fmri3.keys()))
+    # print('key length', len(fmri5.keys()))
+    # for key in fmri5.keys():
+    #     if key != 's05e20a' and key != 's06e03a' and (fmri1[key].shape != fmri2[key].shape or fmri1[key].shape != fmri3[key].shape or fmri1[key].shape != fmri5[key].shape):
+    #         print(' failed fmri1', key, fmri1[key].shape)
+    #     # else:
+    #     #     print('passed', key, fmri1[key].shape)
+    
+    # print('fmri2', fmri2['s01e01a'].shape)
+    
+    # print('fmri3', fmri3['s01e01a'].shape)
+    
+    # print('fmri5', fmri5['s01e01a'].shape)
     #measure_yony_accuracy(subject, specific_modalities[0], fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train)
     # areas_of_interest_path = os.path.join(root_data_dir, 'eval_results', 'areas-of-interest.csv')
     # arr = utils.load_csv_to_array(areas_of_interest_path)
@@ -57,14 +77,14 @@ def run_trainings():
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    #train.train_for_all_modalities(subject, fmri1, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
+    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
     
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
@@ -149,7 +169,7 @@ if __name__ == "__main__":
     try:
         run_trainings()
     except Exception as e:
-        print(e)
+        traceback.print_exc()
     finally:
         cleanup_env()
     #run_for_stimulus_window()

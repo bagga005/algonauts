@@ -127,6 +127,21 @@ def load_fmri(root_data_dir, subject):
     ### Output ###
     return fmri
 
+def align_fmri_for_all_subjects(fmri1, fmri2, fmri3, fmri5):
+    fmri1_aligned = {}
+    fmri2_aligned = {}
+    fmri3_aligned = {}
+    fmri5_aligned = {}
+    
+    for key in fmri5.keys():
+        if key != 's05e20a' and key != 's06e03a':
+            fmri5_aligned[key] = fmri5[key]
+            fmri3_aligned[key] = fmri3[key]
+            fmri2_aligned[key] = fmri2[key]
+            fmri1_aligned[key] = fmri1[key]
+
+    return fmri1_aligned, fmri2_aligned, fmri3_aligned, fmri5_aligned
+
 def normalize_to_radians(value, original_min=0, original_max=49, target_min=-math.pi/2, target_max=math.pi/2):
     """
     Normalize a value from the original range to the target range.
@@ -158,7 +173,7 @@ def normalize_to_radians(value, original_min=0, original_max=49, target_min=-mat
     return scaled
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
-    excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session, summary_features=False):
+    excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session, summary_features=False, all_subject_fmri=False):
     """
     Align the stimulus feature with the fMRI response samples for the selected
     movies, later used to train and validate the encoding models.
@@ -228,6 +243,8 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     aligned_features_summary = []
     aligned_fmri = np.empty((0,1000), dtype=np.float32)
 
+    if all_subject_fmri:
+        aligned_fmri = np.empty((0,4,1000), dtype=np.float32)
     ### Loop across movies ###
     for movie in movies:
 
@@ -236,7 +253,10 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
             id = movie[8:]
         elif movie[:7] == 'movie10':
             id = movie[8:]
-        movie_splits = [key for key in fmri if id in key[:len(id)]]
+        if not all_subject_fmri:
+            movie_splits = [key for key in fmri if id in key[:len(id)]]
+        else:
+            movie_splits = [key for key in fmri['fmri1'] if id in key[:len(id)]]
         # print('movie[:7]', movie[:7])
         # print('id', id)
         #print('movie_splits', movie_splits)
@@ -253,12 +273,27 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 #print('split: ', split, ' v_session: ', v_session, ' in_session_order_num: ', in_session_order_num, ' max_session_num: ', max_session_num)
             # if split == 's01e01a': print('split', split)
             ### Extract the fMRI ###
-            fmri_split = fmri[split]
-            # if split == 's01e01a': print('fmri_split', fmri_split.shape)
-            # Exclude the first and last fMRI samples
-            fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
-            # if split == 's01e01a': print('fmri_split', fmri_split.shape)
-            aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
+            if not all_subject_fmri:
+                fmri_split = fmri[split]
+                # Exclude the first and last fMRI samples
+                fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
+                aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
+            else:
+                fmri1_split = fmri['fmri1'][split]
+                fmri2_split = fmri['fmri2'][split]
+                fmri3_split = fmri['fmri3'][split]
+                fmri5_split = fmri['fmri5'][split]
+                # Exclude the first and last fMRI samples
+                fmri1_split = fmri1_split[excluded_samples_start:-excluded_samples_end]
+                fmri2_split = fmri2_split[excluded_samples_start:-excluded_samples_end]
+                fmri3_split = fmri3_split[excluded_samples_start:-excluded_samples_end]
+                fmri5_split = fmri5_split[excluded_samples_start:-excluded_samples_end]
+                aligned_fmri_split = np.empty((0,1000), dtype=np.float32)
+                aligned_fmri_split = np.append(aligned_fmri_split, fmri1_split, 0)
+                aligned_fmri_split = np.append(aligned_fmri_split, fmri2_split, 0)
+                aligned_fmri_split = np.append(aligned_fmri_split, fmri3_split, 0)
+                aligned_fmri_split = np.append(aligned_fmri_split, fmri5_split, 0)
+                aligned_fmri = np.append(aligned_fmri, aligned_fmri_split, 0)
             full_split = split
             if split[0] == 's':
                 full_split = 'friends_' + split
@@ -699,7 +734,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True)
-        #print(features_val.shape)
+        print('features_val.shape', features_val.shape)
+        print('fmri_val.shape', fmri_val.shape)
         # features_val = features_val[:64]
         # fmri_val = fmri_val[:64,:]
         #print('feautres_train', features_train[:500])
