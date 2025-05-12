@@ -760,8 +760,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
-        print('features_val.shape', features_val.shape)
-        print('fmri_val.shape', fmri_val.shape)
+        # print('features_val.shape', features_val.shape)
+        # print('fmri_val.shape', fmri_val.shape)
         # features_val = features_val[:64]
         # fmri_val = fmri_val[:64,:]
         #print('feautres_train', features_train[:500])

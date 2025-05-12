@@ -24,6 +24,7 @@ class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
         super(VisionLinearRegressionModel, self).__init__()
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
+        self.eval_subject = 1
         self.model_layer = 'blocks.5.pool'
         self.device = device
         self.linear41 = nn.Linear(input_size, output_size)
@@ -104,24 +105,44 @@ class VisionLinearRegressionModel(nn.Module):
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
             x = self.visual_model.model.blocks[2](x)
-        with torch.enable_grad():
-            # Blocks 3 and 4 contain LoRA parameters and require gradients
-            x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
-            x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
+        if self.training:
+            with torch.enable_grad():
+                # Blocks 3 and 4 contain LoRA parameters and require gradients
+                x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
+                x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
 
-        
-            layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
-            layer_output = layer_output.reshape(layer_output.shape[0], -1)
-            layer_output = layer_output.reshape(b_size, -1)
+            
+                layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
+                layer_output = layer_output.reshape(layer_output.shape[0], -1)
+                layer_output = layer_output.reshape(b_size, -1)
 
-        
-            prediction1 = checkpoint(self.linear41, layer_output, use_reentrant=False)
-            prediction2 = checkpoint(self.linear42, layer_output, use_reentrant=False)
-            prediction3 = checkpoint(self.linear43, layer_output, use_reentrant=False)
-            prediction4 = checkpoint(self.linear44, layer_output, use_reentrant=False)
+            
+                prediction1 = checkpoint(self.linear41, layer_output, use_reentrant=False)
+                prediction2 = checkpoint(self.linear42, layer_output, use_reentrant=False)
+                prediction3 = checkpoint(self.linear43, layer_output, use_reentrant=False)
+                prediction4 = checkpoint(self.linear44, layer_output, use_reentrant=False)
 
 
-        return prediction1, prediction2, prediction3, prediction4
+            return prediction1, prediction2, prediction3, prediction4
+        else:
+            with torch.no_grad():
+                x = self.visual_model.model.blocks[3](x)
+                x = self.visual_model.model.blocks[4](x)
+                layer_output = self.visual_model.model.blocks[5].pool(x)
+                layer_output = layer_output.reshape(layer_output.shape[0], -1)
+                layer_output = layer_output.reshape(b_size, -1)
+
+                if self.eval_subject == 1:
+                    prediction = self.linear41(layer_output)
+                elif self.eval_subject == 2:
+                    prediction = self.linear42(layer_output)
+                elif self.eval_subject == 3:
+                    prediction = self.linear43(layer_output)
+                elif self.eval_subject == 4:
+                    prediction = self.linear44(layer_output)
+
+            return prediction
+
 
     def mock_forward(self, b_size, x):
         prediction1 = torch.randn(b_size, 1000).to(self.device)
@@ -131,6 +152,8 @@ class VisionLinearRegressionModel(nn.Module):
 
         return prediction1, prediction2, prediction3, prediction4
     
+def set_eval_subject(subject):
+    self.eval_subject = subject
 # Define setup and cleanup functions for distributed training at module level
 def setup_distributed(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
