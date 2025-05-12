@@ -9,7 +9,8 @@ import utils
 from model_sklearn import LinearHandler_Sklearn
 from model_torchregression import RegressionHander_Pytorch
 from model_transformer import RegressionHander_Transformer
-from model_lora_vision import RegressionHander_Vision
+from model_lora_vision_all_sub import RegressionHander_Vision
+#from model_lora_vision import RegressionHander_Vision
 import nibabel as nib
 from nilearn import plotting
 from nilearn.maskers import NiftiLabelsMasker
@@ -127,7 +128,11 @@ def load_fmri(root_data_dir, subject):
     ### Output ###
     return fmri
 
-def align_fmri_for_all_subjects(fmri1, fmri2, fmri3, fmri5):
+def get_fmri_for_all_subjects():
+    fmri1 = get_fmri(1)
+    fmri2 = get_fmri(2)
+    fmri3 = get_fmri(3)
+    fmri5 = get_fmri(5)
     fmri1_aligned = {}
     fmri2_aligned = {}
     fmri3_aligned = {}
@@ -139,8 +144,14 @@ def align_fmri_for_all_subjects(fmri1, fmri2, fmri3, fmri5):
             fmri3_aligned[key] = fmri3[key]
             fmri2_aligned[key] = fmri2[key]
             fmri1_aligned[key] = fmri1[key]
+    
+    fmri = {}
+    fmri['fmri1'] = fmri1_aligned
+    fmri['fmri2'] = fmri2_aligned
+    fmri['fmri3'] = fmri3_aligned
+    fmri['fmri5'] = fmri5_aligned
 
-    return fmri1_aligned, fmri2_aligned, fmri3_aligned, fmri5_aligned
+    return fmri
 
 def normalize_to_radians(value, original_min=0, original_max=49, target_min=-math.pi/2, target_max=math.pi/2):
     """
@@ -277,23 +288,30 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 fmri_split = fmri[split]
                 # Exclude the first and last fMRI samples
                 fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
+                print('fmri_split', fmri_split.shape)
                 aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
+                movie_len = len(fmri_split)
             else:
                 fmri1_split = fmri['fmri1'][split]
                 fmri2_split = fmri['fmri2'][split]
                 fmri3_split = fmri['fmri3'][split]
                 fmri5_split = fmri['fmri5'][split]
+                print('fmri1_split', fmri1_split.shape)
                 # Exclude the first and last fMRI samples
                 fmri1_split = fmri1_split[excluded_samples_start:-excluded_samples_end]
                 fmri2_split = fmri2_split[excluded_samples_start:-excluded_samples_end]
                 fmri3_split = fmri3_split[excluded_samples_start:-excluded_samples_end]
                 fmri5_split = fmri5_split[excluded_samples_start:-excluded_samples_end]
-                aligned_fmri_split = np.empty((0,1000), dtype=np.float32)
-                aligned_fmri_split = np.append(aligned_fmri_split, fmri1_split, 0)
-                aligned_fmri_split = np.append(aligned_fmri_split, fmri2_split, 0)
-                aligned_fmri_split = np.append(aligned_fmri_split, fmri3_split, 0)
-                aligned_fmri_split = np.append(aligned_fmri_split, fmri5_split, 0)
-                aligned_fmri = np.append(aligned_fmri, aligned_fmri_split, 0)
+                print('fmri1_split', fmri1_split.shape)
+                print('fmri2_split', fmri2_split.shape)
+                
+                # Stack the fMRI data from all subjects into a single array of shape (samples, subjects, features)
+                stacked_fmri = np.stack([fmri1_split, fmri2_split, fmri3_split, fmri5_split], axis=1)
+                print('stacked_fmri', stacked_fmri.shape)
+                
+                aligned_fmri = np.append(aligned_fmri, stacked_fmri, 0)
+                print('aligned_fmri', aligned_fmri.shape)
+                movie_len = len(fmri1_split)
             full_split = split
             if split[0] == 's':
                 full_split = 'friends_' + split
@@ -301,7 +319,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
             # if split == 's01e01a': print('aligned_fmri', aligned_fmri.shape)
             # if split == 's01e01a': print('len(fmri_split', len(fmri_split))
             ### Loop over fMRI samples ###
-            for s in range(len(fmri_split)):
+            for s in range(movie_len):
                 # Empty variable containing the stimulus features of all
                 # modalities for each fMRI sample
                 f_all = np.empty(0)
@@ -579,14 +597,22 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
         print('got simple handler')
     if training_handler == 'loravision':
-        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session, summary_features=True)
+        all_subjects = False
+        if 'fmri1' in fmri.keys():
+            all_subjects = True
+
+        print('training for all subjects', all_subjects)
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session, summary_features=True, all_subject_fmri=all_subjects)
+        output_shape = fmri_train.shape[1]
+        if len(fmri_train.shape) == 3:
+            output_shape = fmri_train.shape[2]
         #print('feautres_train', features_train[:500])
         print('create trainer')
         del features
         _,_, enable_wandb = utils.get_wandb_config()
         enable_wandb = utils.str_to_bool(enable_wandb)
         print('train enable_wandb', enable_wandb)
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_train.shape[1], config['trained_model_name'], enable_wandb=enable_wandb)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, output_shape, config['trained_model_name'], enable_wandb=enable_wandb)
         print('got lora vision handler')
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     elif training_handler == 'sklearn':
@@ -733,7 +759,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         movies_val, viewing_session)
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
-        features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True)
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
         print('features_val.shape', features_val.shape)
         print('fmri_val.shape', fmri_val.shape)
         # features_val = features_val[:64]

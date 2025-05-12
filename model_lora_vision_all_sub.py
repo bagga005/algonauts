@@ -93,6 +93,7 @@ class VisionLinearRegressionModel(nn.Module):
 
 
     def forward(self, x):
+
         b_size, window = x.shape[:2]
         x = x.view(b_size * window, *x.shape[2:])
 
@@ -112,15 +113,24 @@ class VisionLinearRegressionModel(nn.Module):
             layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
             layer_output = layer_output.reshape(layer_output.shape[0], -1)
             layer_output = layer_output.reshape(b_size, -1)
-            
+
+        
             prediction1 = checkpoint(self.linear41, layer_output, use_reentrant=False)
             prediction2 = checkpoint(self.linear42, layer_output, use_reentrant=False)
             prediction3 = checkpoint(self.linear43, layer_output, use_reentrant=False)
             prediction4 = checkpoint(self.linear44, layer_output, use_reentrant=False)
 
+
         return prediction1, prediction2, prediction3, prediction4
 
+    def mock_forward(self, b_size, x):
+        prediction1 = torch.randn(b_size, 1000).to(self.device)
+        prediction2 = torch.randn(b_size, 1000).to(self.device)
+        prediction3 = torch.randn(b_size, 1000).to(self.device)
+        prediction4 = torch.randn(b_size, 1000).to(self.device)
 
+        return prediction1, prediction2, prediction3, prediction4
+    
 # Define setup and cleanup functions for distributed training at module level
 def setup_distributed(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -135,6 +145,7 @@ class VideoDataset(torch.utils.data.Dataset):
     def __init__(self, input_data, targets):
         self.input_data = input_data
         self.targets = torch.FloatTensor(targets)
+        print('targets', self.targets.shape)
         
     def __len__(self):
         return len(self.input_data)
@@ -413,12 +424,15 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                 batch_X = batch_X.to(device)
                 batch_y = batch_y.to(device)
                 
+                print('batch_y', batch_y.shape)
+                print('batch_y', batch_y[:,0].shape)
                 # Forward pass
-                outputs1, outputs2, outputs3, outputs4 = model(batch_X)
-                loss1 = criterion(outputs1, batch_y)
-                loss2 = criterion(outputs2, batch_y)
-                loss3 = criterion(outputs3, batch_y)
-                loss4 = criterion(outputs4, batch_y)
+                y_pred1, y_pred2, y_pred3, y_pred4 = model(batch_X)
+                print('y_pred1', y_pred1.shape)
+                loss1 = criterion(y_pred1, batch_y[:,0])
+                loss2 = criterion(y_pred2, batch_y[:,1])
+                loss3 = criterion(y_pred3, batch_y[:,2])
+                loss4 = criterion(y_pred4, batch_y[:,3])
                 avg_loss = (loss1 + loss2 + loss3 + loss4) / 4
                 
                 # Backward pass - separate optimization for each loss
@@ -478,10 +492,10 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                     batch_X = batch_X.to(device)
                     batch_y = batch_y.to(device)
                     y_pred1, y_pred2, y_pred3, y_pred4 = model(batch_X)
-                    loss1 = criterion(y_pred1, batch_y)
-                    loss2 = criterion(y_pred2, batch_y)
-                    loss3 = criterion(y_pred3, batch_y)
-                    loss4 = criterion(y_pred4, batch_y)
+                    loss1 = criterion(y_pred1, batch_y[:,0])
+                    loss2 = criterion(y_pred2, batch_y[:,1])
+                    loss3 = criterion(y_pred3, batch_y[:,2])
+                    loss4 = criterion(y_pred4, batch_y[:,3])
                     avg_val_loss = (loss1 + loss2 + loss3 + loss4) / 4
                     val_loss += avg_val_loss.item()
                     val_loss41 += loss1.item()
@@ -680,6 +694,7 @@ class RegressionHander_Vision():
         
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
+        print('training lora vision all subjects')
         print('num_gpus', num_gpus, torch.cuda.device_count())
         resume_checkpoint = utils.get_model_checkpoint()
         if resume_checkpoint is not None and resume_checkpoint != '':
@@ -774,7 +789,7 @@ class RegressionHander_Vision():
         start_time = time.time()  
         print('start training at', start_time)
         epochs = 2
-        batch_size = 32
+        batch_size = 2
         
         linear_learning_rate_initial = 1e-4
         linear_learning_rate_final = 1e-6
@@ -897,10 +912,24 @@ class RegressionHander_Vision():
                  # Move batch to device
                 batch_X = batch_X.to(self.device)
                 batch_y = batch_y.to(self.device)
+                print('batch_X', batch_X.shape)
+                print('batch_y', batch_y.shape)
 
                 # Forward pass
-                outputs = self.model(batch_X)
-                loss = criterion(outputs, batch_y)
+                if utils.isMockMode():
+                    y_pred1, y_pred2, y_pred3, y_pred4 = self.model.mock_forward(batch_size, batch_X)
+                else:
+                    y_pred1, y_pred2, y_pred3, y_pred4 = self.model(batch_X)
+                print('y_pred1', y_pred1.shape)
+                print('batch_y', batch_y.shape)
+                print('batch_y', batch_y[:,0].shape)
+                loss1 = criterion(y_pred1, batch_y[:,0])
+                loss2 = criterion(y_pred2, batch_y[:,1])
+
+                loss3 = criterion(y_pred3, batch_y[:,2])
+                loss4 = criterion(y_pred4, batch_y[:,3])
+                avg_val_loss = (loss1 + loss2 + loss3 + loss4) / 4
+                loss = avg_val_loss
                 # Backward pass
                 loss.backward()
                 # Update weights with both optimizers
