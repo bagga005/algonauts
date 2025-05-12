@@ -424,11 +424,11 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                 batch_X = batch_X.to(device)
                 batch_y = batch_y.to(device)
                 
-                print('batch_y', batch_y.shape)
-                print('batch_y', batch_y[:,0].shape)
+                # print('batch_y', batch_y.shape)
+                # print('batch_y', batch_y[:,0].shape)
                 # Forward pass
                 y_pred1, y_pred2, y_pred3, y_pred4 = model(batch_X)
-                print('y_pred1', y_pred1.shape)
+                # print('y_pred1', y_pred1.shape)
                 loss1 = criterion(y_pred1, batch_y[:,0])
                 loss2 = criterion(y_pred2, batch_y[:,1])
                 loss3 = criterion(y_pred3, batch_y[:,2])
