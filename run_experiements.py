@@ -26,7 +26,7 @@ def run_trainings():
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name': 'lora-0-checkpoint',#'lora-best-distributed',
+        'trained_model_name': 'lora-1-checkpoint-params',#'lora-best-distributed',
         #'resume_checkpoint': None, #'',
     }
     # if training_handler != 'loravision':
