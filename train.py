@@ -288,7 +288,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 fmri_split = fmri[split]
                 # Exclude the first and last fMRI samples
                 fmri_split = fmri_split[excluded_samples_start:-excluded_samples_end]
-                print('fmri_split', fmri_split.shape)
+                # print('fmri_split', fmri_split.shape)
                 aligned_fmri = np.append(aligned_fmri, fmri_split, 0)
                 movie_len = len(fmri_split)
             else:
@@ -296,21 +296,21 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 fmri2_split = fmri['fmri2'][split]
                 fmri3_split = fmri['fmri3'][split]
                 fmri5_split = fmri['fmri5'][split]
-                print('fmri1_split', fmri1_split.shape)
+                # print('fmri1_split', fmri1_split.shape)
                 # Exclude the first and last fMRI samples
                 fmri1_split = fmri1_split[excluded_samples_start:-excluded_samples_end]
                 fmri2_split = fmri2_split[excluded_samples_start:-excluded_samples_end]
                 fmri3_split = fmri3_split[excluded_samples_start:-excluded_samples_end]
                 fmri5_split = fmri5_split[excluded_samples_start:-excluded_samples_end]
-                print('fmri1_split', fmri1_split.shape)
-                print('fmri2_split', fmri2_split.shape)
+                # print('fmri1_split', fmri1_split.shape)
+                # print('fmri2_split', fmri2_split.shape)
                 
                 # Stack the fMRI data from all subjects into a single array of shape (samples, subjects, features)
                 stacked_fmri = np.stack([fmri1_split, fmri2_split, fmri3_split, fmri5_split], axis=1)
-                print('stacked_fmri', stacked_fmri.shape)
+                # print('stacked_fmri', stacked_fmri.shape)
                 
                 aligned_fmri = np.append(aligned_fmri, stacked_fmri, 0)
-                print('aligned_fmri', aligned_fmri.shape)
+                # print('aligned_fmri', aligned_fmri.shape)
                 movie_len = len(fmri1_split)
             full_split = split
             if split[0] == 's':
