@@ -9,7 +9,7 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 import requests
 import os
 import json
-from utils import get_output_dir
+from utils import get_output_dir, get_tmp_dir
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -548,7 +548,7 @@ tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True, use_fast
 generation_config = dict(max_new_tokens=1024, do_sample=True)
 
 #process video
-video_path = 'temp/red-panda.mp4'
+video_path = os.path.join(get_tmp_dir(), 'red-panda.mp4')
 pixel_values, num_patches_list = load_video(video_path, num_segments=7, max_num=1)
 pixel_values = pixel_values.to(torch.bfloat16).cuda()
 video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
