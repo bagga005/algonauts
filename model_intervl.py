@@ -195,7 +195,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        file_ext = ".h5"
+        file_ext = ".npz"
         
         if isinstance(embedding, tuple):
             # Handle tuple by taking first element
@@ -213,8 +213,9 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
             print('vision', embedding.shape)
             embedding = embedding[:,0,:]
             print('vision', embedding.shape)
-        with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
-            f.create_dataset('data', data=embedding.cpu().numpy())#, compression="gzip")
+        np.savez_compressed(os.path.join(save_dir, safe_name + file_ext, data=embedding.cpu().numpy()))
+        # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
+        #     f.create_dataset('data', data=embedding.cpu().numpy())#, compression="gzip")
         metadata[layer_name] = {
             'type': 'tensor',
             'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
