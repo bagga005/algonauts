@@ -6,7 +6,7 @@ from decord import VideoReader, cpu
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms.functional import InterpolationMode
-from transformers import AutoModel, AutoTokenizer, AutoConfig
+from transformers import AutoModel, AutoTokenizer, AutoConfig, BitsAndBytesConfig
 from moviepy.editor import VideoFileClip
 from torchvision.models.feature_extraction import create_feature_extractor
 from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSideScale
@@ -18,6 +18,7 @@ from glob import glob
 from tqdm import tqdm
 import pandas as pd
 from model_intervl3 import SentenceDataset
+import h5py
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -194,7 +195,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        file_ext = ".pt"
+        file_ext = ".h5"
         
         if isinstance(embedding, tuple):
             # Handle tuple by taking first element
@@ -203,16 +204,17 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         # Save single tensor
         if not torch.is_tensor(embedding):
             embedding = torch.tensor(embedding)
-        if layer_name.contains('language'):
+        if 'language' in layer_name:
             print('language', embedding.shape)
             embedding = embedding.squeeze(0)
             embedding = embedding[-10:,:]
             print('language', embedding.shape)
-        if layer_name.contains('vision'):
+        if 'vision' in layer_name:
             print('vision', embedding.shape)
             embedding = embedding[:,0,:]
             print('vision', embedding.shape)
-        torch.save(embedding, os.path.join(save_dir, safe_name + file_ext))
+        with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
+            f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
         metadata[layer_name] = {
             'type': 'tensor',
             'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
@@ -445,12 +447,19 @@ def process_all_files_for_extraction():
     save_dir_temp = utils.get_tmp_dir()
     hf_path = utils.get_mvl_model()
     device_map = split_model(hf_path)
+    # For the second model loading instance
+    # Configure quantization
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        llm_int8_threshold=6.0,
+        llm_int8_has_fp16_weight=False
+    )
     model = AutoModel.from_pretrained(
         hf_path,
         torch_dtype=torch.bfloat16,
-        load_in_8bit=False,
+        quantization_config=quantization_config,
         low_cpu_mem_usage=True,
-        use_flash_attn=True,
+        use_flash_attn=False,
         trust_remote_code=True,
         device_map=device_map).eval()
     tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
