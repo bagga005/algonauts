@@ -214,7 +214,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
             embedding = embedding[:,0,:]
             print('vision', embedding.shape)
         with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
-            f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
+            f.create_dataset('data', data=embedding.cpu().numpy())#, compression="gzip")
         metadata[layer_name] = {
             'type': 'tensor',
             'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
