@@ -204,6 +204,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
 
         # Save single tensor
         if not torch.is_tensor(embedding):
+            print('not single tensor')
             embedding = torch.tensor(embedding)
         if 'language' in layer_name:
             #print('language', embedding.shape)
@@ -215,7 +216,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
             embedding = embedding[:,0,:]
             #print('vision', embedding.shape)
         with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
-            pickle.dump(embedding, f)
+            pickle.dump(embedding.cpu(), f)
         # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
         #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
         metadata[layer_name] = {

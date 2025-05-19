@@ -3,6 +3,9 @@ import pandas as pd
 from glob import glob
 from torch.utils.data import Dataset, DataLoader
 import utils
+import torch
+import gzip
+import pickle
 class SentenceDataset(Dataset):
     def __init__(self, sentences, mode="last_n_trs", last_n_trs=5, n_used_words=510):
         self.sentences = sentences
@@ -38,3 +41,7 @@ class SentenceDataset(Dataset):
 #     if i > 5: break
 #     print(i, dataset[i])
 #dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=lambda x: collate_fn(x, tokenizer))
+
+# with gzip.open('/workspace/algo_data/embeddings/friends_s03e01a_tr_0_vision_model_encoder_layers_10.pt.gz', 'rb') as f:
+#     loaded_tensor = pickle.load(f)
+#     print(loaded_tensor.shape)
