@@ -266,25 +266,21 @@ def load_embeddings(save_dir, prefix="", use_numpy=False):
     
     return embeddings
 
-def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, layers=None):
+def create_layer_hooks(model, layers=None):
     """
-    Get embeddings from specific layers of the model
+    Create and return hooks for specified layers along with storage for outputs
     
     Args:
         model: The InternVL model
-        tokenizer: The tokenizer
-        pixel_values: The image tensor
-        text_prompt: The text prompt to process
-        layers: List of layer names to extract from (if None, uses defaults)
+        layers: List of layer names to extract from
         
     Returns:
-        Dictionary mapping layer names to their embeddings
+        tuple of (hooks list, layer_outputs dict, hook_storage dict)
     """
-    # Default layers to extract if none specified
     if layers is None:
         layers = [
             'vision_model',
-            'mlp1',  # Vision-language connector
+            'mlp1',
             'language_model.model.layers.0',
             'language_model.model.layers.2',
             'language_model.model.layers.5', 
@@ -292,45 +288,56 @@ def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, l
             'language_model.model.norm'
         ]
     
-    # Store layer outputs here
-    layer_outputs = {}
     hooks = []
+    hook_storage = {}  # Will store the actual hook functions
+    layer_outputs = {}  # Will store the outputs
     
-    # Create hooks for each layer
+    def get_hook(name):
+        def hook(module, input, output):
+            if hasattr(output, 'last_hidden_state'):
+                layer_outputs[name] = output.last_hidden_state.detach()
+            elif isinstance(output, tuple):
+                layer_outputs[name] = tuple(x.detach() if torch.is_tensor(x) else x for x in output)
+            elif torch.is_tensor(output):
+                layer_outputs[name] = output.detach()
+            else:
+                layer_outputs[name] = output
+        return hook
+    
     for layer_name in layers:
-        # Create a function to capture this specific layer's output
-        def get_hook(name):
-            def hook(module, input, output):
-                # Different handling based on output type
-                if hasattr(output, 'last_hidden_state'):
-                    # For structured outputs like from vision_model
-                    layer_outputs[name] = output.last_hidden_state.detach()
-                elif isinstance(output, tuple):
-                    # For tuple outputs
-                    layer_outputs[name] = tuple(x.detach() if torch.is_tensor(x) else x for x in output)
-                elif torch.is_tensor(output):
-                    # For tensor outputs (most layers)
-                    layer_outputs[name] = output.detach()
-                else:
-                    # For other types
-                    layer_outputs[name] = output
-            return hook
-        
-        # Register the hook on the appropriate module
         if '.' in layer_name:
-            # For nested modules like 'language_model.model.layers.5'
             parts = layer_name.split('.')
             module = model
             for part in parts:
                 module = getattr(module, part)
-            hooks.append(module.register_forward_hook(get_hook(layer_name)))
+            hook_fn = get_hook(layer_name)
+            hook_storage[layer_name] = hook_fn
+            hooks.append(module.register_forward_hook(hook_fn))
         else:
-            # For top-level modules like 'vision_model'
-            hooks.append(getattr(model, layer_name).register_forward_hook(get_hook(layer_name)))
+            hook_fn = get_hook(layer_name)
+            hook_storage[layer_name] = hook_fn
+            hooks.append(getattr(model, layer_name).register_forward_hook(hook_fn))
     
-    # Run the model through model.chat (which we know works)
-    # We only need a minimal output for embedding extraction
-    #print('about to run model.chat')
+    return hooks, layer_outputs, hook_storage
+
+def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prompt, layer_outputs):
+    """
+    Get embeddings using existing hooks
+    
+    Args:
+        model: The model
+        tokenizer: The tokenizer
+        pixel_values: The image tensor
+        text_prompt: The text prompt
+        layer_outputs: Dictionary to store layer outputs
+        
+    Returns:
+        Dictionary of layer outputs
+    """
+    # Clear previous outputs
+    layer_outputs.clear()
+    
+    # Run the model
     response, _ = model.chat(
         tokenizer, 
         pixel_values, 
@@ -339,91 +346,8 @@ def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, l
         history=None, 
         return_history=True
     )
-    #print('done running model.chat:', response)
-    # Remove all hooks
-    for h in hooks:
-        h.remove()
     
-    # Print summary of layers captured
-    #print("Embeddings extracted from layers:")
-    # for layer in layers:
-    #     if layer in layer_outputs:
-    #         if torch.is_tensor(layer_outputs[layer]):
-    #             #print(f"  {layer}: tensor shape {layer_outputs[layer].shape}")
-    #         elif isinstance(layer_outputs[layer], tuple):
-    #             shapes = [x.shape if torch.is_tensor(x) else type(x) for x in layer_outputs[layer]]
-    #             #print(f"  {layer}: tuple of {shapes}")
-    #         else:
-    #             print(f"  {layer}: {type(layer_outputs[layer])}")
-    #     else:
-    #         print(f"  {layer}: Not captured")
-    
-    return layer_outputs
-
-# Alternative example showing direct model access
-def get_direct_model_outputs(model, tokenizer, pixel_values, text_prompt):
-    """
-    Directly access the model's forward method rather than using chat
-    
-    Args:
-        model: The model
-        tokenizer: The tokenizer
-        pixel_values: Image input tensor
-        text_prompt: Text prompt
-        
-    Returns:
-        The raw model outputs
-    """
-    # For debugging
-    print(f"pixel_values shape: {pixel_values.shape}")
-    
-    # Capture the relevant embeddings using hooks
-    vision_embeddings = []
-    language_embeddings = []
-    
-    def vision_hook(module, input, output):
-        if hasattr(output, 'last_hidden_state'):
-            vision_embeddings.append(output.last_hidden_state.detach())
-        else:
-            vision_embeddings.append(output.detach() if torch.is_tensor(output) else output)
-    
-    def language_hook(module, input, output):
-        language_embeddings.append(output.detach() if torch.is_tensor(output) else output)
-    
-    # Register hooks BEFORE calling model.chat
-    vision_hook_handle = model.vision_model.register_forward_hook(vision_hook)
-    language_hook_handle = model.language_model.model.norm.register_forward_hook(language_hook)
-    
-    print("Hooks registered, about to run inference")
-    
-    # Process the inputs using model.chat with a reasonable number of tokens
-    # for a more complete response (if desired)
-    response, history = model.chat(
-        tokenizer, 
-        pixel_values, 
-        text_prompt, 
-        dict(max_new_tokens=1),  # Increased to get more meaningful response
-        history=None, 
-        return_history=True
-    )
-    
-    print("Done with inference, checking hook results")
-    print(f"Vision embeddings captured: {len(vision_embeddings) > 0}")
-    print(f"Language embeddings captured: {len(language_embeddings) > 0}")
-    
-    # Remove hooks
-    vision_hook_handle.remove()
-    language_hook_handle.remove()
-    
-    # Return captured embeddings
-    return {
-        "vision_embeddings": vision_embeddings[0] if vision_embeddings else None,
-        "language_embeddings": language_embeddings[0] if language_embeddings else None,
-        "vision_embeddings_shape": vision_embeddings[0].shape if vision_embeddings and torch.is_tensor(vision_embeddings[0]) else None,
-        "language_embeddings_shape": language_embeddings[0].shape if language_embeddings and torch.is_tensor(language_embeddings[0]) else None,
-        "response": response,
-        "history": history
-    }
+    return dict(layer_outputs)  # Return a copy of the outputs
 
 def process_all_files_for_extraction():
     root_data_dir = utils.get_data_root_dir()
@@ -484,19 +408,25 @@ def process_all_files_for_extraction():
                 'language_model.model.norm'         # Final normalization
             ]
 
-    # iterate across all the stimuli movie files
-    iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
-    for i, (stim_id, stim_path) in iterator:
-        print(f"Extracting visual features for {stim_id}", stim_path)
-        # fn = os.path.join(out_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
-        # if os.path.exists(fn) or stim_id in exclude_list: continue; 
-        # Execute visual feature extraction
-        #transcript file
-        transcript_file=stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
-        extract_visual_features(stim_id, stim_path, transcript_file, model, tokenizer, custom_layers, tr, save_dir_temp)
+    # Set up hooks once before processing all files
+    hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
+    
+    try:
+        # iterate across all the stimuli movie files
+        iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+        for i, (stim_id, stim_path) in iterator:
+            print(f"Extracting visual features for {stim_id}", stim_path)
+            transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
+            # Pass layer_outputs to the extraction function
+            extract_visual_features(stim_id, stim_path, transcript_file, model, tokenizer, 
+                                 layer_outputs, tr, save_dir_temp)
+    finally:
+        # Clean up hooks after all processing is done
+        for h in hooks:
+            h.remove()
 
-def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, custom_layers, tr,
-    save_dir_temp):
+def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, 
+                          layer_outputs, tr, save_dir_temp):
     
     # Get the onset time of each movie chunk
     clip = VideoFileClip(episode_path)
@@ -527,21 +457,25 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
             question_for_embeddings = video_prefix + trans_dataset[counter]
             # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
             #print('question_for_embeddings:', question_for_embeddings)
-
-            if not utils.isMockMode() or counter == 0:
-                embeddings = get_layer_by_layer_embeddings(
-                    model, 
-                    tokenizer, 
-                    pixel_values, 
-                    question_for_embeddings,
-                    custom_layers
-                )
-                extracted_features = embeddings
+            #if meta file exists, skip the extraction
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
-            save_embeddings(extracted_features, embeddings_dir, text=trans_dataset[counter], prefix=embeddings_prefix)
+            meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
+            if not os.path.exists(meta_file):
+                if not utils.isMockMode() or counter == 0:
+                    # Use the existing hooks to get embeddings
+                    extracted_features = get_embeddings_with_existing_hooks(
+                        model, 
+                        tokenizer, 
+                        pixel_values, 
+                        question_for_embeddings,
+                        layer_outputs
+                    )
+
+                
+                save_embeddings(extracted_features, embeddings_dir, text=trans_dataset[counter], 
+                          prefix=embeddings_prefix)
             counter += 1
-            # Update the progress bar
             pbar.update(1)
 
 
