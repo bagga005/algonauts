@@ -387,7 +387,7 @@ def process_all_files_for_extraction():
         torch_dtype=torch.bfloat16,
         quantization_config=quantization_config,
         low_cpu_mem_usage=True,
-        use_flash_attn=False,
+        use_flash_attn=True,
         trust_remote_code=True,
         device_map=device_map).eval()
     tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
@@ -444,24 +444,24 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
     # Loop over chunks
     with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
         for start in start_times:
-            # Divide the movie in chunks of length TR, and save the resulting
-            # clips as '.mp4' files
-            clip_chunk = clip.subclip(start, start+tr)
-            chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
-            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
-                logger=None)
-            # Load the frames from the chunked movie clip
-            pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
-            pixel_values = pixel_values.to(torch.bfloat16).cuda()
-            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-            question_for_embeddings = video_prefix + trans_dataset[counter]
-            # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
-            #print('question_for_embeddings:', question_for_embeddings)
-            #if meta file exists, skip the extraction
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
             if not os.path.exists(meta_file):
+                # Divide the movie in chunks of length TR, and save the resulting
+                # clips as '.mp4' files
+                clip_chunk = clip.subclip(start, start+tr)
+                chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
+                clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                    logger=None)
+                # Load the frames from the chunked movie clip
+                pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
+                pixel_values = pixel_values.to(torch.bfloat16).cuda()
+                video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+                question_for_embeddings = video_prefix + trans_dataset[counter]
+                # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
+                #print('question_for_embeddings:', question_for_embeddings)
+                #if meta file exists, skip the extraction
                 if not utils.isMockMode() or counter == 0:
                     # Use the existing hooks to get embeddings
                     extracted_features = get_embeddings_with_existing_hooks(
@@ -481,95 +481,3 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
 
 process_all_files_for_extraction()
 exit()
-
-# If you set `load_in_8bit=True`, you will need two 80GB GPUs.
-# If you set `load_in_8bit=False`, you will need at least three 80GB GPUs.
-hf_path = "OpenGVLab/InternVL3-1B-Pretrained"
-device_map = split_model(hf_path)
-model = AutoModel.from_pretrained(
-    hf_path,
-    torch_dtype=torch.bfloat16,
-    load_in_8bit=False,
-    low_cpu_mem_usage=True,
-    use_flash_attn=True,
-    trust_remote_code=True,
-    device_map=device_map).eval()
-tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
-
-#compare two models
-# compare_two_models(model, model, show_structure_only=True)
-# exit()
-#process Image
-# set the max number of tiles in `max_num`
-# pixel_values = load_image('https://techcrunch.com/wp-content/uploads/2025/02/GettyImages-2197091379.jpg', max_num=12).to(torch.bfloat16).cuda()
-# question_for_embeddings = '<image>\nSam Altman is the CEO of OpenAI. He is known for his ability to deal make and raise near endless money for OpenAI.'
-generation_config = dict(max_new_tokens=1024, do_sample=True)
-
-#process video
-#video_path = os.path.join(get_tmp_dir(), 'red-panda.mp4')
-video_path = '/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv'
-pixel_values, num_patches_list = load_video(video_path, num_segments=8, max_num=1)
-pixel_values = pixel_values.to(torch.bfloat16).cuda()
-video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-question_for_embeddings = video_prefix + 'There are two red pandas in the video. They are both eating bamboo. One seems to be eating from ladder made of bamboo. The lower one is eating a from a stick that is hanging with a rope.'
-# Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
-print('question_for_embeddings:', question_for_embeddings)
-
-# Example of extracting embeddings using hooks
-
-#outputs = get_direct_model_outputs(model, tokenizer, pixel_values, question_for_embeddings)
-#print(outputs)
-# Example usage:
-custom_layers = [
-    'vision_model.encoder.layers.2',
-    'vision_model.encoder.layers.5',
-    'vision_model.encoder.layers.10',
-    'vision_model.encoder.layers.17',
-    'vision_model.encoder.layers.23',
-    'vision_model',                     # Vision encoder
-    'language_model.model.layers.0',    # First layer
-    'language_model.model.layers.4',    # First layer
-    'language_model.model.layers.8',    # First layer
-    'language_model.model.layers.12',    # First layer
-    'language_model.model.layers.16',    # Middle layer
-    'language_model.model.layers.20',   # Later layer
-    'language_model.model.layers.23',   # Later layer
-    'language_model.model.norm'         # Final normalization
-]
-
-embeddings = get_layer_by_layer_embeddings(
-    model, 
-    tokenizer, 
-    pixel_values, 
-    question_for_embeddings,
-    custom_layers
-)
-
-embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
-save_embeddings(embeddings, embeddings_dir, prefix="tr_2", use_numpy=False)
-embeddings = load_embeddings(embeddings_dir, prefix="tr_2", use_numpy=False)
-
-# Now you can work with the embeddings:
-for layer_name, embedding in embeddings.items():
-    if not torch.is_tensor(embedding):
-        print(f"{layer_name} tuple length: {len(embedding)}")
-        embedding = embedding[0]
-        
-    # Example: Compute statistics
-    mean_val = embedding.mean().item()
-    std_val = embedding.std().item()
-    print(f"{layer_name} statistics: Mean={mean_val:.4f}, Std={std_val:.4f}")
-    
-    # Example: Get the first token's embedding from each layer
-    if embedding.dim() >= 2:
-        first_token = embedding[:, 0]
-        print(f"  First token shape: {first_token.shape}")
-    
-    # Example: Compute cosine similarity between first and last token
-    if embedding.dim() >= 2 and embedding.size(1) > 1:
-        from torch.nn.functional import cosine_similarity
-        first = embedding[:, 0]
-        last = embedding[:, -1]
-        sim = cosine_similarity(first.flatten(), last.flatten(), dim=0)
-        print(f"  First-Last token similarity: {sim.item():.4f}")
-
