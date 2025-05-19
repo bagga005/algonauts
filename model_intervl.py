@@ -18,7 +18,8 @@ from glob import glob
 from tqdm import tqdm
 import pandas as pd
 from model_intervl3 import SentenceDataset
-import h5py
+import gzip
+import pickle
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -195,7 +196,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        file_ext = ".npz"
+        file_ext = ".pt"
         
         if isinstance(embedding, tuple):
             # Handle tuple by taking first element
@@ -213,9 +214,10 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
             print('vision', embedding.shape)
             embedding = embedding[:,0,:]
             print('vision', embedding.shape)
-        np.savez_compressed(os.path.join(save_dir, safe_name + file_ext, data=embedding.cpu().numpy()))
+        with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
+            pickle.dump(embedding, f)
         # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
-        #     f.create_dataset('data', data=embedding.cpu().numpy())#, compression="gzip")
+        #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
         metadata[layer_name] = {
             'type': 'tensor',
             'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
