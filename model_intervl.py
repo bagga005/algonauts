@@ -196,7 +196,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        file_ext = ".pt"
+        file_ext = ".pt.gz"
         
         if isinstance(embedding, tuple):
             # Handle tuple by taking first element
