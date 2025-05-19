@@ -344,18 +344,18 @@ def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, l
         h.remove()
     
     # Print summary of layers captured
-    print("Embeddings extracted from layers:")
-    for layer in layers:
-        if layer in layer_outputs:
-            if torch.is_tensor(layer_outputs[layer]):
-                print(f"  {layer}: tensor shape {layer_outputs[layer].shape}")
-            elif isinstance(layer_outputs[layer], tuple):
-                shapes = [x.shape if torch.is_tensor(x) else type(x) for x in layer_outputs[layer]]
-                print(f"  {layer}: tuple of {shapes}")
-            else:
-                print(f"  {layer}: {type(layer_outputs[layer])}")
-        else:
-            print(f"  {layer}: Not captured")
+    #print("Embeddings extracted from layers:")
+    # for layer in layers:
+    #     if layer in layer_outputs:
+    #         if torch.is_tensor(layer_outputs[layer]):
+    #             #print(f"  {layer}: tensor shape {layer_outputs[layer].shape}")
+    #         elif isinstance(layer_outputs[layer], tuple):
+    #             shapes = [x.shape if torch.is_tensor(x) else type(x) for x in layer_outputs[layer]]
+    #             #print(f"  {layer}: tuple of {shapes}")
+    #         else:
+    #             print(f"  {layer}: {type(layer_outputs[layer])}")
+    #     else:
+    #         print(f"  {layer}: Not captured")
     
     return layer_outputs
 
