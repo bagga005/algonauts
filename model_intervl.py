@@ -172,7 +172,7 @@ def split_model(model_name):
     device_map[f'language_model.model.layers.{num_layers - 1}'] = 0
 
     return device_map
-def save_embeddings(embeddings, save_dir, text="", prefix="", use_numpy=False):
+def save_embeddings(embeddings, save_dir, text="", prefix=""):
     """
     Save embeddings to files.
     
@@ -194,53 +194,29 @@ def save_embeddings(embeddings, save_dir, text="", prefix="", use_numpy=False):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        if use_numpy:
-            file_ext = ".npy"
-            
-            # Convert to numpy array if it's a tensor
-            if torch.is_tensor(embedding):
-                embedding = embedding.detach().cpu().numpy()
-                
-            if isinstance(embedding, tuple):
-                print('embedding is a tuple', len(embedding))
-                # Handle tuple by taking first element
-                emb = embedding[0]
-                if torch.is_tensor(emb):
-                    emb = emb.detach().cpu().numpy()
-                np.save(os.path.join(save_dir, safe_name + file_ext), emb)
-                metadata[layer_name] = {
-                    'type': 'tuple_first',
-                    'shape': emb.shape if hasattr(emb, 'shape') else None
-                }
-            else:
-                # Save single array
-                np.save(os.path.join(save_dir, safe_name + file_ext), embedding)
-                metadata[layer_name] = {
-                    'type': 'array',
-                    'shape': embedding.shape if hasattr(embedding, 'shape') else None
-                }
-        else:
-            file_ext = ".pt"
-            
-            if isinstance(embedding, tuple):
-                # Handle tuple by taking first element
-                emb = embedding[0]
-                if not torch.is_tensor(emb):
-                    emb = torch.tensor(emb)
-                torch.save(emb, os.path.join(save_dir, safe_name + file_ext))
-                metadata[layer_name] = {
-                    'type': 'tuple_first',
-                    'shape': list(emb.shape) if hasattr(emb, 'shape') else None
-                }
-            else:
-                # Save single tensor
-                if not torch.is_tensor(embedding):
-                    embedding = torch.tensor(embedding)
-                torch.save(embedding, os.path.join(save_dir, safe_name + file_ext))
-                metadata[layer_name] = {
-                    'type': 'tensor',
-                    'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
-                }
+        file_ext = ".pt"
+        
+        if isinstance(embedding, tuple):
+            # Handle tuple by taking first element
+            embedding = embedding[0]
+
+        # Save single tensor
+        if not torch.is_tensor(embedding):
+            embedding = torch.tensor(embedding)
+        if layer_name.contains('language'):
+            print('language', embedding.shape)
+            embedding = embedding.squeeze(0)
+            embedding = embedding[-10:,:]
+            print('language', embedding.shape)
+        if layer_name.contains('vision'):
+            print('vision', embedding.shape)
+            embedding = embedding[:,0,:]
+            print('vision', embedding.shape)
+        torch.save(embedding, os.path.join(save_dir, safe_name + file_ext))
+        metadata[layer_name] = {
+            'type': 'tensor',
+            'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
+        }
     
     metadata['text'] = text
     # Save metadata
@@ -281,107 +257,6 @@ def load_embeddings(save_dir, prefix="", use_numpy=False):
             embeddings[layer_name] = (emb,)
         else:
             embeddings[layer_name] = emb
-    
-    return embeddings
-def get_embeddings_with_hooks(model, tokenizer, pixel_values, text_prompt, layer_names=None):
-    """
-    Extract embeddings from specific layers using hooks.
-    
-    Args:
-        model: The model to extract embeddings from
-        tokenizer: The tokenizer to process text input
-        pixel_values: The image input tensor
-        text_prompt: The text prompt to use
-        layer_names: List of layer names to extract embeddings from.
-                     If None, extracts from predetermined layers
-                     
-    Returns:
-        A dictionary mapping layer names to their output embeddings
-    """
-    # If no specific layers are specified, use these default layers of interest
-    if layer_names is None:
-        layer_names = [
-            'vision_model',
-            'mlp1',
-            'language_model.model.layers.0',
-            'language_model.model.layers.5',
-            'language_model.model.layers.10',
-            'language_model.model.norm'
-        ]
-    
-    # Store embeddings here
-    embeddings = {}
-    hooks = []
-    
-    # Define hook function to capture outputs
-    def get_hook_fn(layer_name):
-        def hook_fn(module, input, output):
-            # Handle different output types
-            if hasattr(output, 'last_hidden_state'):
-                # Structured output like BaseModelOutputWithPooling
-                embeddings[layer_name] = {
-                    'last_hidden_state': output.last_hidden_state.detach() if hasattr(output, 'last_hidden_state') else None,
-                    'pooler_output': output.pooler_output.detach() if hasattr(output, 'pooler_output') else None
-                }
-            elif isinstance(output, tuple):
-                # Some layers return tuples
-                embeddings[layer_name] = tuple(o.detach() if torch.is_tensor(o) else o for o in output)
-            elif torch.is_tensor(output):
-                # Simple tensor output
-                embeddings[layer_name] = output.detach()
-            else:
-                # Other types - store as is
-                embeddings[layer_name] = output
-        return hook_fn
-    
-    # Register hooks for each layer
-    for layer_name in layer_names:
-        if '.' in layer_name:
-            # Handle nested module names
-            parts = layer_name.split('.')
-            module = model
-            for part in parts:
-                module = getattr(module, part)
-            hooks.append(module.register_forward_hook(get_hook_fn(layer_name)))
-        else:
-            # Handle top-level modules
-            hooks.append(getattr(model, layer_name).register_forward_hook(get_hook_fn(layer_name)))
-    
-    # Process the text input
-    print('Tokenizing input text...')
-    inputs = tokenizer(text_prompt, return_tensors="pt")
-    input_ids = inputs.input_ids.cuda()
-    
-    # Prepare the image flags (needed for the model)
-    # The chat method likely does this automatically
-    image_flags = torch.zeros_like(input_ids)
-    
-    # Find the image tokens in the prompt and set their flags
-    for i, token_id in enumerate(input_ids[0]):
-        if tokenizer.decode(token_id) == '<image>':
-            image_flags[0, i] = 1
-    
-    # Add any other required parameters based on model inspection
-    print('Running forward pass...')
-    
-    # Forward pass through the model with all required parameters
-    with torch.inference_mode():
-        outputs = model(
-            input_ids=input_ids, 
-            pixel_values=pixel_values,
-            image_flags=image_flags,  # Add this crucial parameter
-            output_hidden_states=True  # Request hidden states to be returned
-        )
-    
-    print('Removing hooks...')
-    # Remove all hooks
-    for hook in hooks:
-        hook.remove()
-    
-    # If the model's forward method returns hidden_states, add them to our embeddings dict
-    if hasattr(outputs, 'hidden_states') and outputs.hidden_states is not None:
-        for i, hidden_state in enumerate(outputs.hidden_states):
-            embeddings[f'hidden_state_{i}'] = hidden_state
     
     return embeddings
 
@@ -609,7 +484,7 @@ def process_all_files_for_extraction():
 
 def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, custom_layers, tr,
     save_dir_temp):
-
+    
     # Get the onset time of each movie chunk
     clip = VideoFileClip(episode_path)
     start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
@@ -617,7 +492,7 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
     temp_dir = save_dir_temp # os.path.join(save_dir_temp, 'temp')
     #os.makedirs(temp_dir, exist_ok=True)
     # Empty features list
-    visual_features = []
+    extracted_features = []
     counter = 0
     n_used_words = 1000
     df = pd.read_csv(transcript_file, sep='\t').fillna("")
@@ -638,18 +513,20 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
             video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
             question_for_embeddings = video_prefix + trans_dataset[counter]
             # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
-            print('question_for_embeddings:', question_for_embeddings)
+            #print('question_for_embeddings:', question_for_embeddings)
 
-            embeddings = get_layer_by_layer_embeddings(
-                model, 
-                tokenizer, 
-                pixel_values, 
-                question_for_embeddings,
-                custom_layers
-            )
+            if not utils.isMockMode() or counter == 0:
+                embeddings = get_layer_by_layer_embeddings(
+                    model, 
+                    tokenizer, 
+                    pixel_values, 
+                    question_for_embeddings,
+                    custom_layers
+                )
+                extracted_features = embeddings
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
-            save_embeddings(embeddings, embeddings_dir, text=trans_dataset[counter], prefix=embeddings_prefix, use_numpy=False)
+            save_embeddings(extracted_features, embeddings_dir, text=trans_dataset[counter], prefix=embeddings_prefix)
             counter += 1
             # Update the progress bar
             pbar.update(1)
