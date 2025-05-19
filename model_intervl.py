@@ -206,14 +206,14 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if not torch.is_tensor(embedding):
             embedding = torch.tensor(embedding)
         if 'language' in layer_name:
-            print('language', embedding.shape)
+            #print('language', embedding.shape)
             embedding = embedding.squeeze(0)
             embedding = embedding[-10:,:]
-            print('language', embedding.shape)
+            #print('language', embedding.shape)
         if 'vision' in layer_name:
-            print('vision', embedding.shape)
+            #print('vision', embedding.shape)
             embedding = embedding[:,0,:]
-            print('vision', embedding.shape)
+            #print('vision', embedding.shape)
         with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
             pickle.dump(embedding, f)
         # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
