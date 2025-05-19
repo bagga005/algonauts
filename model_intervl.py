@@ -4,15 +4,25 @@ import torch
 import torchvision.transforms as T
 from decord import VideoReader, cpu
 from PIL import Image
+from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms.functional import InterpolationMode
 from transformers import AutoModel, AutoTokenizer, AutoConfig
+from moviepy.editor import VideoFileClip
+from torchvision.models.feature_extraction import create_feature_extractor
+from pytorchvideo.transforms import Normalize, UniformTemporalSubsample, ShortSideScale
 import requests
 import os
 import json
-from utils import get_output_dir, get_tmp_dir
+import utils
+from glob import glob
+from tqdm import tqdm
+import pandas as pd
+from model_intervl3 import SentenceDataset
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
+
+
 
 def build_transform(input_size):
     MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
@@ -120,6 +130,23 @@ def load_video(video_path, bound=None, input_size=448, max_num=1, num_segments=3
     pixel_values = torch.cat(pixel_values_list)
     return pixel_values, num_patches_list
 
+def define_frames_transform():
+    """Defines the preprocessing pipeline for the video frames. Note that this
+    transform is specific to the slow_r50 model."""
+    transform = Compose(
+        [
+            UniformTemporalSubsample(8),
+            #Lambda(lambda x: uniform_temporal_subsample(x, num_samples=8)),
+            Lambda(lambda x: x/255.0),
+            Normalize([0.45, 0.45, 0.45], [0.225, 0.225, 0.225]),
+            ShortSideScale(size=256),
+            # Lambda(lambda x: Resize(size=256, antialias=True)(x) if x.shape[-2] < x.shape[-1] else 
+            #       Resize(size=(int(256 * x.shape[-2]/x.shape[-1]), 256), antialias=True)(x)),
+            CenterCrop(256)
+        ]
+  )
+    return transform
+
 def split_model(model_name):
     device_map = {}
     world_size = torch.cuda.device_count()
@@ -145,7 +172,7 @@ def split_model(model_name):
     device_map[f'language_model.model.layers.{num_layers - 1}'] = 0
 
     return device_map
-def save_embeddings(embeddings, save_dir, prefix="", use_numpy=False):
+def save_embeddings(embeddings, save_dir, text="", prefix="", use_numpy=False):
     """
     Save embeddings to files.
     
@@ -175,17 +202,15 @@ def save_embeddings(embeddings, save_dir, prefix="", use_numpy=False):
                 embedding = embedding.detach().cpu().numpy()
                 
             if isinstance(embedding, tuple):
-                # Handle tuple of tensors
-                tuple_dir = os.path.join(save_dir, safe_name)
-                os.makedirs(tuple_dir, exist_ok=True)
-                for i, emb in enumerate(embedding):
-                    if torch.is_tensor(emb):
-                        emb = emb.detach().cpu().numpy()
-                    np.save(os.path.join(tuple_dir, f"{i}{file_ext}"), emb)
+                print('embedding is a tuple', len(embedding))
+                # Handle tuple by taking first element
+                emb = embedding[0]
+                if torch.is_tensor(emb):
+                    emb = emb.detach().cpu().numpy()
+                np.save(os.path.join(save_dir, safe_name + file_ext), emb)
                 metadata[layer_name] = {
-                    'type': 'tuple',
-                    'length': len(embedding),
-                    'shapes': [arr.shape if hasattr(arr, 'shape') else None for arr in embedding]
+                    'type': 'tuple_first',
+                    'shape': emb.shape if hasattr(emb, 'shape') else None
                 }
             else:
                 # Save single array
@@ -198,17 +223,14 @@ def save_embeddings(embeddings, save_dir, prefix="", use_numpy=False):
             file_ext = ".pt"
             
             if isinstance(embedding, tuple):
-                # Handle tuple of tensors
-                tuple_dir = os.path.join(save_dir, safe_name)
-                os.makedirs(tuple_dir, exist_ok=True)
-                for i, emb in enumerate(embedding):
-                    if not torch.is_tensor(emb):
-                        emb = torch.tensor(emb)
-                    torch.save(emb, os.path.join(tuple_dir, f"{i}{file_ext}"))
+                # Handle tuple by taking first element
+                emb = embedding[0]
+                if not torch.is_tensor(emb):
+                    emb = torch.tensor(emb)
+                torch.save(emb, os.path.join(save_dir, safe_name + file_ext))
                 metadata[layer_name] = {
-                    'type': 'tuple',
-                    'length': len(embedding),
-                    'shapes': [t.shape if hasattr(t, 'shape') else None for t in embedding]
+                    'type': 'tuple_first',
+                    'shape': list(emb.shape) if hasattr(emb, 'shape') else None
                 }
             else:
                 # Save single tensor
@@ -220,6 +242,7 @@ def save_embeddings(embeddings, save_dir, prefix="", use_numpy=False):
                     'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
                 }
     
+    metadata['text'] = text
     # Save metadata
     with open(os.path.join(save_dir, f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
         json.dump(metadata, f, indent=2)
@@ -247,23 +270,17 @@ def load_embeddings(save_dir, prefix="", use_numpy=False):
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
-        if info['type'] in ['tuple']:
-            # Load tuple of embeddings
-            tuple_dir = os.path.join(save_dir, safe_name)
-            embeddings_tuple = []
-            for i in range(info['length']):
-                if use_numpy:
-                    emb = np.load(os.path.join(tuple_dir, f"{i}.npy"))
-                else:
-                    emb = torch.load(os.path.join(tuple_dir, f"{i}.pt"))
-                embeddings_tuple.append(emb)
-            embeddings[layer_name] = tuple(embeddings_tuple)
+        # Load the embedding
+        if use_numpy:
+            emb = np.load(os.path.join(save_dir, f"{safe_name}.npy"))
         else:
-            # Load single embedding
-            if use_numpy:
-                embeddings[layer_name] = np.load(os.path.join(save_dir, f"{safe_name}.npy"))
-            else:
-                embeddings[layer_name] = torch.load(os.path.join(save_dir, f"{safe_name}.pt"))
+            emb = torch.load(os.path.join(save_dir, f"{safe_name}.pt"))
+            
+        # If it was originally a tuple, wrap it back in a tuple
+        if info['type'] == 'tuple_first':
+            embeddings[layer_name] = (emb,)
+        else:
+            embeddings[layer_name] = emb
     
     return embeddings
 def get_embeddings_with_hooks(model, tokenizer, pixel_values, text_prompt, layer_names=None):
@@ -527,20 +544,137 @@ def get_direct_model_outputs(model, tokenizer, pixel_values, text_prompt):
         "history": history
     }
 
+def process_all_files_for_extraction():
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = utils.get_output_dir()
+# As an exemple, extract visual features for season 1, episode 1 of Friends
+    #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
+    # Collecting the paths to all the movie stimuli
+    file_in_filter = ''
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s3/*.mkv")
+
+    if file_in_filter:
+        files = [f for f in files if file_in_filter in f]
+    files.sort()
+
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+
+    # Duration of each movie chunk, aligned with the fMRI TR of 1.49 seconds
+    tr = 1.49
+
+    
+
+    # Saving directories
+    save_dir_temp = utils.get_tmp_dir()
+    hf_path = utils.get_mvl_model()
+    device_map = split_model(hf_path)
+    model = AutoModel.from_pretrained(
+        hf_path,
+        torch_dtype=torch.bfloat16,
+        load_in_8bit=False,
+        low_cpu_mem_usage=True,
+        use_flash_attn=True,
+        trust_remote_code=True,
+        device_map=device_map).eval()
+    tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
+    custom_layers = [
+                'vision_model.encoder.layers.2',
+                'vision_model.encoder.layers.5',
+                'vision_model.encoder.layers.10',
+                'vision_model.encoder.layers.17',
+                'vision_model.encoder.layers.23',
+                'vision_model',                     # Vision encoder
+                'language_model.model.layers.0',    # First layer
+                'language_model.model.layers.4',    # First layer
+                'language_model.model.layers.8',    # First layer
+                'language_model.model.layers.12',    # First layer
+                'language_model.model.layers.16',    # Middle layer
+                'language_model.model.layers.20',   # Later layer
+                'language_model.model.layers.23',   # Later layer
+                'language_model.model.norm'         # Final normalization
+            ]
+
+    # iterate across all the stimuli movie files
+    iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    for i, (stim_id, stim_path) in iterator:
+        print(f"Extracting visual features for {stim_id}", stim_path)
+        # fn = os.path.join(out_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
+        # if os.path.exists(fn) or stim_id in exclude_list: continue; 
+        # Execute visual feature extraction
+        #transcript file
+        transcript_file=stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
+        extract_visual_features(stim_id, stim_path, transcript_file, model, tokenizer, custom_layers, tr, save_dir_temp)
+
+def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, custom_layers, tr,
+    save_dir_temp):
+
+    # Get the onset time of each movie chunk
+    clip = VideoFileClip(episode_path)
+    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    # Create the directory where the movie chunks are temporarily saved
+    temp_dir = save_dir_temp # os.path.join(save_dir_temp, 'temp')
+    #os.makedirs(temp_dir, exist_ok=True)
+    # Empty features list
+    visual_features = []
+    counter = 0
+    n_used_words = 1000
+    df = pd.read_csv(transcript_file, sep='\t').fillna("")
+    trans_dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words)
+    assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
+    # Loop over chunks
+    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
+        for start in start_times:
+            # Divide the movie in chunks of length TR, and save the resulting
+            # clips as '.mp4' files
+            clip_chunk = clip.subclip(start, start+tr)
+            chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
+            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                logger=None)
+            # Load the frames from the chunked movie clip
+            pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
+            pixel_values = pixel_values.to(torch.bfloat16).cuda()
+            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+            question_for_embeddings = video_prefix + trans_dataset[counter]
+            # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
+            print('question_for_embeddings:', question_for_embeddings)
+
+            embeddings = get_layer_by_layer_embeddings(
+                model, 
+                tokenizer, 
+                pixel_values, 
+                question_for_embeddings,
+                custom_layers
+            )
+            embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
+            embeddings_prefix = f"{episode_id}_tr_{counter}"
+            save_embeddings(embeddings, embeddings_dir, text=trans_dataset[counter], prefix=embeddings_prefix, use_numpy=False)
+            counter += 1
+            # Update the progress bar
+            pbar.update(1)
+
+
+process_all_files_for_extraction()
+exit()
+
 # If you set `load_in_8bit=True`, you will need two 80GB GPUs.
 # If you set `load_in_8bit=False`, you will need at least three 80GB GPUs.
-path = "OpenGVLab/InternVL3-1B-Pretrained"
-device_map = split_model('OpenGVLab/InternVL3-1B-Pretrained')
+hf_path = "OpenGVLab/InternVL3-1B-Pretrained"
+device_map = split_model(hf_path)
 model = AutoModel.from_pretrained(
-    path,
+    hf_path,
     torch_dtype=torch.bfloat16,
     load_in_8bit=False,
     low_cpu_mem_usage=True,
     use_flash_attn=True,
     trust_remote_code=True,
     device_map=device_map).eval()
-tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True, use_fast=False)
+tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
 
+#compare two models
+# compare_two_models(model, model, show_structure_only=True)
+# exit()
 #process Image
 # set the max number of tiles in `max_num`
 # pixel_values = load_image('https://techcrunch.com/wp-content/uploads/2025/02/GettyImages-2197091379.jpg', max_num=12).to(torch.bfloat16).cuda()
@@ -548,31 +682,34 @@ tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True, use_fast
 generation_config = dict(max_new_tokens=1024, do_sample=True)
 
 #process video
-video_path = os.path.join(get_tmp_dir(), 'red-panda.mp4')
-pixel_values, num_patches_list = load_video(video_path, num_segments=7, max_num=1)
+#video_path = os.path.join(get_tmp_dir(), 'red-panda.mp4')
+video_path = '/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv'
+pixel_values, num_patches_list = load_video(video_path, num_segments=8, max_num=1)
 pixel_values = pixel_values.to(torch.bfloat16).cuda()
 video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-question_for_embeddings = video_prefix + 'What is the red panda doing?'
+question_for_embeddings = video_prefix + 'There are two red pandas in the video. They are both eating bamboo. One seems to be eating from ladder made of bamboo. The lower one is eating a from a stick that is hanging with a rope.'
 # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
 print('question_for_embeddings:', question_for_embeddings)
 
 # Example of extracting embeddings using hooks
 
-layer_names = [
-    'vision_model',  # Vision encoder embeddings
-    'language_model.model.layers.0',  # First LLM layer
-    'language_model.model.layers.5',  # Middle LLM layer
-    'language_model.model.norm'      # Final normalization layer
-]
 #outputs = get_direct_model_outputs(model, tokenizer, pixel_values, question_for_embeddings)
 #print(outputs)
 # Example usage:
 custom_layers = [
+    'vision_model.encoder.layers.2',
+    'vision_model.encoder.layers.5',
+    'vision_model.encoder.layers.10',
+    'vision_model.encoder.layers.17',
+    'vision_model.encoder.layers.23',
     'vision_model',                     # Vision encoder
-    'mlp1',                             # Vision-language connector 
     'language_model.model.layers.0',    # First layer
-    'language_model.model.layers.5',    # Middle layer
-    'language_model.model.layers.10',   # Later layer
+    'language_model.model.layers.4',    # First layer
+    'language_model.model.layers.8',    # First layer
+    'language_model.model.layers.12',    # First layer
+    'language_model.model.layers.16',    # Middle layer
+    'language_model.model.layers.20',   # Later layer
+    'language_model.model.layers.23',   # Later layer
     'language_model.model.norm'         # Final normalization
 ]
 
@@ -584,13 +721,15 @@ embeddings = get_layer_by_layer_embeddings(
     custom_layers
 )
 
-embeddings_dir = os.path.join(get_output_dir(), 'embeddings')
-save_embeddings(embeddings, embeddings_dir, prefix="image_embeddings", use_numpy=False)
+embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
+save_embeddings(embeddings, embeddings_dir, prefix="tr_2", use_numpy=False)
+embeddings = load_embeddings(embeddings_dir, prefix="tr_2", use_numpy=False)
 
 # Now you can work with the embeddings:
 for layer_name, embedding in embeddings.items():
     if not torch.is_tensor(embedding):
-        continue
+        print(f"{layer_name} tuple length: {len(embedding)}")
+        embedding = embedding[0]
         
     # Example: Compute statistics
     mean_val = embedding.mean().item()
@@ -610,139 +749,3 @@ for layer_name, embedding in embeddings.items():
         sim = cosine_similarity(first.flatten(), last.flatten(), dim=0)
         print(f"  First-Last token similarity: {sim.item():.4f}")
 
-exit()
-embeddings = get_embeddings_with_hooks(model, tokenizer, pixel_values, question_for_embeddings, layer_names)
-
-# Print embedding shapes to verify
-for layer_name, emb in embeddings.items():
-    if isinstance(emb, tuple):  # Some layers might return tuples
-        print(f"{layer_name} output shape: {[e.shape for e in emb]}")
-    else:
-        print(f"{layer_name} output shape: {emb.shape}")
-
-# single-image multi-round conversation (单图多轮对话)
-# question = '<image>\nPlease describe the image in detail.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config, history=None, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# question = 'Please write a poem according to the image.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config, history=history, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# # multi-image multi-round conversation, combined images (多图多轮对话，拼接图像)
-# pixel_values1 = load_image('./examples/image1.jpg', max_num=12).to(torch.bfloat16).cuda()
-# pixel_values2 = load_image('./examples/image2.jpg', max_num=12).to(torch.bfloat16).cuda()
-# pixel_values = torch.cat((pixel_values1, pixel_values2), dim=0)
-
-# question = '<image>\nDescribe the two images in detail.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config,
-#                                history=None, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# question = 'What are the similarities and differences between these two images.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config,
-#                                history=history, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# # multi-image multi-round conversation, separate images (多图多轮对话，独立图像)
-# pixel_values1 = load_image('./examples/image1.jpg', max_num=12).to(torch.bfloat16).cuda()
-# pixel_values2 = load_image('./examples/image2.jpg', max_num=12).to(torch.bfloat16).cuda()
-# pixel_values = torch.cat((pixel_values1, pixel_values2), dim=0)
-# num_patches_list = [pixel_values1.size(0), pixel_values2.size(0)]
-
-# question = 'Image-1: <image>\nImage-2: <image>\nDescribe the two images in detail.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config,
-#                                num_patches_list=num_patches_list,
-#                                history=None, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# question = 'What are the similarities and differences between these two images.'
-# response, history = model.chat(tokenizer, pixel_values, question, generation_config,
-#                                num_patches_list=num_patches_list,
-#                                history=history, return_history=True)
-# print(f'User: {question}\nAssistant: {response}')
-
-# # batch inference, single image per sample (单图批处理)
-# pixel_values1 = load_image('./examples/image1.jpg', max_num=12).to(torch.bfloat16).cuda()
-# pixel_values2 = load_image('./examples/image2.jpg', max_num=12).to(torch.bfloat16).cuda()
-# num_patches_list = [pixel_values1.size(0), pixel_values2.size(0)]
-# pixel_values = torch.cat((pixel_values1, pixel_values2), dim=0)
-
-# questions = ['<image>\nDescribe the image in detail.'] * len(num_patches_list)
-# responses = model.batch_chat(tokenizer, pixel_values,
-#                              num_patches_list=num_patches_list,
-#                              questions=questions,
-#                              generation_config=generation_config)
-# for question, response in zip(questions, responses):
-#     print(f'User: {question}\nAssistant: {response}')
-
-# video multi-round conversation (视频多轮对话)
-def get_index(bound, fps, max_frame, first_idx=0, num_segments=32):
-    if bound:
-        start, end = bound[0], bound[1]
-    else:
-        start, end = -100000, 100000
-    start_idx = max(first_idx, round(start * fps))
-    end_idx = min(round(end * fps), max_frame)
-    seg_size = float(end_idx - start_idx) / num_segments
-    frame_indices = np.array([
-        int(start_idx + (seg_size / 2) + np.round(seg_size * idx))
-        for idx in range(num_segments)
-    ])
-    return frame_indices
-
-
-# Demonstrate a more detailed example for extracting embeddings from an image
-def extract_and_analyze_embeddings(model, tokenizer, image_path, question, layer_names=None):
-    """
-    Extract embeddings from an image and analyze them
-    
-    Args:
-        model: The model
-        tokenizer: The tokenizer
-        image_path: Path to the image file
-        question: Question to ask about the image
-        layer_names: Layers to extract embeddings from
-    
-    Returns:
-        Dictionary of layer names to embeddings
-    """
-    # Load and process the image
-    pixel_values = load_image(image_path, max_num=12).to(torch.bfloat16).cuda()
-    
-    # Get embeddings from hooks
-    embeddings = get_embeddings_with_hooks(
-        model, tokenizer, pixel_values, question, layer_names
-    )
-    
-    return embeddings
-
-# Uncomment the code below to extract embeddings from a specific image with a specific question
-# Example usage:
-# custom_layers = [
-#     'vision_model',
-#     'language_model.model.layers.0',
-#     'language_model.model.layers.5',
-#     'language_model.model.layers.10',
-#     'language_model.model.norm'
-# ]
-# embeddings = extract_and_analyze_embeddings(
-#     model,
-#     tokenizer,
-#     './examples/image1.jpg',
-#     '<image>\nWhat objects can you see in this image?',
-#     custom_layers
-# )
-# 
-# # Process and use the embeddings as needed
-# for layer_name, emb in embeddings.items():
-#     # Print shape information
-#     if isinstance(emb, tuple):
-#         print(f"{layer_name} output shape: {[e.shape for e in emb]}")
-#     else:
-#         print(f"{layer_name} output shape: {emb.shape}")
-#     
-#     # Example: You can compute statistics on the embeddings
-#     if not isinstance(emb, tuple):
-#         print(f"  Mean: {emb.mean().item():.4f}, Std: {emb.std().item():.4f}")
-#         print(f"  Min: {emb.min().item():.4f}, Max: {emb.max().item():.4f}")

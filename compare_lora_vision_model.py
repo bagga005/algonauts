@@ -21,6 +21,7 @@ def compare_two_models(model1: torch.nn.Module, model2: torch.nn.Module, filter_
         if param1 is None or param2 is None:
             row.update({
                 "Num Params": float('nan'),
+                "Shape": "Unknown",
                 "Mean L2 Diff": float('nan'),
                 "Std of Diff": float('nan'),
                 "Avg Weight (Model1)": float('nan'),
@@ -31,6 +32,7 @@ def compare_two_models(model1: torch.nn.Module, model2: torch.nn.Module, filter_
         else:
             num_params = param1.numel()  # Count number of parameters in the layer
             row["Num Params"] = num_params
+            row["Shape"] = str(tuple(param1.shape))
             
             if not show_structure_only:
                 diff = (param1 - param2).detach().flatten()
@@ -57,9 +59,9 @@ def compare_two_models(model1: torch.nn.Module, model2: torch.nn.Module, filter_
     
     df = pd.DataFrame(comparison)
     
-    # If show_structure_only is True, only keep Layer and Num Params columns
+    # If show_structure_only is True, only keep Layer, Shape and Num Params columns
     if show_structure_only:
-        df = df[["Layer", "Num Params"]]
+        df = df[["Layer", "Shape", "Num Params"]]
     
     df = df.sort_values("Layer").reset_index(drop=True)
     
