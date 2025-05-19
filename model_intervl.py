@@ -329,7 +329,7 @@ def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, l
     
     # Run the model through model.chat (which we know works)
     # We only need a minimal output for embedding extraction
-    print('about to run model.chat')
+    #print('about to run model.chat')
     response, _ = model.chat(
         tokenizer, 
         pixel_values, 
@@ -338,7 +338,7 @@ def get_layer_by_layer_embeddings(model, tokenizer, pixel_values, text_prompt, l
         history=None, 
         return_history=True
     )
-    print('done running model.chat:', response)
+    #print('done running model.chat:', response)
     # Remove all hooks
     for h in hooks:
         h.remove()
