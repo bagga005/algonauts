@@ -32,6 +32,9 @@ def get_tmp_dir():
 def get_output_dir():
     return os.getenv("OUTPUT_DIR")
 
+def get_mvl_model():
+    return os.getenv("MVL_MODEL")
+
 def get_wandb_config():
     return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 
