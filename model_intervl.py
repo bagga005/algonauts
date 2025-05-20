@@ -132,22 +132,6 @@ def load_video(video_path, bound=None, input_size=448, max_num=1, num_segments=3
     pixel_values = torch.cat(pixel_values_list)
     return pixel_values, num_patches_list
 
-def define_frames_transform():
-    """Defines the preprocessing pipeline for the video frames. Note that this
-    transform is specific to the slow_r50 model."""
-    transform = Compose(
-        [
-            UniformTemporalSubsample(8),
-            #Lambda(lambda x: uniform_temporal_subsample(x, num_samples=8)),
-            Lambda(lambda x: x/255.0),
-            Normalize([0.45, 0.45, 0.45], [0.225, 0.225, 0.225]),
-            ShortSideScale(size=256),
-            # Lambda(lambda x: Resize(size=256, antialias=True)(x) if x.shape[-2] < x.shape[-1] else 
-            #       Resize(size=(int(256 * x.shape[-2]/x.shape[-1]), 256), antialias=True)(x)),
-            CenterCrop(256)
-        ]
-  )
-    return transform
 
 def split_model(model_name):
     device_map = {}
@@ -416,6 +400,8 @@ def process_all_files_for_extraction():
         iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
         for i, (stim_id, stim_path) in iterator:
             print(f"Extracting visual features for {stim_id}", stim_path)
+            if stim_id in exclude_list:
+                continue
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_visual_features(stim_id, stim_path, transcript_file, model, tokenizer, 
@@ -440,7 +426,10 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
     n_used_words = 1000
     df = pd.read_csv(transcript_file, sep='\t').fillna("")
     trans_dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words)
-    assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
+    len_trans_dataset = len(trans_dataset)
+    if len(trans_dataset) != len(start_times):
+        print('clip.duration', clip.duration, start_times[0], start_times[-1])
+    #assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
     # Loop over chunks
     with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
         for start in start_times:
@@ -458,19 +447,22 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
                 pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
                 pixel_values = pixel_values.to(torch.bfloat16).cuda()
                 video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-                question_for_embeddings = video_prefix + trans_dataset[counter]
+                trans_index = counter
+                if trans_index >= len_trans_dataset:
+                    trans_index = len_trans_dataset - 1
+                question_for_embeddings = video_prefix + trans_dataset[trans_index]
                 # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
                 #print('question_for_embeddings:', question_for_embeddings)
                 #if meta file exists, skip the extraction
-                if not utils.isMockMode() or counter == 0:
+                # if not utils.isMockMode() or counter == 0:
                     # Use the existing hooks to get embeddings
-                    extracted_features = get_embeddings_with_existing_hooks(
-                        model, 
-                        tokenizer, 
-                        pixel_values, 
-                        question_for_embeddings,
-                        layer_outputs
-                    )
+                extracted_features = get_embeddings_with_existing_hooks(
+                    model, 
+                    tokenizer, 
+                    pixel_values, 
+                    question_for_embeddings,
+                    layer_outputs
+                )
 
                 
                 save_embeddings(extracted_features, embeddings_dir, text=trans_dataset[counter], 
