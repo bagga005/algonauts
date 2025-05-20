@@ -344,6 +344,10 @@ def segment_to_extract(loaded_tensor, combine_strategy):
         print('loaded_tensor.shape', loaded_tensor.shape)
         ten = loaded_tensor[-3:,:].reshape(1, -1)
         print('ten.shape', ten.shape)
+    elif combine_strategy == COMBINE_STRATEGY_FIRST:
+        print('loaded_tensor.shape', loaded_tensor.shape)
+        ten = loaded_tensor[0,:]
+        print('ten.shape', ten.shape)
     else:
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
@@ -359,8 +363,10 @@ def get_stim_id_list(dir_path):
 
 STRATEGY_LANG_NORM_1 = 0
 STRATEGY_LANG_NORM_3 = 1
+STRATEGY_VISION_NORM = 5
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
+COMBINE_STRATEGY_FIRST = 'first'
 def save_combined_features(dir_input_path, dir_output_path, strategy, modality):
     stim_id_list = get_stim_id_list(dir_input_path)
     for stim_id in stim_id_list:
@@ -369,6 +375,8 @@ def save_combined_features(dir_input_path, dir_output_path, strategy, modality):
             ten1 = combine_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
         elif strategy == STRATEGY_LANG_NORM_3:
             ten1 = combine_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+        elif strategy == STRATEGY_VISION_NORM:
+            ten1 = combine_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
         else:
             raise ValueError(f"Invalid strategy: {strategy}")
         if ten1.dtype == torch.bfloat16:
@@ -395,10 +403,10 @@ if __name__ == "__main__":
     dir_input_path = "/home/bagga005/algo/comp_data/embeddings"
 
     # STRATEGY_LANG_NORM_1
-    # dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1"
-    # strategy = STRATEGY_LANG_NORM_1
-    # save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
-    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1"
+    strategy = STRATEGY_LANG_NORM_1
+    save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # STRATEGY_LANG_NORM_3
     dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_3"
@@ -406,6 +414,11 @@ if __name__ == "__main__":
     save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
+    # STRATEGY_VISION_NORM
+    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_VISION_NORM"
+    strategy = STRATEGY_VISION_NORM
+    save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # get_stim_id_list(dir_input_path)
     # compute_tr_upper(dir_input_path, stim_id, layer_name)

@@ -99,6 +99,7 @@ if __name__ == "__main__":
     file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
     file = '/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1/features_train.npy'
     file = '/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_3/features_train.npy'
+    #file = '/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_VISION_NORM/features_train.npy'
     read_npy_keys(file_path=file)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
     #read_h5_file(file, 'friends_s02e01a', 'visual')
