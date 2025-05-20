@@ -341,17 +341,17 @@ def segment_to_extract(loaded_tensor, combine_strategy):
     if combine_strategy == COMBINE_STRATEGY_LAST:
         ten = loaded_tensor[-1,:]
     elif combine_strategy == COMBINE_STRATEGY_LAST3:
-        print('loaded_tensor.shape', loaded_tensor.shape)
+        #print('loaded_tensor.shape', loaded_tensor.shape)
         ten = loaded_tensor[-3:,:].reshape(1, -1)
-        print('ten.shape', ten.shape)
+        #print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_FIRST:
-        print('loaded_tensor.shape', loaded_tensor.shape)
+        #print('loaded_tensor.shape', loaded_tensor.shape)
         ten = loaded_tensor[0,:]
-        print('ten.shape', ten.shape)
+        #print('ten.shape', ten.shape)
     else:
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
-    print(f"segment_to_extract: {combine_strategy}, ten.shape", ten.shape)
+    #print(f"segment_to_extract: {combine_strategy}, ten.shape", ten.shape)
     return ten.flatten()
 
 def get_stim_id_list(dir_path):
@@ -363,7 +363,8 @@ def get_stim_id_list(dir_path):
 
 STRATEGY_LANG_NORM_1 = 0
 STRATEGY_LANG_NORM_3 = 1
-STRATEGY_VISION_NORM = 5
+STRATEGY_VISION_NORM = 10
+STRATEGY_VISION_23= 11
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
 COMBINE_STRATEGY_FIRST = 'first'
@@ -400,22 +401,23 @@ def combine_features(dir_path, stim_id, layer_name, strategy):
     return combined_tensor
 
 if __name__ == "__main__":
-    dir_input_path = "/home/bagga005/algo/comp_data/embeddings"
+    out_dir = utils.get_output_dir()
+    dir_input_path = os.path.join(out_dir, "embeddings")
 
     # STRATEGY_LANG_NORM_1
-    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1"
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_1")
     strategy = STRATEGY_LANG_NORM_1
     save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # STRATEGY_LANG_NORM_3
-    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_3"
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
     strategy = STRATEGY_LANG_NORM_3
     save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # STRATEGY_VISION_NORM
-    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_VISION_NORM"
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
     strategy = STRATEGY_VISION_NORM
     save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
