@@ -1,4 +1,6 @@
 import utils
+import gzip
+import pickle
 import os
 from glob import glob
 from tqdm import tqdm
@@ -331,9 +333,82 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
     np.save(outfile, data_array)
     # Collecting the paths to all the movie stimuli
     #files = glob(f"{root_data_dir}algonauts_2025.competitors/stimulus_features/raw/language/*.h5")
+def compute_tr_upper(dir_path, stim_id, layer_name):
+    files = glob(f"{dir_path}/{stim_id}_tr_*_{layer_name}.pt.gz")
+    return len(files)
+
+def segment_to_extract(loaded_tensor, combine_strategy):
+    if combine_strategy == COMBINE_STRATEGY_LAST:
+        ten = loaded_tensor[-1,:]
+    elif combine_strategy == COMBINE_STRATEGY_LAST3:
+        print('loaded_tensor.shape', loaded_tensor.shape)
+        ten = loaded_tensor[-3:,:].reshape(1, -1)
+        print('ten.shape', ten.shape)
+    else:
+        raise ValueError(f"Invalid strategy: {combine_strategy}")
     
+    print(f"segment_to_extract: {combine_strategy}, ten.shape", ten.shape)
+    return ten.flatten()
+
+def get_stim_id_list(dir_path):
+    files = glob(f"{dir_path}/*_metadata.json")
+    f_list = [f.split("/")[-1].split("_")[0] + "_" + f.split("/")[-1].split("_")[1] for f in files]
+    f_list = list(set(f_list))
+    #print(f_list)
+    return f_list
+
+STRATEGY_LANG_NORM_1 = 0
+STRATEGY_LANG_NORM_3 = 1
+COMBINE_STRATEGY_LAST = 'last'
+COMBINE_STRATEGY_LAST3 = 'last3'
+def save_combined_features(dir_input_path, dir_output_path, strategy, modality):
+    stim_id_list = get_stim_id_list(dir_input_path)
+    for stim_id in stim_id_list:
+        features = []
+        if strategy == STRATEGY_LANG_NORM_1:
+            ten1 = combine_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
+        elif strategy == STRATEGY_LANG_NORM_3:
+            ten1 = combine_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+        else:
+            raise ValueError(f"Invalid strategy: {strategy}")
+        if ten1.dtype == torch.bfloat16:
+            ten1 = ten1.to(torch.float32)
+        visual_features = ten1.cpu().numpy()
+        save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
+        with h5py.File(save_file, 'w') as f:
+            group = f.create_group(stim_id)
+            group.create_dataset(modality, data=visual_features, dtype=np.float32)   
+        
+def combine_features(dir_path, stim_id, layer_name, strategy):
+    tensor_list = []
+    tr_upper = compute_tr_upper(dir_path, stim_id, layer_name)
+    for tr_i in range(tr_upper):
+        file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
+        with gzip.open(file_path, 'rb') as f:
+            loaded_tensor = pickle.load(f)
+        tensor_list.append(segment_to_extract(loaded_tensor, strategy))
+    combined_tensor = torch.stack(tensor_list, dim=0)
+    print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape)
+    return combined_tensor
 
 if __name__ == "__main__":
+    dir_input_path = "/home/bagga005/algo/comp_data/embeddings"
+
+    # STRATEGY_LANG_NORM_1
+    # dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1"
+    # strategy = STRATEGY_LANG_NORM_1
+    # save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
+    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+
+    # STRATEGY_LANG_NORM_3
+    dir_output_path = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_3"
+    strategy = STRATEGY_LANG_NORM_3
+    save_combined_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+
+
+    # get_stim_id_list(dir_input_path)
+    # compute_tr_upper(dir_input_path, stim_id, layer_name)
     # modality = 'visual'
     # infolder = os.path.join(utils.get_raw_data_dir(), modality)
     # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features_train_new_no_pca3.npy')
@@ -343,10 +418,12 @@ if __name__ == "__main__":
     # #extract_raw_language_features()
     # #do_pca('language')
 
-    modality = 'visual'
-    inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
-    outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_1000.npy')
-    do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True, n_components=1000)
+    # modality = 'visual'
+    # inpath = os.path.join(utils.get_stimulus_pre_features_dir(),'raw_fit', modality)
+    # outfile = os.path.join(utils.get_pca_dir(), 'friends_movie10', modality, 'features__r50_ft_1000.npy')
+    # do_pca(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=True, n_components=1000)
+
+
 
     #extract_preprocessed_video_content()
     # model_name = 'lora-20-distributed-s15'

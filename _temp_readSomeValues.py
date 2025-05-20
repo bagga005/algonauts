@@ -1,3 +1,5 @@
+import gzip
+import pickle
 import h5py
 import numpy as np
 import utils
@@ -25,6 +27,11 @@ def read_h5_file(file_path, stimId, group_name):
         print(f"Max: {np.nanmax(data)}")
         print(f"Mean: {np.nanmean(data)}")
 
+def read_pt_gz(file_path):
+    with gzip.open(file_path, 'rb') as f:
+        loaded_tensor = pickle.load(f)
+    print(loaded_tensor.shape)
+
 
 def read_npy_keys(file_path):
     """
@@ -40,7 +47,7 @@ def read_npy_keys(file_path):
         
         # If data is a dictionary
         if isinstance(data, dict):
-            print("\nKeys in the file:")
+            print("\nKeys in the file 1:")
             for key in data.keys():
                 print(f"- {key}")
             
@@ -49,10 +56,13 @@ def read_npy_keys(file_path):
         elif isinstance(data, np.ndarray):
             if data.dtype == np.dtype('O'):
                 if isinstance(data.item(), dict):
-                    print("\nKeys in the file:")
+                    print("\nKeys in the file 2:")
+                    k = ''
                     for key in data.item().keys():
                         print(f"- {key}")
+                        k = key
                     print(len(data.item().keys()))
+                    print((data.item()[k]).shape)
                 else:
                     print("\nArray contains object type but not a dictionary")
                     print("Content:", data)
@@ -86,7 +96,15 @@ if __name__ == "__main__":
     # file_name = "sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-Schaefer18_parcel-1000Par7Net_desc-s123456_bold.h5"
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
-    # file = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/visual/features_train.npy'
-    # read_npy_keys(file_path=file)
+    file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
+    file = '/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1/features_train.npy'
+    file = '/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_3/features_train.npy'
+    read_npy_keys(file_path=file)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
-    read_h5_file(file, 'friends_s02e01a', 'visual')
+    #read_h5_file(file, 'friends_s02e01a', 'visual')
+    file = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s02e01a.h5"
+    #read_h5_file(file, 'friends_s02e01a', 'visual')
+    file = "/home/bagga005/algo/comp_data/embeddings/friends_s02e01a_tr_9_language_model_model_norm.pt.gz"
+    #read_pt_gz(file)
+    file = "/home/bagga005/algo/comp_data/embeddings_combined/STRATEGY_LANG_NORM_1/friends_s02e01a.h5"
+    #read_h5_file(file, 'friends_s02e01a', 'visual')
