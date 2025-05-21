@@ -303,15 +303,15 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
             #print('extracted features.shape', features.shape)
             # Preprocess the stimulus features
     features = np.concatenate(features, axis=0)
-    print('features.shape', features.shape)
+    #print('features.shape', features.shape)
     
     if not skip_pca_just_comgine:
         prepr_features = preprocess_features(features, zscore=do_zscore)
-        print('prepr_features.shape', prepr_features.shape)
+        #print('prepr_features.shape', prepr_features.shape)
 
         # Perform PCA
         features_pca = perform_pca(prepr_features, n_components, modality)
-        print('pca features.shape', features_pca.shape)
+        #print('pca features.shape', features_pca.shape)
     else:
         features_pca = features
 
@@ -450,7 +450,12 @@ if __name__ == "__main__":
     strategy = STRATEGY_LANG_NORM_3
     save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
-
+    
+    do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", "visual", do_zscore=True, skip_pca_just_comgine=False)
+    do_pca(dir_output_path, dir_output_path + "/features_train-250-noz.npy", "visual", do_zscore=False, skip_pca_just_comgine=False)
+    do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", "visual", do_zscore=True, skip_pca_just_comgine=False)
+    do_pca(dir_output_path, dir_output_path + "/features_train-500-noz.npy", "visual", do_zscore=False, skip_pca_just_comgine=False)
+    do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", "visual", do_zscore=True, skip_pca_just_comgine=False)
     # # # STRATEGY_VISION_NORM
     # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
     # strategy = STRATEGY_VISION_NORM
