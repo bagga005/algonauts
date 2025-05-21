@@ -448,8 +448,8 @@ if __name__ == "__main__":
     # # # STRATEGY_LANG_NORM_3
     dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
     strategy = STRATEGY_LANG_NORM_3
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    #save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    #do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
     
     do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", "visual", do_zscore=True, skip_pca_just_comgine=False)
     do_pca(dir_output_path, dir_output_path + "/features_train-250-noz.npy", "visual", do_zscore=False, skip_pca_just_comgine=False)
