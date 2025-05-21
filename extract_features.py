@@ -391,52 +391,52 @@ COMBINE_STRATEGY_LAST10 = 'last10'
 COMBINE_STRATEGY_FIRST = 'first'
 def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name)
-    iterator = tqdm(enumerate(stim_id_list), total=len(list(stim_id_list)))
-    for i, stim_id in iterator:
-        print(f"Saving combined VLM features for {stim_id}")
-        if strategy == STRATEGY_LANG_NORM_1:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
-        elif strategy == STRATEGY_LANG_NORM_3:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
-        elif strategy == STRATEGY_LANG_NORM_7:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST7)
-            #print('ten1.shape', ten1.shape)
-        elif strategy == STRATEGY_VISION_NORM:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
-        elif strategy == STRATEGY_VISION_23:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_23", COMBINE_STRATEGY_FIRST)
-        elif strategy == STRATEGY_VISION_2_5_10_17_NORM:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_2", COMBINE_STRATEGY_FIRST)
-            ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_5", COMBINE_STRATEGY_FIRST)
-            ten3 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_10", COMBINE_STRATEGY_FIRST)
-            ten4 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_17", COMBINE_STRATEGY_FIRST)
-            ten5 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
-            ten1 = torch.cat((ten1, ten2, ten3, ten4, ten5), dim=1)
-            #print('ten1.shape', ten1.shape)
-        elif strategy == STRATEGY_LN_1_VN:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
-            ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
-            ten1 = torch.cat((ten1, ten2), dim=1)
-        elif strategy == STRATEGY_LN_3_VN:
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
-            ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
-            ten1 = torch.cat((ten1, ten2), dim=1)
-            #print('combined_tensor.shape', ten1.shape)
-        elif strategy == STRATEGY_LANG_4_12_NORM:
-            ten0 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_LAST)
-            ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_LAST)
-            ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
-            ten1 = torch.cat((ten0, ten1, ten2), dim=1)
-            #print('combined_tensor.shape', ten1.shape)
-        else:
-            raise ValueError(f"Invalid strategy: {strategy}")
-        if ten1.dtype == torch.bfloat16:
-            ten1 = ten1.to(torch.float32)
-        visual_features = ten1.cpu().numpy()
-        save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
-        with h5py.File(save_file, 'w') as f:
-            group = f.create_group(stim_id)
-            group.create_dataset(modality, data=visual_features, dtype=np.float32)   
+    with tqdm(total=len(stim_id_list), desc="Saving combined VLM features for {}".format(strategy)) as pbar:
+        for stim_id in stim_id_list:
+            if strategy == STRATEGY_LANG_NORM_1:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
+            elif strategy == STRATEGY_LANG_NORM_3:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+            elif strategy == STRATEGY_LANG_NORM_7:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST7)
+                #print('ten1.shape', ten1.shape)
+            elif strategy == STRATEGY_VISION_NORM:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
+            elif strategy == STRATEGY_VISION_23:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_23", COMBINE_STRATEGY_FIRST)
+            elif strategy == STRATEGY_VISION_2_5_10_17_NORM:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_2", COMBINE_STRATEGY_FIRST)
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_5", COMBINE_STRATEGY_FIRST)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_10", COMBINE_STRATEGY_FIRST)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_17", COMBINE_STRATEGY_FIRST)
+                ten5 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
+                ten1 = torch.cat((ten1, ten2, ten3, ten4, ten5), dim=1)
+                #print('ten1.shape', ten1.shape)
+            elif strategy == STRATEGY_LN_1_VN:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
+                ten1 = torch.cat((ten1, ten2), dim=1)
+            elif strategy == STRATEGY_LN_3_VN:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
+                ten1 = torch.cat((ten1, ten2), dim=1)
+                #print('combined_tensor.shape', ten1.shape)
+            elif strategy == STRATEGY_LANG_4_12_NORM:
+                ten0 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_LAST)
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_LAST)
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
+                ten1 = torch.cat((ten0, ten1, ten2), dim=1)
+                #print('combined_tensor.shape', ten1.shape)
+            else:
+                raise ValueError(f"Invalid strategy: {strategy}")
+            if ten1.dtype == torch.bfloat16:
+                ten1 = ten1.to(torch.float32)
+            visual_features = ten1.cpu().numpy()
+            save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
+            with h5py.File(save_file, 'w') as f:
+                group = f.create_group(stim_id)
+                group.create_dataset(modality, data=visual_features, dtype=np.float32)   
+            pbar.update(1)
         
 def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
     tensor_list = []
