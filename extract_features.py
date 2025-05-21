@@ -425,33 +425,33 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
     dir_input_path = os.path.join(out_dir, "embeddings")
-    filter_in_name = ["s03", "s02", "s06"]
+    filter_in_name = None #["s01", "s02", "s03", "s04", "s05", "s06"]
 
     # STRATEGY_LANG_NORM_1
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_1")
-    # strategy = STRATEGY_LANG_NORM_1
-    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_1")
+    strategy = STRATEGY_LANG_NORM_1
+    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # # STRATEGY_LANG_NORM_3
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
-    # strategy = STRATEGY_LANG_NORM_3
-    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
+    strategy = STRATEGY_LANG_NORM_3
+    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # # STRATEGY_VISION_NORM
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
-    # strategy = STRATEGY_VISION_NORM
-    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
+    strategy = STRATEGY_VISION_NORM
+    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # STRATEGY_LN_1_VN
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN_1_VN")
-    # os.makedirs(dir_output_path, exist_ok=True)	
-    # strategy = STRATEGY_LN_1_VN
-    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    # print(f'**Starting pca for STRATEGY_LN_1_VN') 
-    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN_1_VN")
+    os.makedirs(dir_output_path, exist_ok=True)	
+    strategy = STRATEGY_LN_1_VN
+    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    print(f'**Starting pca for STRATEGY_LN_1_VN') 
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # STRATEGY_LANG_4_12_NORM
     dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_4_12_NORM")
