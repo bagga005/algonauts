@@ -19,15 +19,15 @@ def run_trainings():
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 1
     include_viewing_sessions = False
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s02", "friends-s03"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["movie10-wolf"] # @param {allow-input: true}
     movies_train_val = ["friends-s02"]
     movies_val = ["friends-s06"] # @param {allow-input: true}
-    training_handler = 'loravision'
+    training_handler = 'sklearn'
     experiment_comments = 'train with full vision'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name': 'lora-0-checkpoint-params',#'lora-best-distributed',
+        'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
     }
     
     # features = get_features(modality)
@@ -164,6 +164,7 @@ def cleanup_env():
 if __name__ == "__main__":
     #encoding_accuracy = np.zeros((1000,1), dtype=np.float32)
     #train.plot_encoding_accuracy(3, encoding_accuracy, 'audio')
+    
     try:
         run_trainings()
     except Exception as e:
