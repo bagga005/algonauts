@@ -357,7 +357,9 @@ def segment_to_extract(loaded_tensor, combine_strategy):
 def get_stim_id_list(dir_path, filter_in_name=None):
     files = glob(f"{dir_path}/*_metadata.json")
     f_list = [f.split("/")[-1].split("_")[0] + "_" + f.split("/")[-1].split("_")[1] for f in files]
-    f_list = list(set(f_list)).sort()
+    f_list = list(set(f_list))
+    f_list.sort()
+    #print(filter_in_name)
 
     if filter_in_name is not None:
         # Keep files that contain any of the strings in filter_in_name
