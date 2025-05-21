@@ -333,15 +333,14 @@ def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prom
     
     return dict(layer_outputs)  # Return a copy of the outputs
 
-def process_all_files_for_extraction():
+def process_all_files_for_embedding_extraction():
     root_data_dir = utils.get_data_root_dir()
-    out_data_dir = utils.get_output_dir()
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s3/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s1/*.mkv")
 
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
@@ -375,6 +374,9 @@ def process_all_files_for_extraction():
         trust_remote_code=True,
         device_map=device_map).eval()
     tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
+    # if tokenizer.pad_token is None:
+    #     tokenizer.pad_token = tokenizer.eos_token
+    #     tokenizer.pad_token_id = tokenizer.eos_token_id
     custom_layers = [
                 'vision_model.encoder.layers.2',
                 'vision_model.encoder.layers.5',
@@ -404,8 +406,8 @@ def process_all_files_for_extraction():
                 continue
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
-            extract_visual_features(stim_id, stim_path, transcript_file, model, tokenizer, 
-                                 layer_outputs, tr, save_dir_temp)
+            extract_vlm_embeddings(stim_id, transcript_file, model, tokenizer, 
+                                 layer_outputs)
     finally:
         # Clean up hooks after all processing is done
         for h in hooks:
@@ -443,7 +445,7 @@ def extract_video_chucks():
 
         if file_in_filter:
             files = [f for f in files if file_in_filter in f]
-        files.sort()
+        files.sort(reverse=True)
 
         stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
         print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
@@ -460,7 +462,7 @@ def extract_save_video_chunks(episode_path, save_dir, stim_id, tr):
     start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
     counter = 0
     px_save_dir = os.path.join(save_dir, 'px')
-    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
+    with tqdm(total=len(start_times), desc="Extracting video chunks for {}".format(stim_id)) as pbar:
         for start in start_times:
             clip_chunk = clip.subclip(start, start+tr)
             chunk_path = os.path.join(save_dir, f'{stim_id}_tr_{counter}.mp4')
@@ -471,16 +473,27 @@ def extract_save_video_chunks(episode_path, save_dir, stim_id, tr):
             counter += 1
             pbar.update(1)
             # Divide the movie in chunks of length TR, and save the resulting	
+def get_num_chunks(episode_id):
+    season = 's1'
+    if 's02' in episode_id:
+        season = 's2'
+    elif 's03' in episode_id:
+        season = 's3'
+    elif 's04' in episode_id:
+        season = 's4'
+    elif 's05' in episode_id:
+        season = 's5'
+    elif 's06' in episode_id:
+        season = 's6'
+    season_folder = os.path.join(utils.get_output_dir(), 'video_chunks', season)
+    files = glob(f"{season_folder}/*.mp4")
+    return len(files), season_folder
 
-def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, 
-                          layer_outputs, tr, save_dir_temp):
-    
-    # Get the onset time of each movie chunk
-    clip = VideoFileClip(episode_path)
-    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
-    # Create the directory where the movie chunks are temporarily saved
-    temp_dir = save_dir_temp # os.path.join(save_dir_temp, 'temp')
-    #os.makedirs(temp_dir, exist_ok=True)
+def extract_vlm_embeddings(episode_id, transcript_file, model, tokenizer, 
+                          layer_outputs):
+    num_chunks, season_folder = get_num_chunks(episode_id)
+    # print('num_chunks', num_chunks)
+    # print('season_folder', season_folder)
     # Empty features list
     extracted_features = []
     counter = 0
@@ -488,22 +501,18 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
     df = pd.read_csv(transcript_file, sep='\t').fillna("")
     trans_dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words)
     len_trans_dataset = len(trans_dataset)
-    if len(trans_dataset) != len(start_times):
-        print('clip.duration', clip.duration, start_times[0], start_times[-1])
+    if len_trans_dataset != num_chunks:
+        print('len(trans_dataset) != num_chunks', len_trans_dataset, num_chunks)
     #assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
     # Loop over chunks
-    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
-        for start in start_times:
+    with tqdm(total=num_chunks, desc="Extracting visual features") as pbar:
+        for counter in range(num_chunks):
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
             if not os.path.exists(meta_file):
-                # Divide the movie in chunks of length TR, and save the resulting
-                # clips as '.mp4' files
-                clip_chunk = clip.subclip(start, start+tr)
-                chunk_path = os.path.join(temp_dir, 'visual_chunk.mp4')
-                clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
-                    logger=None)
+                chunk_path = os.path.join(season_folder, f'{episode_id}_tr_{counter}.mp4')
+                # print('chunk_path', chunk_path)
                 # Load the frames from the chunked movie clip
                 pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
                 pixel_values = pixel_values.to(torch.bfloat16).cuda()
@@ -537,6 +546,8 @@ episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli
 save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
 stim_id = "friends_s03e06a"
 tr = 1.49
-extract_video_chucks()
+#extract_video_chucks()
 #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
+#extract_video_chucks()
+process_all_files_for_embedding_extraction()
 exit()
