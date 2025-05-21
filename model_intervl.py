@@ -340,7 +340,7 @@ def process_all_files_for_embedding_extraction():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s1/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s5/*.mkv")
 
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
@@ -437,7 +437,7 @@ def extract_video_chucks():
     out_data_dir = os.path.join(utils.get_output_dir(), 'video_chunks')
     os.makedirs(out_data_dir, exist_ok=True)
     tr = 1.49
-    seasons = ['s1','s2','s3','s4','s5','s6']
+    seasons = ['s4']
     for season in seasons:
         file_in_filter = ''
         exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
@@ -464,10 +464,11 @@ def extract_save_video_chunks(episode_path, save_dir, stim_id, tr):
     px_save_dir = os.path.join(save_dir, 'px')
     with tqdm(total=len(start_times), desc="Extracting video chunks for {}".format(stim_id)) as pbar:
         for start in start_times:
-            clip_chunk = clip.subclip(start, start+tr)
             chunk_path = os.path.join(save_dir, f'{stim_id}_tr_{counter}.mp4')
-            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
-                logger=None)
+            if not os.path.exists(chunk_path):
+                clip_chunk = clip.subclip(start, start+tr)
+                clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                    logger=None)
             #pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
             #save_pixel_values(pixel_values, save_dir, f'{stim_id}_tr_{counter}')
             counter += 1
@@ -486,7 +487,7 @@ def get_num_chunks(episode_id):
     elif 's06' in episode_id:
         season = 's6'
     season_folder = os.path.join(utils.get_output_dir(), 'video_chunks', season)
-    files = glob(f"{season_folder}/*.mp4")
+    files = glob(f"{season_folder}/{episode_id}_*.mp4")
     return len(files), season_folder
 
 def extract_vlm_embeddings(episode_id, transcript_file, model, tokenizer, 
@@ -548,6 +549,6 @@ stim_id = "friends_s03e06a"
 tr = 1.49
 #extract_video_chucks()
 #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
-#extract_video_chucks()
-process_all_files_for_embedding_extraction()
+extract_video_chucks()
+#process_all_files_for_embedding_extraction()
 exit()
