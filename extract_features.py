@@ -342,8 +342,14 @@ def segment_to_extract(loaded_tensor, combine_strategy):
         ten = loaded_tensor[-1,:]
     elif combine_strategy == COMBINE_STRATEGY_LAST3:
         #print('loaded_tensor.shape', loaded_tensor.shape)
-        ten = loaded_tensor[-3:,:].reshape(1, -1)
-        #print('ten.shape', ten.shape)
+        ten = loaded_tensor[-1,:]
+        #print('segment_to_extract 1', ten.shape)
+        # print('mean', torch.mean(loaded_tensor[-1,:]), torch.mean(loaded_tensor[-2,:]), torch.mean(loaded_tensor[-3,:]))
+        # print('std', torch.std(loaded_tensor[-1,:]), torch.std(loaded_tensor[-2,:]), torch.std(loaded_tensor[-3,:]))
+        # print('min', torch.min(loaded_tensor[-1,:]), torch.min(loaded_tensor[-2,:]), torch.min(loaded_tensor[-3,:]))
+        # print('max', torch.max(loaded_tensor[-1,:]), torch.max(loaded_tensor[-2,:]), torch.max(loaded_tensor[-3,:]))
+        ten = torch.cat((loaded_tensor[-1,:], loaded_tensor[-2,:], loaded_tensor[-3,:]), dim=0)
+        #print('segment_to_extract 2', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_FIRST:
         #print('loaded_tensor.shape', loaded_tensor.shape)
         ten = loaded_tensor[0,:]
@@ -352,7 +358,7 @@ def segment_to_extract(loaded_tensor, combine_strategy):
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
     #print(f"segment_to_extract: {combine_strategy}, ten.shape", ten.shape)
-    return ten.flatten()
+    return ten
 
 def get_stim_id_list(dir_path, filter_in_name=None):
     files = glob(f"{dir_path}/*_metadata.json")
@@ -389,6 +395,7 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
             ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
         elif strategy == STRATEGY_LANG_NORM_3:
             ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+            #print('ten1.shape', ten1.shape)
         elif strategy == STRATEGY_VISION_NORM:
             ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
         elif strategy == STRATEGY_LN_1_VN:
@@ -419,9 +426,12 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
         file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
         with gzip.open(file_path, 'rb') as f:
             loaded_tensor = pickle.load(f)
-        tensor_list.append(segment_to_extract(loaded_tensor, strategy))
-    combined_tensor = torch.stack(tensor_list, dim=0)
-    #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
+        extracted_tensor = segment_to_extract(loaded_tensor, strategy)
+        #print('extracted_tensor.shape', extracted_tensor.shape)
+        tensor_list.append(extracted_tensor)
+        #print('tensor_list.shape', len(tensor_list))
+    combined_tensor = torch.stack(tensor_list)
+    print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
 
 if __name__ == "__main__":
@@ -436,32 +446,32 @@ if __name__ == "__main__":
     # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # # # STRATEGY_LANG_NORM_3
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
-    # strategy = STRATEGY_LANG_NORM_3
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
+    strategy = STRATEGY_LANG_NORM_3
+    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+
+    # # # STRATEGY_VISION_NORM
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
+    # strategy = STRATEGY_VISION_NORM
     # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
     # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
-    # # STRATEGY_VISION_NORM
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
-    strategy = STRATEGY_VISION_NORM
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    # # STRATEGY_LN_1_VN
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN_1_VN")
+    # os.makedirs(dir_output_path, exist_ok=True)	
+    # strategy = STRATEGY_LN_1_VN
+    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    # print(f'**Starting pca for STRATEGY_LN_1_VN') 
+    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
-    # STRATEGY_LN_1_VN
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN_1_VN")
-    os.makedirs(dir_output_path, exist_ok=True)	
-    strategy = STRATEGY_LN_1_VN
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    print(f'**Starting pca for STRATEGY_LN_1_VN') 
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
-
-    # STRATEGY_LANG_4_12_NORM
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_4_12_NORM")
-    os.makedirs(dir_output_path, exist_ok=True)	
-    strategy = STRATEGY_LANG_4_12_NORM
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual", filter_in_name=filter_in_name)
-    print(f'**Starting pca for STRATEGY_LANG_4_12_NORM') 
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    # # STRATEGY_LANG_4_12_NORM
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_4_12_NORM")
+    # os.makedirs(dir_output_path, exist_ok=True)	
+    # strategy = STRATEGY_LANG_4_12_NORM
+    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual", filter_in_name=filter_in_name)
+    # print(f'**Starting pca for STRATEGY_LANG_4_12_NORM') 
+    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # get_stim_id_list(dir_input_path)
     # compute_tr_upper(dir_input_path, stim_id, layer_name)
