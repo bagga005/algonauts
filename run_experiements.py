@@ -36,7 +36,8 @@ def run_trainings():
         fmri = train.get_fmri_for_all_subjects()
     else:
         fmri = train.get_fmri(subject)
-    
+    # print('fmri', fmri.keys())
+    # print('fmri[s01e01a].shape', fmri['s01e01a'].shape)
     # fmri2 = train.get_fmri(2)
     # fmri3 = train.get_fmri(3)
     # fmri5 = train.get_fmri(5)

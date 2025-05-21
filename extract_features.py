@@ -357,7 +357,7 @@ def segment_to_extract(loaded_tensor, combine_strategy):
 def get_stim_id_list(dir_path, filter_in_name=None):
     files = glob(f"{dir_path}/*_metadata.json")
     f_list = [f.split("/")[-1].split("_")[0] + "_" + f.split("/")[-1].split("_")[1] for f in files]
-    f_list = list(set(f_list))
+    f_list = list(set(f_list)).sort()
 
     if filter_in_name is not None:
         # Keep files that contain any of the strings in filter_in_name
@@ -428,16 +428,16 @@ if __name__ == "__main__":
     filter_in_name = None #["s01", "s02", "s03", "s04", "s05", "s06"]
 
     # STRATEGY_LANG_NORM_1
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_1")
-    strategy = STRATEGY_LANG_NORM_1
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_1")
+    # strategy = STRATEGY_LANG_NORM_1
+    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
-    # # STRATEGY_LANG_NORM_3
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
-    strategy = STRATEGY_LANG_NORM_3
-    save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
-    do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
+    # # # STRATEGY_LANG_NORM_3
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_3")
+    # strategy = STRATEGY_LANG_NORM_3
+    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, "visual")
+    # do_pca(dir_output_path, dir_output_path + "/features_train.npy", "visual", do_zscore=False, skip_pca_just_comgine=True)
 
     # # STRATEGY_VISION_NORM
     dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
