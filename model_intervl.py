@@ -411,6 +411,67 @@ def process_all_files_for_extraction():
         for h in hooks:
             h.remove()
 
+def save_pixel_values(pixel_values, save_dir, prefix):
+    """
+    Save pixel_values tensor to a compressed file.
+    
+    Args:
+        pixel_values (torch.Tensor): The pixel values tensor to save
+        save_dir (str): Directory to save the file in
+        prefix (str): Prefix for the filename (e.g. video chunk ID)
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    file_path = os.path.join(save_dir, f"{prefix}.pt.gz")
+    
+    # Convert to CPU if on GPU
+    if torch.is_tensor(pixel_values) and pixel_values.is_cuda:
+        pixel_values = pixel_values.cpu()
+        
+    with gzip.open(file_path, 'wb') as f:
+        pickle.dump(pixel_values, f)
+
+def extract_video_chucks():
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = os.path.join(utils.get_output_dir(), 'video_chunks')
+    os.makedirs(out_data_dir, exist_ok=True)
+    tr = 1.49
+    seasons = ['s1','s2','s3','s4','s5','s6']
+    for season in seasons:
+        file_in_filter = ''
+        exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+        files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/{season}/*.mkv")
+
+        if file_in_filter:
+            files = [f for f in files if file_in_filter in f]
+        files.sort()
+
+        stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+        print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+        season_out_dir = os.path.join(out_data_dir, season)
+        os.makedirs(season_out_dir, exist_ok=True)
+        for stim_id, stim_path in stimuli.items():
+            if stim_id in exclude_list:
+                continue
+            extract_save_video_chunks(stim_path, season_out_dir, stim_id, tr)
+
+
+def extract_save_video_chunks(episode_path, save_dir, stim_id, tr):
+    clip = VideoFileClip(episode_path)
+    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    counter = 0
+    px_save_dir = os.path.join(save_dir, 'px')
+    with tqdm(total=len(start_times), desc="Extracting visual features") as pbar:
+        for start in start_times:
+            clip_chunk = clip.subclip(start, start+tr)
+            chunk_path = os.path.join(save_dir, f'{stim_id}_tr_{counter}.mp4')
+            clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                logger=None)
+            #pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
+            #save_pixel_values(pixel_values, save_dir, f'{stim_id}_tr_{counter}')
+            counter += 1
+            pbar.update(1)
+            # Divide the movie in chunks of length TR, and save the resulting	
+
 def extract_visual_features(episode_id, episode_path, transcript_file, model, tokenizer, 
                           layer_outputs, tr, save_dir_temp):
     
@@ -471,5 +532,11 @@ def extract_visual_features(episode_id, episode_path, transcript_file, model, to
             pbar.update(1)
 
 
-process_all_files_for_extraction()
+#process_all_files_for_extraction()
+episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
+save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
+stim_id = "friends_s03e06a"
+tr = 1.49
+extract_video_chucks()
+#extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
 exit()

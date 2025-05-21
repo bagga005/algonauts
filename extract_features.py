@@ -397,7 +397,7 @@ def combine_features(dir_path, stim_id, layer_name, strategy):
             loaded_tensor = pickle.load(f)
         tensor_list.append(segment_to_extract(loaded_tensor, strategy))
     combined_tensor = torch.stack(tensor_list, dim=0)
-    print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape)
+    print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
 
 if __name__ == "__main__":
