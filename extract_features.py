@@ -389,10 +389,17 @@ COMBINE_STRATEGY_LAST8 = 'last8'
 COMBINE_STRATEGY_LAST9 = 'last9'
 COMBINE_STRATEGY_LAST10 = 'last10'
 COMBINE_STRATEGY_FIRST = 'first'
-def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None):
+def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name)
+    num_skipped = 0
     with tqdm(total=len(stim_id_list), desc="Saving combined VLM features for {}".format(strategy)) as pbar:
         for stim_id in stim_id_list:
+            save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
+            if not overwrite and os.path.exists(save_file):
+                pbar.update(1)
+                num_skipped += 1
+                continue
+        
             if strategy == STRATEGY_LANG_NORM_1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
             elif strategy == STRATEGY_LANG_NORM_3:
@@ -432,11 +439,13 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
             if ten1.dtype == torch.bfloat16:
                 ten1 = ten1.to(torch.float32)
             visual_features = ten1.cpu().numpy()
-            save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
+            
             with h5py.File(save_file, 'w') as f:
                 group = f.create_group(stim_id)
                 group.create_dataset(modality, data=visual_features, dtype=np.float32)   
             pbar.update(1)
+        if num_skipped > 0:
+            print(f"****Skipped {num_skipped} files")
         
 def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
     tensor_list = []
@@ -452,11 +461,11 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
     combined_tensor = torch.stack(tensor_list)
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, overwrite=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"**Starting save_combined_vlm_features for {strategy}")
-        save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name)
+        save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite)
     print(f"**Starting do_pca for {strategy}")
     do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
     do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
