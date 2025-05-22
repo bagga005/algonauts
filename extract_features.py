@@ -519,12 +519,12 @@ if __name__ == "__main__":
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_10, modality)
 
     # # # STRATEGY_LANG_NORM_7_AVG
-    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_7_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_7_AVG, modality, only_pca=True, overwrite=True)
+    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LANG_NORM_7_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_7_AVG, modality, pca_only=True, overwrite=True)
 
     #STRATEGY_LN7_4_12_NORM_VN_NORM
-    # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN7_4_12_NORM_VN_NORM")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LN7_4_12_NORM_VN_NORM, modality)
+    dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN7_4_12_NORM_VN_NORM")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LN7_4_12_NORM_VN_NORM, modality, pca_only=True,)
 
     # # # # STRATEGY_VISION_NORM
     # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
