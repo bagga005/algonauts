@@ -484,17 +484,20 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy):
     combined_tensor = torch.stack(tensor_list)
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"**Starting save_combined_vlm_features for {strategy}")
         save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite)
     if not pca_skip:
         print(f"**Starting do_pca for {strategy}")
-        do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
-        do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
-        do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
-        do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+        if pca_only_750:
+            do_pca(dir_output_path, dir_output_path + "/features_train-750.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=750)
+        else:
+            do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
+            do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
+            do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
+            do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
 
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
@@ -524,7 +527,7 @@ if __name__ == "__main__":
 
     #STRATEGY_LN7_4_12_NORM_VN_NORM
     dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_LN7_4_12_NORM_VN_NORM")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LN7_4_12_NORM_VN_NORM, modality, pca_only=True,)
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LN7_4_12_NORM_VN_NORM, modality, pca_only=True, pca_only_750=True)
 
     # # # # STRATEGY_VISION_NORM
     # dir_output_path = os.path.join(out_dir, "embeddings_combined", "STRATEGY_VISION_NORM")
