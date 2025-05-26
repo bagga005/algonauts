@@ -41,13 +41,13 @@ def load_stimulus_features(root_data_dir, modality):
     features = {}
 
     ### Load the visual features ###
-    if modality == 'visual' or modality == 'all' or modality == 'visual+language':
+    if modality == 'visual' or modality == 'all' or modality == 'visual+language' or modality == 'visual+audio':
         stimuli_dir = os.path.join(root_data_dir, 'pca',
             'friends_movie10', 'visual', 'features_train.npy')
         features['visual'] = np.load(stimuli_dir, allow_pickle=True).item()
 
     ### Load the audio features ###
-    if modality == 'audio' or modality == 'all' or modality == 'audio+language':
+    if modality == 'audio' or modality == 'all' or modality == 'audio+language' or modality == 'visual+audio':
         stimuli_dir = os.path.join(root_data_dir, 'pca',
             'friends_movie10', 'audio', 'features_train.npy')
         features['audio'] = np.load(stimuli_dir, allow_pickle=True).item()
@@ -780,7 +780,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer.load_model(model_name)
 
     fmri_val_pred = trainer.predict(features_val)
-    
+    print('fmri_val_pred.shape', fmri_val_pred.shape)
+
     if break_up_by_network:
         prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
         accuracy_by_network = []
@@ -793,6 +794,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
     else:
         accuracy, encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
+        print('encoding_accuracy.shape', encoding_accuracy.shape)
+        utils.save_predictions_accuracy(fmri_val_pred,encoding_accuracy)
     if plot_encoding_fig:
         #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
         # encoding_accuracy[:] = 0
