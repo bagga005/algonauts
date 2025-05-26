@@ -25,7 +25,7 @@ def run_trainings():
     movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'sklearn'
     experiment_comments = 'train with full vision'
-    specific_modalities = ["all"]
+    specific_modalities = ["visual"]
     config = {
         'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
     }
