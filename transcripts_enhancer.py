@@ -28,7 +28,7 @@ def get_scene_dialogue(file_path):
     
     # Remove empty lines, lines with 'Commercial Break', and strip whitespace
     valid_lines = [line.strip() for line in lines 
-                   if line.strip() and 'Commercial Break' not in line and 'Closing Credits' not in line and 'OPENING TITLES' not in line and 'END' not in line]
+                   if line.strip() and 'Commercial Break' not in line and 'Closing Credits' not in line and 'OPENING TITLES' not in line and 'END' not in line and 'Opening Credits' not in line]
     
     assert valid_lines, "No dialogues found"
     
@@ -302,7 +302,7 @@ def try_squeeze_in_dialogue(transcript_data, dialogues, dialogue_id):
         
 
     print('empty_trs', empty_trs)
-    gap_available = words_collected - prev_dialogue_length
+    #gap_available = words_collected - prev_dialogue_length
     print('search_words', search_words)
     print('normalized_dialogue_words', normalized_dialogue_words)
     # print(f'gap_available: {gap_available}')
@@ -689,15 +689,16 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     print(f"Total number of words added: {words_added_total}")
     print(f"Total number of words skipped: {skipped_words_total}")
     print(f"Total number of good fuzz scores: {num_good_fuzz_score}")
-    return transcript_data_orig, skipped_dialogues
+    return transcript_data_orig, skipped_dialogues, total_dialogues
 
 def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
     dialogues = get_scene_dialogue(dialogues_file)
     still_skipped_dialogues = []
-    transcript_data_enhanced, skipped_dialogues = add_dialogues_to_transcript(transcript_data, dialogues, 20)
+    transcript_data_enhanced, skipped_dialogues, total_dialogues = add_dialogues_to_transcript(transcript_data, dialogues, 20)
     print(f"Skipped dialogues after phase 1:")
     for dialogue in skipped_dialogues:
         print(f"  {dialogue['id']}: {dialogue['text']}")
+    num_skipped_p1 = len(skipped_dialogues)
 
     if run_phase_2:
         print(f"Phase 2:")
@@ -713,5 +714,6 @@ def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
             else:
                 print(f"  {dialogue['id']}: {dialogue['text']} (fixed)")
         print(f"Still skipped dialogues: {len(still_skipped_dialogues)}")
+        num_skipped_p2 = len(still_skipped_dialogues)
 
-    return transcript_data_enhanced, still_skipped_dialogues
+    return transcript_data_enhanced, (total_dialogues, num_skipped_p1, num_skipped_p2)

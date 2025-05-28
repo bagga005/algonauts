@@ -87,7 +87,8 @@ def save_transcript_with_dialogue_tsv(file_path, transcript_data):
         transcript_data (list): Array of objects with 5 fields:
                                text_per_tr, words_per_tr, onsets_per_tr, durations_per_tr, dialogue_per_tr
     """
-    
+    directory_path = os.path.dirname(file_path)
+    os.makedirs(directory_path, exist_ok=True)
     fieldnames = ['text_per_tr', 'words_per_tr', 'onsets_per_tr', 'durations_per_tr', 'dialogue_per_tr']
     
     with open(file_path, 'w', encoding='utf-8', newline='') as file:
@@ -107,77 +108,93 @@ def save_transcript_with_dialogue_tsv(file_path, transcript_data):
                 'dialogue_per_tr': repr(row_data['dialogue_per_tr'])
             }
             writer.writerow(tsv_row)
+def print_key_stats(key_stats_list):
+    for key_stats in key_stats_list:
+        total_dialogues, num_skipped_p1, num_skipped_p2 = key_stats["key_stats"]
+        per_skipped_p1 = num_skipped_p1 / total_dialogues
+        per_skipped_p2 = num_skipped_p2 / total_dialogues
+        print(f'{key_stats["stim_id"]}: {key_stats["key_stats"]} (p1: {per_skipped_p1*100:.2f}%, p2: {per_skipped_p2*100:.2f}%), {total_dialogues} dialogues, {num_skipped_p1} skipped in p1, {num_skipped_p2} skipped in p2')
 
-def run_for_all_episodes():
+def run_for_one_episode(stim_id, stim_path):
+    print(f"Processing {stim_id}", stim_path)
+    root_data_dir = utils.get_data_root_dir()
+    #load transcript files
+    t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
+    t_files.sort()
+    f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
+    print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
+    #outfile_path
+    season_id = 's' + stim_id[10]
+
+    trans_iterator = enumerate(f_stimuli.items())
+    trans_info_list = []
+    transcript_data = None
+    isfirst = True
+    for j, (trans_id, trans_path) in trans_iterator:
+        print(f"Handling {trans_id}", trans_path)
+        tr_lines = load_transcript_tsv(trans_path)
+        num_lines = len(tr_lines)
+        if isfirst:
+            transcript_data = tr_lines
+            isfirst = False
+        else:
+            transcript_data.extend(tr_lines)
+        trans_info = {"len": num_lines, "stimd_id": stim_id, "trans_id": trans_id, "trans_path": trans_path}
+        trans_info_list.append(trans_info)
+    total_tr_len = 0
+    for trans_info in trans_info_list:
+        total_tr_len += trans_info["len"]
+    print(f"Total transcript length: {total_tr_len}")
+
+    #enhance the transcripts
+    #enhanced_transcript_data = transcript_data
+    assert total_tr_len == len(transcript_data), f"Total transcript length {len(transcript_data)} does not match the number of transcript data {total_tr_len}"
+    enhanced_transcript_data, key_stats = transcripts_enhancer.enhance_transcripts(transcript_data, stim_path, run_phase_2=True)
+    assert len(enhanced_transcript_data) == total_tr_len, f"Enhanced transcript length {len(enhanced_transcript_data)} does not match the number of transcript data {total_tr_len}"
+
+    #save the enhanced transcripts
+    counter = 0
+    for trans_info in trans_info_list: 
+        outfile_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends',season_id,'enhanced',f'{trans_info["trans_id"]}.tsv')
+        print(f"Saving to {outfile_path}")
+        file_enhanced_transcript_data = enhanced_transcript_data[counter:counter+trans_info["len"]]
+        assert len(file_enhanced_transcript_data) == trans_info["len"], f"File enhanced transcript length {len(file_enhanced_transcript_data)} does not match the number of transcript data {trans_info['len']}"
+        save_transcript_with_dialogue_tsv(outfile_path, file_enhanced_transcript_data)
+        counter += trans_info["len"]
+    return key_stats
+
+def run_for_all_episodes(print_stats=True):
     root_data_dir = utils.get_data_root_dir()
     
     #list of full text transcripts
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/full/*.txt")
+    files = glob(f"{root_data_dir}/stimuli/transcripts/friends/full/*.txt")
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
-
+    key_stats_list = []
     videos_iterator = enumerate(stimuli.items())
     for i, (stim_id, stim_path) in videos_iterator:
-        print(f"Processing {stim_id}", stim_path)
-        #load transcript files
-        t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
-        t_files.sort()
-        f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
-        print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
-        #outfile_path
-        season_id = 's' + stim_id[10]
+        key_stats = run_for_one_episode(stim_id, stim_path)
+        key_stats_list.append({"stim_id": stim_id, "key_stats": key_stats})
 
-        trans_iterator = enumerate(f_stimuli.items())
-        trans_info_list = []
-        transcript_data = None
-        isfirst = True
-        for j, (trans_id, trans_path) in trans_iterator:
-            print(f"Handling {trans_id}", trans_path)
-            tr_lines = load_transcript_tsv(trans_path)
-            num_lines = len(tr_lines)
-            if isfirst:
-                transcript_data = tr_lines
-                isfirst = False
-            else:
-                transcript_data.extend(tr_lines)
-            trans_info = {"len": num_lines, "stimd_id": stim_id, "trans_id": trans_id, "trans_path": trans_path}
-            trans_info_list.append(trans_info)
-        total_tr_len = 0
-        for trans_info in trans_info_list:
-            total_tr_len += trans_info["len"]
-        print(f"Total transcript length: {total_tr_len}")
+    if print_stats:
+        print_key_stats(key_stats_list)
+def test_with_1_episode(print_stats=True):
+    stim_id = 'friends_s01e01'
+    stim_path = os.path.join(utils.get_data_root_dir(), 'stimuli', 'transcripts', 'friends', 'full', f'{stim_id}.txt')
+    key_stats_list = []
+    key_stats = run_for_one_episode(stim_id, stim_path)
+    key_stats_list.append({"stim_id": stim_id, "key_stats": key_stats})
+    if print_stats:
+        print_key_stats(key_stats_list)
 
-        #enhance the transcripts
-        #enhanced_transcript_data = transcript_data
-        assert total_tr_len == len(transcript_data), f"Total transcript length {len(transcript_data)} does not match the number of transcript data {total_tr_len}"
-        enhanced_transcript_data, _ = transcripts_enhancer.enhance_transcripts(transcript_data, stim_path, run_phase_2=True)
-        assert len(enhanced_transcript_data) == total_tr_len, f"Enhanced transcript length {len(enhanced_transcript_data)} does not match the number of transcript data {total_tr_len}"
-
-        #save the enhanced transcripts
-        counter = 0
-        for trans_info in trans_info_list: 
-            outfile_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends',season_id,'enhanced',f'{trans_info["trans_id"]}.tsv')
-            print(f"Saving to {outfile_path}")
-            file_enhanced_transcript_data = enhanced_transcript_data[counter:counter+trans_info["len"]]
-            assert len(file_enhanced_transcript_data) == trans_info["len"], f"File enhanced transcript length {len(file_enhanced_transcript_data)} does not match the number of transcript data {trans_info['len']}"
-            save_transcript_with_dialogue_tsv(outfile_path, file_enhanced_transcript_data)
-            counter += trans_info["len"]
-
-def test_with_1_episode():
-    root_data_dir = utils.get_data_root_dir()
-    file_path = os.path.join(root_data_dir, 'stimuli', 'transcripts', 'friends', 's1', 'backup', 'friends_s01e01a-combined.tsv')
-    transcript_data = load_transcript_tsv(file_path)
-    stim_path = os.path.join(root_data_dir, 'stimuli', 'transcripts', 'friends', 's1', 'full', 'friends_s01e01.txt')
-    enhanced_transcript_data, _ = transcripts_enhancer.enhance_transcripts(transcript_data, stim_path, run_phase_2=False)
-    #print(transcript_data)
 
 
 if __name__ == "__main__":
-    #run_for_all_episodes()
-    test_with_1_episode()
+    run_for_all_episodes()
+    #test_with_1_episode()
