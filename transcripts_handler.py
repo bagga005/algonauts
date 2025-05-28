@@ -168,8 +168,18 @@ def run_for_all_episodes(print_stats=True):
     
     #list of full text transcripts
     file_in_filter = ''
-    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    exclude_list = ['s02', 's06e15']#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/stimuli/transcripts/friends/full/*.txt")
+    updated_files = []
+    for file in files:
+        exclude_found = False
+        for exclude in exclude_list:
+            if exclude in file:
+                exclude_found = True
+                break
+        if not exclude_found:
+            updated_files.append(file)
+    files = updated_files
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
     files.sort()
@@ -185,7 +195,7 @@ def run_for_all_episodes(print_stats=True):
     if print_stats:
         print_key_stats(key_stats_list)
 def test_with_1_episode(print_stats=True):
-    stim_id = 'friends_s01e01'
+    stim_id = 'friends_s03e05'
     stim_path = os.path.join(utils.get_data_root_dir(), 'stimuli', 'transcripts', 'friends', 'full', f'{stim_id}.txt')
     key_stats_list = []
     key_stats = run_for_one_episode(stim_id, stim_path)
@@ -196,5 +206,5 @@ def test_with_1_episode(print_stats=True):
 
 
 if __name__ == "__main__":
-    run_for_all_episodes()
-    #test_with_1_episode()
+    #run_for_all_episodes()
+    test_with_1_episode()

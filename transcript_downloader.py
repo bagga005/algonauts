@@ -71,6 +71,24 @@ def clean_up_dialogue_text(file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         for line in processed_lines:
             file.write(line + '\n')
+def test_loading_text_files():
+    root_data_dir = utils.get_data_root_dir()
+    files = glob(f"{root_data_dir}/stimuli/transcripts/friends/full/*.txt")
+    exclude_list = ['s02', 's06e15']
+    updated_files = []
+    for file in files:
+        exclude_found = False
+        for exclude in exclude_list:
+            if exclude in file:
+                exclude_found = True
+                break
+        if not exclude_found:
+            updated_files.append(file)
+    files = updated_files
+    files.sort()
+    for file in files:
+        print(f"Loading {file}")
+        dialogues = transcripts_enhancer.get_scene_dialogue(file)
 
 def clean_up_all_text_files():
     root_data_dir = utils.get_data_root_dir()
@@ -144,7 +162,8 @@ def download_raw_text_for_all_episodes():
 
 if __name__ == "__main__":
     #download_raw_text_for_all_episodes()
-    clean_up_all_text_files()
+    #clean_up_all_text_files()
+    test_loading_text_files()
 
 
 
