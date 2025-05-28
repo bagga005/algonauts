@@ -220,6 +220,184 @@ def save_transcript_with_dialogue_tsv(file_path, transcript_data):
             }
             writer.writerow(tsv_row)
 
+def get_dialogue_list(dialogues):
+    dialogue_list = []
+    dialogue_temp = []
+    for scene in dialogues['scenes']:
+        dialogue_temp.extend(scene['dialogues'])
+    for dialogue in dialogue_temp:
+        norm_text = re.sub(r'\([^)]*\)', '', dialogue['text']).strip()
+        dialogue_words = norm_text.split()
+        normalized_dialogue_words = [normalize_and_clean_word(word) for word in dialogue_words]
+        # Filter out empty normalized words
+        dialogue['normalized_text']  = [word for word in normalized_dialogue_words if word]
+        dialogue_list.append(dialogue)
+    return dialogue_list
+
+def normalize_and_clean_word(word):
+        """Normalize word by converting to lowercase and keeping only alphanumeric characters"""
+        new_word = ''.join(c.lower() for c in word if c.isalnum())
+        # if new_word == 'cmon':
+            #new_word = 'come'
+        return new_word
+
+MAX_DIALOGUE_ID = -5
+def get_row_word_index_for_dialogue(transcript_data, dialogue_id):
+    if dialogue_id == MAX_DIALOGUE_ID:
+        return len(transcript_data)-1, len(transcript_data[len(transcript_data)-1]['words_per_tr'])
+    for row_idx, row in enumerate(transcript_data):
+        #print(row_idx, row['dialogue_per_tr'])
+        for word_idx, word in enumerate(row['dialogue_per_tr']):
+            if word == dialogue_id:
+                return row_idx, word_idx
+    return None, None
+
+def get_empty_trs_in_range(transcript_data, from_row, to_row):
+    empty_trs = []
+    for row_idx in range(from_row, to_row):
+        if len(transcript_data[row_idx]['words_per_tr']) == 0:
+            empty_trs.append(row_idx)
+    return empty_trs
+
+def get_ordered_row_word_index_for_dialogue(transcriptdata, dialogues, dialogue_id, isNext=True):
+    if isNext:
+        found_ordered = False
+        num_check = 1
+        row_idx, word_idx = None, None
+        #print(f'dialogue_id: {dialogue_id}, num_check: {num_check}, len(dialogues): {len(dialogues)}')
+        while not found_ordered and num_check < 3 and dialogue_id+num_check < len(dialogues):
+            row_idx, word_idx = get_row_word_index_for_dialogue(transcriptdata, dialogue_id+num_check)
+            if row_idx is not None:
+                found_ordered = True
+            else:
+                num_check += 1
+
+        return row_idx, word_idx, dialogue_id+num_check
+    else:
+        found_ordered = False
+        num_check = 1
+        row_idx, word_idx = None, None
+        while not found_ordered and num_check < 3 and dialogue_id-num_check > 0:
+            row_idx, word_idx = get_row_word_index_for_dialogue(transcriptdata, dialogue_id-num_check)
+            if row_idx is not None:
+                found_ordered = True
+            else:
+                num_check += 1
+        return row_idx, word_idx, dialogue_id-num_check
+def fill_empty_tr_with_dialogue(transcript_data, dialogue_id, row_idx):
+    transcript_data[row_idx]['dialogue_per_tr'] = [dialogue_id]
+    transcript_data[row_idx]['words_per_tr'] = ['PLACEHOLDER']
+    transcript_data[row_idx]['onsets_per_tr'] = []
+    transcript_data[row_idx]['durations_per_tr'] = []
+    transcript_data[row_idx]['text_per_tr'] = 'PLACEHOLDER'
+
+def set_dialogue_in_transcript(transcript_data,  dialogue_id, row_idx, word_idx, move_to_next_if_taken=True):
+    able_to_set = True
+    print('set_dialogue_in_transcript',transcript_data[row_idx]['dialogue_per_tr'])
+    if (transcript_data[row_idx]['dialogue_per_tr'][word_idx] == -1):
+        transcript_data[row_idx]['dialogue_per_tr'][word_idx] = dialogue_id
+    elif move_to_next_if_taken:
+        set_row_idx, set_word_idx = row_idx, word_idx
+        len_row = len(transcript_data[row_idx]['words_per_tr'])
+        if word_idx < len_row - 1:
+            set_word_idx = word_idx + 1
+        elif row_idx < len(transcript_data) - 1:
+            set_row_idx = row_idx + 1
+            set_word_idx = 0
+        else:
+            able_to_set = False
+            return transcript_data, able_to_set
+        
+        if len(transcript_data[set_row_idx]['dialogue_per_tr']) < 1:
+            fill_empty_tr_with_dialogue(transcript_data, dialogue_id, set_row_idx)
+            #create new entry
+        elif transcript_data[set_row_idx]['dialogue_per_tr'][set_word_idx] != -1:
+            able_to_set = False
+            return transcript_data, able_to_set
+        else:
+            transcript_data[set_row_idx]['dialogue_per_tr'][set_word_idx] = dialogue_id
+    return transcript_data, able_to_set
+#from(inclusive) and to(non inclusive)
+def try_squeeze_in_dialogue(transcript_data, dialogues, dialogue_id):
+    fixed_dialogue = False
+    dialogues_list = get_dialogue_list(dialogues)
+    normalized_dialogue_words = dialogues_list[dialogue_id]['normalized_text']
+    prev_diaglogue_length = 0
+    if dialogue_id > 0:
+        from_row, from_word_pos, prev_dialogue_id = get_ordered_row_word_index_for_dialogue(transcript_data, dialogues_list, dialogue_id, isNext=False)
+        if from_row is None:
+            print(f'Could not find previous dialogue {dialogue_id}')
+            return transcript_data, fixed_dialogue
+        prev_dialogue_length = len(dialogues_list[prev_dialogue_id]['text'].split())
+    else:
+        from_row, from_word_pos = (0, 0)
+    to_row, to_word_pos, next_dialogue_id = get_ordered_row_word_index_for_dialogue(transcript_data, dialogues_list, dialogue_id, isNext=True)
+    if to_row is None:
+        print(f'Could not find next dialogue {dialogue_id}')
+        return transcript_data, fixed_dialogue
+
+    temp_row = from_row
+    temp_word_pos = from_word_pos
+    search_words = []
+    search_positions = []
+    first_search_word_pos = None
+    last_search_word_pos = None
+    temp_word_pos = from_word_pos
+    words_collected = 0
+    while temp_row <= to_row:
+        row_words = transcript_data[temp_row]['words_per_tr']
+        max_row_words = len(row_words)
+        if temp_row == to_row:
+            max_row_words = to_word_pos
+        while temp_word_pos < max_row_words:
+            search_words.append(normalize_and_clean_word(row_words[temp_word_pos]))
+            search_positions.append((temp_row, temp_word_pos))
+            
+            # Track first word position
+            if first_search_word_pos is None:
+                first_search_word_pos = (temp_row, temp_word_pos)
+            
+            # Always update last word position
+            last_search_word_pos = (temp_row, temp_word_pos)
+            
+            temp_word_pos += 1
+            words_collected += 1
+            
+        temp_row += 1
+        temp_word_pos = 0
+    #strategy 1: If 1-2 empty row, then squeeze in the dialogue
+    empty_trs = get_empty_trs_in_range(transcript_data, from_row, to_row)
+    if len(empty_trs) < 5 and len(empty_trs) > 0:
+        fixed_dialogue = True
+        fill_empty_tr_with_dialogue(transcript_data, dialogue_id, empty_trs[0])
+
+    #strategy 2: Compute matching ration
+    num_equal =0
+    first_word_pos = None
+    
+    for word in normalized_dialogue_words:
+        word_search_counter =0
+        for word_s in search_words:
+            if word == word_s:
+                num_equal += 1
+                if first_word_pos is None:
+                    first_word_pos = search_positions[word_search_counter]
+            word_search_counter += 1
+    print(f'first_word_pos: {first_word_pos}')
+    ratio_equal_words = num_equal/len(normalized_dialogue_words)
+    print(f'ratio_equal_words: {ratio_equal_words}')
+    if ratio_equal_words >= 0.5:
+        transcript_data, fixed_dialogue = set_dialogue_in_transcript(transcript_data, dialogue_id, first_word_pos[0], first_word_pos[1])
+
+    
+        
+
+    print('empty_trs', empty_trs)
+    gap_available = words_collected - prev_dialogue_length
+    print('search_words', search_words)
+    print('normalized_dialogue_words', normalized_dialogue_words)
+    # print(f'gap_available: {gap_available}')
+    return transcript_data, fixed_dialogue
 
 def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     """
@@ -239,12 +417,7 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         ValueError: If matching fails for dialogue start/end words
     """
     
-    def normalize_and_clean_word(word):
-        """Normalize word by converting to lowercase and keeping only alphanumeric characters"""
-        new_word = ''.join(c.lower() for c in word if c.isalnum())
-        # if new_word == 'cmon':
-            #new_word = 'come'
-        return new_word
+    
     
     # Initialize dialogue_per_tr for all rows
     for row in transcript_data_orig:
@@ -254,10 +427,9 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
             f"Length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
     
     # Flatten all dialogues from all scenes
-    all_dialogues = []
+    all_dialogues = get_dialogue_list(dialogues)
     skipped_dialogues = []
-    for scene in dialogues['scenes']:
-        all_dialogues.extend(scene['dialogues'])
+    
     
     # Track current position in transcript
     current_row = 0
@@ -265,22 +437,14 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     
     total_dialogues = len(all_dialogues)
     last_matched_dialogue_id = None
-    fuzzy_replace_length = -1
+
+    active_flex_len = flex_len
+    consecutive_skipped_dialogues = 0
     
     for dialogue in all_dialogues:
         dialogue_id = dialogue['id']
         dialogue_text = dialogue['text']
-        # Filter out text within parentheses
-        dialogue_text = re.sub(r'\([^)]*\)', '', dialogue_text).strip()
-        dialogue_words = dialogue_text.split()
-        
-        if not dialogue_words:
-            continue  # Skip empty dialogues
-        
-        # Normalize dialogue words
-        normalized_dialogue_words = [normalize_and_clean_word(word) for word in dialogue_words]
-        # Filter out empty normalized words
-        normalized_dialogue_words = [word for word in normalized_dialogue_words if word]
+        normalized_dialogue_words = dialogue['normalized_text']
         
         if not normalized_dialogue_words:
             continue  # Skip if no valid words after normalization
@@ -293,7 +457,8 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         temp_row = current_row
         temp_word_pos = current_word_pos
         words_collected = 0
-        target_words = len(normalized_dialogue_words) + flex_len
+        active_flex_len = flex_len + 5*consecutive_skipped_dialogues
+        target_words = len(normalized_dialogue_words) + active_flex_len
         
         # Track first and last word positions for debugging
         first_search_word_pos = None
@@ -320,6 +485,11 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
                 temp_row += 1
                 temp_word_pos = 0
         
+        if(len(search_words) < 10 and len(search_words) < len(normalized_dialogue_words)):
+            print(f'Not enough words remaining ({len(search_words)} < {len(normalized_dialogue_words)}) to match dialogue {dialogue_id}: "{dialogue_text}"')
+            break;
+            
+
         # Print search word range information
         print(f"Dialogue {dialogue_id} of len {len(normalized_dialogue_words)}: '{dialogue_text}'")
         print(f"Search words of len {len(search_words)}: {search_words}")
@@ -330,8 +500,8 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         else:
             print(f"  -> Search words are within single row {first_search_word_pos[0]}")
         
-        if len(search_words) < len(normalized_dialogue_words):
-            raise ValueError(f"Not enough words remaining to match dialogue {dialogue_id}: '{dialogue_text}'")
+        # if len(search_words) < len(normalized_dialogue_words):
+        #     raise ValueError(f"Not enough words remaining to match dialogue {dialogue_id}: '{dialogue_text}'")
         
         # Normalize search words for matching
         normalized_search_words = [normalize_and_clean_word(word) for word in search_words]
@@ -342,8 +512,6 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         second_word_search_pos = None
         third_word_search_pos = None
         last_word_search_pos = None
-        second_last_word_search_pos = None
-        third_last_word_search_pos = None
         last_dialogue_index = len(normalized_dialogue_words) - 1
         total_equal_words =0
         max_equal_words = 0
@@ -379,13 +547,12 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
                     start_max_equal_words_index = i1
 
         ratio_equal_words = total_equal_words/len(normalized_dialogue_words)
-        if(dialogue_id > 100):
-            break
+        print(f'ratio_equal_words: {ratio_equal_words}, first_word_search_pos: {first_word_search_pos}, last_word_search_pos: {last_word_search_pos}')
         
 
         #first_word_search_pos setting based on 2nd and 3rd words
         if first_word_search_pos is None:
-            if ratio_equal_words > 0.7 and len(normalized_dialogue_words) > 3:
+            if ratio_equal_words >= 0.6 and len(normalized_dialogue_words) > 2:
                 #check if 2nd and 3rd words match
                 second_word_search_pos = None
                 third_word_search_pos = None
@@ -401,16 +568,16 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
                     first_word_search_pos = second_word_search_pos
 
         #set first word based on max seq match
-        if first_word_search_pos is None and ratio_equal_words > 0.7 and len(normalized_dialogue_words) > 4:
+        if first_word_search_pos is None and ratio_equal_words >= 0.6 and len(normalized_dialogue_words) > 4:
             if max_equal_words > 3:
-                print(f'max_equal_words: {max_equal_words}, start_max_equal_words_search_pos: {start_max_equal_words_search_pos}')
-                first_word_search_pos = start_max_equal_words_search_pos
+                print(f'max_equal_words: {max_equal_words}, start_max_equal_words_index: {start_max_equal_words_index}, start_max_equal_words_search_pos: {start_max_equal_words_search_pos}')
+                first_word_search_pos = max(start_max_equal_words_search_pos - start_max_equal_words_index, 0)
 
         # if end is not found, assume it is around ratio of matched words
-        if first_word_search_pos is not None and last_word_search_pos is None:
-            print('*******Used exception')
+        if first_word_search_pos is not None and last_word_search_pos is None and ratio_equal_words >= 0.6:
+            print(f'*******Used exception {first_word_search_pos} {ratio_equal_words}')
             if len(normalized_dialogue_words) > 2:
-                last_word_search_pos = int(len(normalized_dialogue_words)*ratio_equal_words) - 2
+                last_word_search_pos = first_word_search_pos + int(len(normalized_dialogue_words)*ratio_equal_words) - 2
             if len(normalized_dialogue_words) <= 2:
                 last_word_search_pos = first_word_search_pos
 
@@ -418,41 +585,17 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         if first_word_search_pos is not None and last_word_search_pos is not None and last_word_search_pos - first_word_search_pos > len(normalized_dialogue_words):
             print(f'len of selection is too long: {last_word_search_pos - first_word_search_pos} > {len(normalized_dialogue_words)}')
             last_word_search_pos = int(len(normalized_dialogue_words)*ratio_equal_words) 
-
-        # matches = matcher.get_matching_blocks()
-        
-        # # Compute first_word_search_pos and last_word_search_pos based on matches
-        
-        
-        # # Find the first matching block that contains the first dialogue word (index 0)
-        # for match in matches:
-        #     print('match', match)
-        #     dialogue_start, search_start, length = match
-        #     if dialogue_start == 0 and length > 0:  # First word is at the start of this match
-        #         first_word_search_pos = search_start
-        #         break
-        
-        # #if first word was not found, then can we find the next 2 word
-        
-        # # Find the last matching block that contains the last dialogue word
-        
-        # for match in matches:
-        #     dialogue_start, search_start, length = match
-        #     dialogue_end = dialogue_start + length - 1
-        #     if dialogue_end == last_dialogue_index and length > 0:  # Last word is at the end of this match
-        #         last_word_search_pos = search_start + length - 1
-        #         break
         
         # Check if both first and last words were found
         if first_word_search_pos is None:
-            print(f"Could not find first word '{dialogue_words[0]}' (normalized: '{normalized_dialogue_words[0]}') of dialogue {dialogue_id}: '{dialogue_text}'")
+            print(f"Could not find first word '{normalized_dialogue_words[0]}' of dialogue {dialogue_id}: '{dialogue_text}'")
             print(f"Search words used for matching: {search_words}")
             print(f"Normalized search words: {normalized_search_words}")
             print(f"Normalized dialogue words: {normalized_dialogue_words}")
             #raise ValueError(f"Could not find first word '{dialogue_words[0]}' of dialogue {dialogue_id}: '{dialogue_text}'")
         
         if last_word_search_pos is None:
-            print(f"Could not find last word '{dialogue_words[-1]}' (normalized: '{normalized_dialogue_words[-1]}') of dialogue {dialogue_id}: '{dialogue_text}'")
+            print(f"Could not find last word '{normalized_dialogue_words[-1]}'  of dialogue {dialogue_id}: '{dialogue_text}'")
             print(f"Search words used for matching: {search_words}")
             print(f"Normalized search words: {normalized_search_words}")
             print(f"Normalized dialogue words: {normalized_dialogue_words}")
@@ -461,23 +604,24 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         if first_word_search_pos is None or last_word_search_pos is None:
             print('****skipping dialogue', dialogue_id)
             skipped_dialogues.append(dialogue)
+            consecutive_skipped_dialogues += 1
         else:
             # Ensure first word comes before last word
             if first_word_search_pos > last_word_search_pos:
                 raise ValueError(f"First word position ({first_word_search_pos}) comes after last word position ({last_word_search_pos}) for dialogue {dialogue_id}: '{dialogue_text}'")
             
             best_match = (first_word_search_pos, last_word_search_pos)
-            
+            consecutive_skipped_dialogues = 0
             # Print the actual row and index positions for the matched words
             search_start, search_end = best_match
             start_row, start_index = search_positions[search_start]
             end_row, end_index = search_positions[search_end]
             
             print(f"Best match found:")
-            print(f"  First word '{dialogue_words[0]} {normalized_search_words[first_word_search_pos]} ' at row {start_row}, index {start_index}")
-            print(f"  Last word '{dialogue_words[-1]} {normalized_search_words[last_word_search_pos]} ' at row {end_row}, index {end_index}")
+            print(f"  First word '{normalized_dialogue_words[0]} {normalized_search_words[first_word_search_pos]} ' at row {start_row}, index {start_index}")
+            print(f"  Last word '{normalized_dialogue_words[-1]} {normalized_search_words[last_word_search_pos]} ' at row {end_row}, index {end_index}")
             print(f"dialogue    : {dialogue_text}")
-            search_string = " ".join(normalized_search_words[first_word_search_pos:last_word_search_pos])
+            search_string = " ".join(normalized_search_words[first_word_search_pos:last_word_search_pos+1])
             print(f"search words: {search_string}")
             if start_row != end_row:
                 print(f"  -> Dialogue spans across {end_row - start_row + 1} rows")
@@ -499,58 +643,82 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
                 current_word_pos = 0
             
             last_matched_dialogue_id = dialogue_id
+        
+        # if dialogue_id >53:
+        #     break
     
     # # Check if all transcript data has been processed
-    # if current_row < len(transcript_data_orig):
-    #     # Check if there are still words left in the current or subsequent rows
-    #     remaining_words = 0
-    #     for row_idx in range(current_row, len(transcript_data_orig)):
-    #         if row_idx == current_row:
-    #             remaining_words += len(transcript_data_orig[row_idx]['words_per_tr']) - current_word_pos
-    #         else:
-    #             remaining_words += len(transcript_data_orig[row_idx]['words_per_tr'])
+    if current_row < len(transcript_data_orig):
+        # Check if there are still words left in the current or subsequent rows
+        remaining_words = 0
+        for row_idx in range(current_row, len(transcript_data_orig)):
+            if row_idx == current_row:
+                remaining_words += len(transcript_data_orig[row_idx]['words_per_tr']) - current_word_pos
+            else:
+                remaining_words += len(transcript_data_orig[row_idx]['words_per_tr'])
         
-    #     if remaining_words > 0:
-    #         raise ValueError(f"Transcript data not fully processed. {remaining_words} words remaining after processing all dialogues.")
+        if remaining_words > 0:
+            raise ValueError(f"Transcript data not fully processed. {remaining_words} words remaining after processing all dialogues.")
     
-    # # Final assertion check for all rows
-    # for row in transcript_data_orig:
-    #     assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
-    #         f"Final length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
+    # Final assertion check for all rows
+    for row in transcript_data_orig:
+        assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
+            f"Final length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
     
     print(f"Total number of dialogues processed: {total_dialogues}")
     print(f"Last matched dialogue ID: {last_matched_dialogue_id}")
     print(f"Total number of skipped dialogues: {len(skipped_dialogues)}")
-    print(f"Skipped dialogues:")
-    for dialogue in skipped_dialogues:
-        print(f"  {dialogue['id']}: {dialogue['text']}")
-    return transcript_data_orig
+    
+    return transcript_data_orig, skipped_dialogues
 
 
 # Example usage and test
 if __name__ == "__main__":
 
     # Write test file
-    file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','full','friends_s01e01.txt')
+    file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','full','friends_s01e02.txt')
     
     # Test load dialogues file function
     try:
-        result = get_scene_dialogue(file_path)
+        dialogues = get_scene_dialogue(file_path)
         #print(json.dumps(result, indent=2))
     except Exception as e:
         print(f"Error: {e}")
 
-    file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','friends_s01e01a.tsv')
+    file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','friends_s01e02a.tsv')
 
     transcript_data_orig = load_transcript_tsv(file_path)
     # print(len(transcript_data_orig))
     # print(transcript_data_orig[16])
     # for row in transcript_data_orig:
     #     row['dialogue_per_tr'] = [4]
-    
-    transcript_data_enhanced = add_dialogues_to_transcript(transcript_data_orig, result, 20)
+    still_skipped_dialogues = []
+    transcript_data_enhanced, skipped_dialogues = add_dialogues_to_transcript(transcript_data_orig, dialogues, 20)
+    print(f"Skipped dialogues after phase 1:")
+    for dialogue in skipped_dialogues:
+        print(f"  {dialogue['id']}: {dialogue['text']}")
+    print(f"Phase 2:")
+    # counter = 0
+    # for dialogue in skipped_dialogues:
+    #     counter += 1
+    #     # if counter > 3:
+    #     #     break
+    #     transcript_data_enhanced, fixed_dialogue = try_squeeze_in_dialogue(transcript_data_enhanced, dialogues, dialogue['id'])
+    #     if not fixed_dialogue:
+    #         still_skipped_dialogues.append(dialogue)
+    #         print(f"  {dialogue['id']}: {dialogue['text']} (not fixed)")
+    #     else:
+    #         print(f"  {dialogue['id']}: {dialogue['text']} (fixed)")
+    # print(f"Still skipped dialogues: {len(still_skipped_dialogues)}")
+
+    # test_dialogue_id = 59
+    # transcript_data_enhanced, fixed_dialogue = try_squeeze_in_dialogue(transcript_data_enhanced, dialogues, test_dialogue_id)
+    # row_idx, word_idx= get_row_word_index_for_dialogue(transcript_data_enhanced, test_dialogue_id)
+    # #set_dialogue_in_transcript(transcript_data_enhanced, test_dialogue_id, row_idx, word_idx)
+    # print(f"Fixed dialogue: {fixed_dialogue}")
+
     file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','enhanced','friends_s01e01a.tsv')
-    save_transcript_with_dialogue_tsv(file_path, transcript_data_orig)
+    save_transcript_with_dialogue_tsv(file_path, transcript_data_enhanced)
     # # Test save dialogues file function
     # file_path = os.path.join(utils.get_data_root_dir(),'stimuli', 'transcripts', 'friends','s1','friends_s01e01a.tsv')
     # save_transcript_with_dialogue_tsv(file_path, transcript_data_orig)
