@@ -112,15 +112,20 @@ def print_key_stats(key_stats_list):
     per_skipped_p1_total = 0
     per_skipped_p2_total = 0
     total_dialogues_total = 0
+    total_match_rate_dialogue_total = 0
+    total_match_rate_transcript_total = 0
+    num_stats = len(key_stats_list)
     for key_stats in key_stats_list:
-        total_dialogues, num_skipped_p1, num_skipped_p2 = key_stats["key_stats"]
+        total_dialogues, num_skipped_p1, num_skipped_p2, match_rate_dialogue, match_rate_transcript = key_stats["key_stats"]
         per_skipped_p1 = num_skipped_p1 / total_dialogues if total_dialogues > 0 else 0
         per_skipped_p2 = num_skipped_p2 / total_dialogues if total_dialogues > 0 else 0
-        print(f'{key_stats["stim_id"]}: {key_stats["key_stats"]} (p1: {per_skipped_p1*100:.2f}%, p2: {per_skipped_p2*100:.2f}%), {total_dialogues} dialogues, {num_skipped_p1} skipped in p1, {num_skipped_p2} skipped in p2')
+        print(f'{key_stats["stim_id"]}: {key_stats["key_stats"]} (p1: {per_skipped_p1*100:.2f}%, p2: {per_skipped_p2*100:.2f}%), {total_dialogues} dialogues, {num_skipped_p1} skipped in p1, {num_skipped_p2} skipped in p2, {match_rate_dialogue*100:.2f}% dialogue match rate, {match_rate_transcript*100:.2f}% transcript match rate')
         per_skipped_p1_total += num_skipped_p1
         per_skipped_p2_total += num_skipped_p2
+        total_match_rate_dialogue_total += match_rate_dialogue
+        total_match_rate_transcript_total += match_rate_transcript
         total_dialogues_total += total_dialogues
-    print(f'Average of per_skipped_p1: {per_skipped_p1_total / total_dialogues_total*100:.2f}%, Average of per_skipped_p2: {per_skipped_p2_total / total_dialogues_total*100:.2f}%', f'Total dialogues: {total_dialogues_total}', f'Total skipped in p1: {per_skipped_p1_total}', f'Total skipped in p2: {per_skipped_p2_total}')
+    print(f'Average of per_skipped_p1: {per_skipped_p1_total / total_dialogues_total*100:.2f}%, Average of per_skipped_p2: {per_skipped_p2_total / total_dialogues_total*100:.2f}%', f'Total dialogues: {total_dialogues_total}', f'Total skipped in p1: {per_skipped_p1_total}', f'Total skipped in p2: {per_skipped_p2_total}', f'Total match rate dialogue: {total_match_rate_dialogue_total / num_stats:.2f}%', f'Total match rate transcript: {total_match_rate_transcript_total /num_stats:.2f}%')
 
 def run_for_one_episode(stim_id, stim_path):
     print(f"Processing {stim_id}", stim_path)
@@ -213,5 +218,5 @@ def test_with_1_episode(print_stats=True):
 
 
 if __name__ == "__main__":
-    #run_for_all_episodes()
-    test_with_1_episode()
+    run_for_all_episodes()
+    #test_with_1_episode()
