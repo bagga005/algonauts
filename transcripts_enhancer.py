@@ -38,8 +38,8 @@ def get_scene_dialogue(file_path):
     scenes = []
     current_scene = None
     current_dialogue = None
-    dialogue_id = 0
-    scene_id = 0
+    dialogue_id = 1
+    scene_id = 1
     dialogue_line_count = 0
     
     for line in valid_lines:
@@ -127,19 +127,38 @@ def word_substitutions_to_make(segment):
     segment = re.sub(r'waitwait', 'wait wait', segment.lower())
     return segment
 
-def check_dialogue_list_validity(dialogue_list):
+def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_distance_for_overlap=1):
     """
-    Checks the validity of dialogue ordering based on their IDs and matched text indices.
+    Checks the validity of dialogue ordering based on their IDs and matched text indices,
+    and checks for boundary overlaps between dialogues.
     
     Args:
         dialogue_list (list): List of dialogues from get_dialogue_list output
+        transcript_data (list): Array of transcript objects from load_transcript_tsv
+        max_dialogue_distance_for_overlap (int): Maximum dialogue ID distance to allow overlaps without considering it a mistake (default: 1)
         
     Returns:
-        tuple: (total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3)
+        tuple: (total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3,
+                boundary_mistakes_total, boundary_mistakes_round1, boundary_mistakes_round2, boundary_mistakes_round3)
     """
     
-    # Filter dialogues that have been matched (matched_text_index != -1)
-    matched_dialogues = [d for d in dialogue_list if d.get('matched_text_index', -1) != -1]
+    # Create text to position mapping for looking up words
+    text_to_position_map = []  # Maps text index to (row_idx, word_idx)
+    full_text_words = []
+    
+    for row_idx, row in enumerate(transcript_data):
+        for word_idx, word in enumerate(row['words_per_tr']):
+            full_text_words.append(word)
+            text_to_position_map.append((row_idx, word_idx))
+    
+    def get_words_from_text_range(start_idx, end_idx):
+        """Helper function to get actual words from transcript data given text indices"""
+        if start_idx < 0 or end_idx >= len(full_text_words) or start_idx > end_idx:
+            return "Invalid range"
+        return " ".join(full_text_words[start_idx:end_idx+1])
+    
+    # Filter dialogues that have been matched (matched_text_index_start != -1)
+    matched_dialogues = [d for d in dialogue_list if d.get('matched_text_index_start', -1) != -1]
     
     # Filter dialogues by round
     round1_dialogues = [d for d in dialogue_list if d.get('round1_matched', False)]
@@ -163,13 +182,14 @@ def check_dialogue_list_validity(dialogue_list):
             
             current_id = current_dialogue['id']
             next_id = next_dialogue['id']
-            current_text_index = current_dialogue['matched_text_index']
-            next_text_index = next_dialogue['matched_text_index']
+            current_text_index = current_dialogue['matched_text_index_start']
+            next_text_index = next_dialogue['matched_text_index_start']
             
-            # Check if a dialogue with lower ID has higher matched_text_index than a dialogue with higher ID
+            # Check if a dialogue with lower ID has higher matched_text_index_start than a dialogue with higher ID
             if current_text_index > next_text_index:
                 mistakes += 1
                 mistake_details.append({
+                    'type': 'ordering',
                     'round': round_name,
                     'dialogue_1_id': current_id,
                     'dialogue_1_text_index': current_text_index,
@@ -181,11 +201,80 @@ def check_dialogue_list_validity(dialogue_list):
         
         return mistakes, mistake_details
     
-    # Check mistakes for each round and overall
-    total_mistakes, total_mistake_details = check_ordering_mistakes(matched_dialogues, "Total")
-    mistakes_round1, round1_mistake_details = check_ordering_mistakes(round1_dialogues, "Round1")
-    mistakes_round2, round2_mistake_details = check_ordering_mistakes(round2_dialogues, "Round2")
-    mistakes_round3, round3_mistake_details = check_ordering_mistakes(round3_dialogues, "Round3")
+    def check_boundary_overlaps(dialogues_subset, round_name=""):
+        """Helper function to check boundary overlaps in a subset of dialogues"""
+        if len(dialogues_subset) < 2:
+            return 0, []
+        
+        overlaps = 0
+        overlap_details = []
+        
+        # Check all pairs of dialogues for overlaps
+        for i in range(len(dialogues_subset)):
+            for j in range(i + 1, len(dialogues_subset)):
+                dialogue1 = dialogues_subset[i]
+                dialogue2 = dialogues_subset[j]
+                
+                # Get boundary indices
+                start1 = dialogue1.get('matched_text_index_start', -1)
+                end1 = dialogue1.get('matched_text_index_end', -1)
+                start2 = dialogue2.get('matched_text_index_start', -1)
+                end2 = dialogue2.get('matched_text_index_end', -1)
+                
+                # Skip if any dialogue doesn't have valid boundaries
+                if start1 == -1 or end1 == -1 or start2 == -1 or end2 == -1:
+                    continue
+                
+                # Check for overlap: dialogue1_start <= dialogue2_end AND dialogue2_start <= dialogue1_end
+                if start1 <= end2 and start2 <= end1:
+                    # Check dialogue ID distance - only consider as mistake if distance > max_dialogue_distance_for_overlap
+                    dialogue_distance = abs(dialogue1['id'] - dialogue2['id'])
+                    
+                    if dialogue_distance > max_dialogue_distance_for_overlap:
+                        # Calculate the overlapping range
+                        overlap_start = max(start1, start2)
+                        overlap_end = min(end1, end2)
+                        overlap_words = get_words_from_text_range(overlap_start, overlap_end)
+                        
+                        overlaps += 1
+                        overlap_details.append({
+                            'type': 'boundary',
+                            'round': round_name,
+                            'dialogue_1_id': dialogue1['id'],
+                            'dialogue_1_start': start1,
+                            'dialogue_1_end': end1,
+                            'dialogue_2_id': dialogue2['id'],
+                            'dialogue_2_start': start2,
+                            'dialogue_2_end': end2,
+                            'dialogue_distance': dialogue_distance,
+                            'overlap_start': overlap_start,
+                            'overlap_end': overlap_end,
+                            'overlap_words': overlap_words,
+                            'dialogue_1_words': get_words_from_text_range(start1, end1),
+                            'dialogue_2_words': get_words_from_text_range(start2, end2),
+                            'text_1': dialogue1.get('text', 'N/A')[:50] + '...',
+                            'text_2': dialogue2.get('text', 'N/A')[:50] + '...'
+                        })
+        
+        return overlaps, overlap_details
+    
+    # Check ordering mistakes for each round and overall
+    total_ordering_mistakes, total_ordering_details = check_ordering_mistakes(matched_dialogues, "Total")
+    ordering_mistakes_round1, round1_ordering_details = check_ordering_mistakes(round1_dialogues, "Round1")
+    ordering_mistakes_round2, round2_ordering_details = check_ordering_mistakes(round2_dialogues, "Round2")
+    ordering_mistakes_round3, round3_ordering_details = check_ordering_mistakes(round3_dialogues, "Round3")
+    
+    # Check boundary overlaps for each round and overall
+    total_boundary_mistakes, total_boundary_details = check_boundary_overlaps(matched_dialogues, "Total")
+    boundary_mistakes_round1, round1_boundary_details = check_boundary_overlaps(round1_dialogues, "Round1")
+    boundary_mistakes_round2, round2_boundary_details = check_boundary_overlaps(round2_dialogues, "Round2")
+    boundary_mistakes_round3, round3_boundary_details = check_boundary_overlaps(round3_dialogues, "Round3")
+    
+    # Calculate total mistakes (ordering + boundary)
+    total_mistakes = total_ordering_mistakes + total_boundary_mistakes
+    mistakes_round1 = ordering_mistakes_round1 + boundary_mistakes_round1
+    mistakes_round2 = ordering_mistakes_round2 + boundary_mistakes_round2
+    mistakes_round3 = ordering_mistakes_round3 + boundary_mistakes_round3
     
     # Calculate statistics
     total_dialogues = len(dialogue_list)
@@ -222,37 +311,72 @@ def check_dialogue_list_validity(dialogue_list):
     print(f"Round1 matched: {len(round1_dialogues)}")
     print(f"Round2 matched: {len(round2_dialogues)}")
     print(f"Round3 matched: {len(round3_dialogues)}")
+    print(f"Max dialogue distance for overlap: {max_dialogue_distance_for_overlap}")
     print()
     
     print("=== ORDERING VALIDATION ===")
-    print(f"Total ordering mistakes: {total_mistakes}")
-    print(f"Round1 ordering mistakes: {mistakes_round1}")
-    print(f"Round2 ordering mistakes: {mistakes_round2}")
-    print(f"Round3 ordering mistakes: {mistakes_round3}")
+    print(f"Total ordering mistakes: {total_ordering_mistakes}")
+    print(f"Round1 ordering mistakes: {ordering_mistakes_round1}")
+    print(f"Round2 ordering mistakes: {ordering_mistakes_round2}")
+    print(f"Round3 ordering mistakes: {ordering_mistakes_round3}")
     
     if len(matched_dialogues) > 1:
-        print(f"Total ordering accuracy: {(len(matched_dialogues)-1-total_mistakes)/(len(matched_dialogues)-1)*100:.1f}%")
+        print(f"Total ordering accuracy: {(len(matched_dialogues)-1-total_ordering_mistakes)/(len(matched_dialogues)-1)*100:.1f}%")
     if len(round1_dialogues) > 1:
-        print(f"Round1 ordering accuracy: {(len(round1_dialogues)-1-mistakes_round1)/(len(round1_dialogues)-1)*100:.1f}%")
+        print(f"Round1 ordering accuracy: {(len(round1_dialogues)-1-ordering_mistakes_round1)/(len(round1_dialogues)-1)*100:.1f}%")
     if len(round2_dialogues) > 1:
-        print(f"Round2 ordering accuracy: {(len(round2_dialogues)-1-mistakes_round2)/(len(round2_dialogues)-1)*100:.1f}%")
+        print(f"Round2 ordering accuracy: {(len(round2_dialogues)-1-ordering_mistakes_round2)/(len(round2_dialogues)-1)*100:.1f}%")
     if len(round3_dialogues) > 1:
-        print(f"Round3 ordering accuracy: {(len(round3_dialogues)-1-mistakes_round3)/(len(round3_dialogues)-1)*100:.1f}%")
+        print(f"Round3 ordering accuracy: {(len(round3_dialogues)-1-ordering_mistakes_round3)/(len(round3_dialogues)-1)*100:.1f}%")
+    print()
+    
+    print("=== BOUNDARY OVERLAP VALIDATION ===")
+    print(f"Total boundary overlaps (distance > {max_dialogue_distance_for_overlap}): {total_boundary_mistakes}")
+    print(f"Round1 boundary overlaps: {boundary_mistakes_round1}")
+    print(f"Round2 boundary overlaps: {boundary_mistakes_round2}")
+    print(f"Round3 boundary overlaps: {boundary_mistakes_round3}")
+    print()
+    
+    print("=== COMBINED VALIDATION ===")
+    print(f"Total mistakes (ordering + boundary): {total_mistakes}")
+    print(f"Round1 total mistakes: {mistakes_round1}")
+    print(f"Round2 total mistakes: {mistakes_round2}")
+    print(f"Round3 total mistakes: {mistakes_round3}")
     print()
     
     # Show mistake details for each round
-    all_mistakes = total_mistake_details + round1_mistake_details + round2_mistake_details + round3_mistake_details
-    if all_mistakes:
+    all_ordering_mistakes = total_ordering_details + round1_ordering_details + round2_ordering_details + round3_ordering_details
+    all_boundary_mistakes = total_boundary_details + round1_boundary_details + round2_boundary_details + round3_boundary_details
+    
+    if all_ordering_mistakes:
         print("=== ORDERING MISTAKES DETAILS ===")
-        for i, mistake in enumerate(all_mistakes[:15]):  # Show first 15 mistakes
-            print(f"Mistake {i+1} ({mistake['round']}):")
+        for i, mistake in enumerate(all_ordering_mistakes[:15]):  # Show first 15 mistakes
+            print(f"Ordering Mistake {i+1} ({mistake['round']}):")
             print(f"  Dialogue {mistake['dialogue_1_id']} (text_index: {mistake['dialogue_1_text_index']}) comes before")
             print(f"  Dialogue {mistake['dialogue_2_id']} (text_index: {mistake['dialogue_2_text_index']}) but has higher text index")
             print(f"  Text 1: '{mistake['text_1']}'")
             print(f"  Text 2: '{mistake['text_2']}'")
             print()
-        if len(all_mistakes) > 15:
-            print(f"... and {len(all_mistakes) - 15} more mistakes")
+        if len(all_ordering_mistakes) > 15:
+            print(f"... and {len(all_ordering_mistakes) - 15} more ordering mistakes")
+        print()
+    
+    if all_boundary_mistakes:
+        print("=== BOUNDARY OVERLAP MISTAKES DETAILS ===")
+        for i, mistake in enumerate(all_boundary_mistakes[:15]):  # Show first 15 mistakes
+            print(f"Boundary Overlap {i+1} ({mistake['round']}):")
+            print(f"  Dialogue {mistake['dialogue_1_id']} (range: {mistake['dialogue_1_start']}-{mistake['dialogue_1_end']}) overlaps with")
+            print(f"  Dialogue {mistake['dialogue_2_id']} (range: {mistake['dialogue_2_start']}-{mistake['dialogue_2_end']})")
+            print(f"  Dialogue distance: {mistake['dialogue_distance']} (threshold: {max_dialogue_distance_for_overlap})")
+            print(f"  Overlap range: {mistake['overlap_start']}-{mistake['overlap_end']}")
+            print(f"  Overlapping words: '{mistake['overlap_words']}'")
+            print(f"  Dialogue 1 words: '{mistake['dialogue_1_words']}'")
+            print(f"  Dialogue 2 words: '{mistake['dialogue_2_words']}'")
+            print(f"  Dialogue 1 text: '{mistake['text_1']}'")
+            print(f"  Dialogue 2 text: '{mistake['text_2']}'")
+            print()
+        if len(all_boundary_mistakes) > 15:
+            print(f"... and {len(all_boundary_mistakes) - 15} more boundary overlap mistakes")
         print()
     
     print("=== SCORE STATISTICS ===")
@@ -264,8 +388,10 @@ def check_dialogue_list_validity(dialogue_list):
     print(f"Average round3_score (matched): {avg_round3_matched:.2f}")
     print()
     
-    # Return the 4 requested values
-    return total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3
+    # Return the 7 requested values: total mistakes (ordering + boundary) for each round, 
+    # plus separate boundary mistakes for each round
+    return (total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3,
+            total_boundary_mistakes, boundary_mistakes_round1, boundary_mistakes_round2, boundary_mistakes_round3)
 
 def get_dialogue_list(dialogues):
     dialogue_list = []
@@ -282,9 +408,12 @@ def get_dialogue_list(dialogues):
             dialogue['normalized_text']  = [word for word in normalized_dialogue_words if word]
             dialogue['length_normalized_text'] = len(dialogue['normalized_text'])
             dialogue['scene_id'] = scene_id
-            dialogue['matched_text_index'] = -1
-            dialogue['matched_row_index'] = -1
-            dialogue['matched_word_index'] = -1
+            dialogue['matched_text_index_start'] = -1
+            dialogue['matched_text_index_end'] = -1
+            dialogue['matched_row_index_start'] = -1
+            dialogue['matched_row_index_end'] = -1
+            dialogue['matched_word_index_start'] = -1
+            dialogue['matched_word_index_end'] = -1
             dialogue['round1_matched'] = False
             dialogue['round2_matched'] = False
             dialogue['round3_matched'] = False
@@ -307,7 +436,7 @@ def get_row_word_index_for_dialogue(transcript_data, dialogue_id):
         return len(transcript_data)-1, len(transcript_data[len(transcript_data)-1]['words_per_tr'])
     for row_idx, row in enumerate(transcript_data):
         #print(row_idx, row['dialogue_per_tr'])
-        for word_idx, word in enumerate(row['dialogue_per_tr']):
+        for word_idx, word in enumerate(row['words_per_tr']):
             if word == dialogue_id:
                 return row_idx, word_idx
     return None, None
@@ -354,7 +483,7 @@ def fill_empty_tr_with_dialogue(transcript_data, dialogue_id, row_idx):
 def set_dialogue_in_transcript(transcript_data,  dialogue_id, row_idx, word_idx, move_to_next_if_taken=True):
     able_to_set = True
     print('set_dialogue_in_transcript',transcript_data[row_idx]['dialogue_per_tr'])
-    if (transcript_data[row_idx]['dialogue_per_tr'][word_idx] == -1):
+    if (transcript_data[row_idx]['dialogue_per_tr'][word_idx] == 0):
         transcript_data[row_idx]['dialogue_per_tr'][word_idx] = dialogue_id
     elif move_to_next_if_taken:
         print(f'move_to_next_if_taken: dialogue_id: {dialogue_id} row_idx: {row_idx}, word_idx: {word_idx}')
@@ -372,7 +501,7 @@ def set_dialogue_in_transcript(transcript_data,  dialogue_id, row_idx, word_idx,
         if len(transcript_data[set_row_idx]['dialogue_per_tr']) < 1:
             fill_empty_tr_with_dialogue(transcript_data, dialogue_id, set_row_idx)
             #create new entry
-        elif transcript_data[set_row_idx]['dialogue_per_tr'][set_word_idx] != -1:
+        elif transcript_data[set_row_idx]['dialogue_per_tr'][set_word_idx] != 0:
             able_to_set = False
             return transcript_data, able_to_set
         else:
@@ -513,13 +642,13 @@ def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_
         min_match (int): Minimum match score required for a successful match
         
     Returns:
-        tuple: (enhanced_transcript_data, updated_dialogue_list)
+        tuple: (enhanced_transcript_data, updated_dialogue_list, positional_conflicts_count)
     """
     
     # Initialize dialogue_per_tr for all rows
     for row in transcript_data_orig:
         if 'dialogue_per_tr' not in row:
-            row['dialogue_per_tr'] = [-1] * len(row['words_per_tr'])
+            row['dialogue_per_tr'] = [0] * len(row['words_per_tr'])
         # Assert that words_per_tr and dialogue_per_tr have same length
         assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
             f"Length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
@@ -541,6 +670,7 @@ def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_
     sorted_dialogues = sorted(eligible_dialogues, key=lambda x: x['length_normalized_text'], reverse=True)
     
     matched_count = 0
+    positional_conflicts_count = 0  # Track positional conflicts
     total_eligible = len(sorted_dialogues)
     
     print(f"Processing {total_eligible} dialogues with min_length={min_length}, min_match={min_match}")
@@ -557,7 +687,11 @@ def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_
         
         # Use fuzzy matching to find best match in the entire text
         best_match = best_variable_fuzzy_match(normalized_dialogue_words, normalized_full_text)
-        
+        match_len = best_match['end_word'] - best_match['start_word'] + 1
+        print(f'match_len: {match_len}')
+        print(f'start_word: {best_match["start_word"]}')
+        print(f'end_word: {best_match["end_word"]}')
+        print(f'{best_match}')
         # Update dialogue with round1_score
         dialogue['round1_score'] = best_match['match_score']
         
@@ -567,36 +701,60 @@ def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_
         # Check if match meets minimum threshold
         if best_match['match_score'] >= min_match:
             # Update dialogue with match information
-            dialogue['matched_text_index'] = best_match['start_word']
+            dialogue['matched_text_index_start'] = best_match['start_word']
+            dialogue['matched_text_index_end'] = best_match['end_word']
             dialogue['round1_matched'] = True
             
             # Get row and word indices from the match
             start_row, start_word = text_to_position_map[best_match['start_word']]
             end_row, end_word = text_to_position_map[best_match['end_word']]
             
-            dialogue['matched_row_index'] = start_row
-            dialogue['matched_word_index'] = start_word
+            dialogue['matched_row_index_start'] = start_row
+            dialogue['matched_word_index_start'] = start_word
+            dialogue['matched_row_index_end'] = end_row
+            dialogue['matched_word_index_end'] = end_word
             
             # Check if the position is already taken
-            if transcript_data_orig[start_row]['dialogue_per_tr'][start_word] == -1:
+            if transcript_data_orig[start_row]['dialogue_per_tr'][start_word] == 0:
                 # Mark the first word of the dialogue with dialogue_id
                 transcript_data_orig[start_row]['dialogue_per_tr'][start_word] = dialogue_id
+                
+                # Mark the last word of the dialogue with -dialogue_id (only if it's different from start)
+                if end_row != start_row or end_word != start_word:
+                    if transcript_data_orig[end_row]['dialogue_per_tr'][end_word] == 0:
+                        transcript_data_orig[end_row]['dialogue_per_tr'][end_word] = -dialogue_id
+                    else:
+                        #positional_conflicts_count += 1  # Count end position conflict
+                        print(f"  ⚠ End position already taken for dialogue {dialogue_id}")
+                
                 matched_count += 1
                 
                 print(f"  ✓ Matched dialogue {dialogue_id} at row {start_row}, word {start_word}")
                 print(f"    Spans from row {start_row} word {start_word} to row {end_row} word {end_word}")
             else:
+                  # Count start position conflict
                 existing_dialogue_id = transcript_data_orig[start_row]['dialogue_per_tr'][start_word]
-                print(f"  ✗ Position already taken by dialogue {existing_dialogue_id}")
-                # Try to find next available position
-                transcript_data_orig, able_to_set = set_dialogue_in_transcript(
-                    transcript_data_orig, dialogue_id, start_row, start_word, move_to_next_if_taken=True
-                )
-                if able_to_set:
+                print(f"  ✗ Position already taken by dialogue {existing_dialogue_id}. Not able to set dialogue {dialogue_id}")
+                #if its and end, overwrite it
+                if existing_dialogue_id < 0:
+                    transcript_data_orig[end_row]['dialogue_per_tr'][end_word] = dialogue_id
+                    print(f"  ✓ Overwrote end position with dialogue {dialogue_id}")
                     matched_count += 1
-                    print(f"  ✓ Placed dialogue {dialogue_id} at alternative position")
+                    print(f"  ✓ Matched dialogue {dialogue_id} at row {end_row}, word {end_word}")
+                    print(f"    Spans from row {end_row} word {end_word} to row {end_row} word {end_word}")
                 else:
-                    print(f"  ✗ Could not find alternative position for dialogue {dialogue_id}")
+                    print(f"  ✗ Position already taken and not able to overwrite it for dialogue {dialogue_id}")
+                    positional_conflicts_count += 1
+                # # Try to find next available position
+                # transcript_data_orig, able_to_set = set_dialogue_in_transcript(
+                #     transcript_data_orig, dialogue_id, start_row, start_word, move_to_next_if_taken=True
+                # )
+                # if able_to_set:
+                #     matched_count += 1
+                #     print(f"  ✓ Placed dialogue {dialogue_id} at alternative position")
+                # else:
+                #     positional_conflicts_count += 1  # Count failure to find alternative position
+                #     print(f"  ✗ Could not find alternative position for dialogue {dialogue_id}")
         else:
             print(f"  ✗ Match score {best_match['match_score']} below threshold {min_match}")
     
@@ -608,9 +766,10 @@ def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_
     print(f"\nSummary:")
     print(f"  Total eligible dialogues: {total_eligible}")
     print(f"  Successfully matched: {matched_count}")
+    print(f"  Positional conflicts encountered: {positional_conflicts_count}")
     print(f"  Match rate: {matched_count/total_eligible*100:.1f}%" if total_eligible > 0 else "  Match rate: 0%")
     
-    return transcript_data_orig, dialogue_list
+    return transcript_data_orig, dialogue_list, positional_conflicts_count
 
 def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     """
@@ -634,7 +793,7 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     
     # Initialize dialogue_per_tr for all rows
     for row in transcript_data_orig:
-        row['dialogue_per_tr'] = [-1] * len(row['words_per_tr'])
+        row['dialogue_per_tr'] = [0] * len(row['words_per_tr'])
         # Assert that words_per_tr and dialogue_per_tr have same length
         assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
             f"Length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
@@ -1000,12 +1159,19 @@ def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
 def enhance_transcripts_v2(transcript_data, dialogues_file, run_phase_2=True):
     dialogues = get_scene_dialogue(dialogues_file)
     dialogue_list = get_dialogue_list(dialogues)
-    transcript_data_enhanced, dialogue_list = add_dialogues_to_transcript_v2_big(transcript_data, dialogue_list, 8,80)
-    total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3 = check_dialogue_list_validity(dialogue_list)
+    transcript_data_enhanced, dialogue_list, positional_conflicts_count = add_dialogues_to_transcript_v2_big(transcript_data, dialogue_list, 8,80)
+    print(f"Positional conflicts: {positional_conflicts_count}")
+    total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3, \
+            total_boundary_mistakes, boundary_mistakes_round1, boundary_mistakes_round2, boundary_mistakes_round3 = check_dialogue_list_validity(dialogue_list, transcript_data_enhanced, max_dialogue_distance_for_overlap=2)
     print(f"Total mistakes: {total_mistakes}")
     print(f"Mistakes round 1: {mistakes_round1}")
     print(f"Mistakes round 2: {mistakes_round2}")
     print(f"Mistakes round 3: {mistakes_round3}")
+    print(f"Total boundary mistakes: {total_boundary_mistakes}")
+    print(f"Boundary mistakes round 1: {boundary_mistakes_round1}")
+    print(f"Boundary mistakes round 2: {boundary_mistakes_round2}")
+    print(f"Boundary mistakes round 3: {boundary_mistakes_round3}")
+    
 
-    return transcript_data_enhanced, (0, 0, 0)
+    return transcript_data_enhanced, (1, 1, 1)
 
