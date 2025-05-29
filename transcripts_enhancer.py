@@ -126,21 +126,172 @@ def word_substitutions_to_make(segment):
     segment = re.sub(r'goodnight', 'good night', segment.lower())
     segment = re.sub(r'waitwait', 'wait wait', segment.lower())
     return segment
+
+def check_dialogue_list_validity(dialogue_list):
+    """
+    Checks the validity of dialogue ordering based on their IDs and matched text indices.
+    
+    Args:
+        dialogue_list (list): List of dialogues from get_dialogue_list output
+        
+    Returns:
+        tuple: (total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3)
+    """
+    
+    # Filter dialogues that have been matched (matched_text_index != -1)
+    matched_dialogues = [d for d in dialogue_list if d.get('matched_text_index', -1) != -1]
+    
+    # Filter dialogues by round
+    round1_dialogues = [d for d in dialogue_list if d.get('round1_matched', False)]
+    round2_dialogues = [d for d in dialogue_list if d.get('round2_matched', False)]
+    round3_dialogues = [d for d in dialogue_list if d.get('round3_matched', False)]
+    
+    def check_ordering_mistakes(dialogues_subset, round_name=""):
+        """Helper function to check ordering mistakes in a subset of dialogues"""
+        if len(dialogues_subset) < 2:
+            return 0, []
+        
+        # Sort by ID for order checking
+        sorted_dialogues = sorted(dialogues_subset, key=lambda x: x['id'])
+        
+        mistakes = 0
+        mistake_details = []
+        
+        for i in range(len(sorted_dialogues) - 1):
+            current_dialogue = sorted_dialogues[i]
+            next_dialogue = sorted_dialogues[i + 1]
+            
+            current_id = current_dialogue['id']
+            next_id = next_dialogue['id']
+            current_text_index = current_dialogue['matched_text_index']
+            next_text_index = next_dialogue['matched_text_index']
+            
+            # Check if a dialogue with lower ID has higher matched_text_index than a dialogue with higher ID
+            if current_text_index > next_text_index:
+                mistakes += 1
+                mistake_details.append({
+                    'round': round_name,
+                    'dialogue_1_id': current_id,
+                    'dialogue_1_text_index': current_text_index,
+                    'dialogue_2_id': next_id,
+                    'dialogue_2_text_index': next_text_index,
+                    'text_1': current_dialogue.get('text', 'N/A')[:50] + '...',
+                    'text_2': next_dialogue.get('text', 'N/A')[:50] + '...'
+                })
+        
+        return mistakes, mistake_details
+    
+    # Check mistakes for each round and overall
+    total_mistakes, total_mistake_details = check_ordering_mistakes(matched_dialogues, "Total")
+    mistakes_round1, round1_mistake_details = check_ordering_mistakes(round1_dialogues, "Round1")
+    mistakes_round2, round2_mistake_details = check_ordering_mistakes(round2_dialogues, "Round2")
+    mistakes_round3, round3_mistake_details = check_ordering_mistakes(round3_dialogues, "Round3")
+    
+    # Calculate statistics
+    total_dialogues = len(dialogue_list)
+    matched_dialogues_count = len(matched_dialogues)
+    
+    # Calculate average scores
+    def safe_avg(values):
+        valid_values = [v for v in values if v != -1]
+        return sum(valid_values) / len(valid_values) if valid_values else 0
+    
+    # Overall averages (including unmatched dialogues with -1 scores)
+    all_round1_scores = [d.get('round1_score', -1) for d in dialogue_list]
+    all_round2_scores = [d.get('round2_score', -1) for d in dialogue_list]
+    all_round3_scores = [d.get('round3_score', -1) for d in dialogue_list]
+    
+    avg_round1_overall = safe_avg(all_round1_scores)
+    avg_round2_overall = safe_avg(all_round2_scores)
+    avg_round3_overall = safe_avg(all_round3_scores)
+    
+    # Matched dialogues averages
+    matched_round1_scores = [d.get('round1_score', -1) for d in matched_dialogues]
+    matched_round2_scores = [d.get('round2_score', -1) for d in matched_dialogues]
+    matched_round3_scores = [d.get('round3_score', -1) for d in matched_dialogues]
+    
+    avg_round1_matched = safe_avg(matched_round1_scores)
+    avg_round2_matched = safe_avg(matched_round2_scores)
+    avg_round3_matched = safe_avg(matched_round3_scores)
+    
+    # Print summary
+    print("=== DIALOGUE LIST VALIDITY CHECK ===")
+    print(f"Total dialogues: {total_dialogues}")
+    print(f"Matched dialogues: {matched_dialogues_count}")
+    print(f"Match rate: {matched_dialogues_count/total_dialogues*100:.1f}%")
+    print(f"Round1 matched: {len(round1_dialogues)}")
+    print(f"Round2 matched: {len(round2_dialogues)}")
+    print(f"Round3 matched: {len(round3_dialogues)}")
+    print()
+    
+    print("=== ORDERING VALIDATION ===")
+    print(f"Total ordering mistakes: {total_mistakes}")
+    print(f"Round1 ordering mistakes: {mistakes_round1}")
+    print(f"Round2 ordering mistakes: {mistakes_round2}")
+    print(f"Round3 ordering mistakes: {mistakes_round3}")
+    
+    if len(matched_dialogues) > 1:
+        print(f"Total ordering accuracy: {(len(matched_dialogues)-1-total_mistakes)/(len(matched_dialogues)-1)*100:.1f}%")
+    if len(round1_dialogues) > 1:
+        print(f"Round1 ordering accuracy: {(len(round1_dialogues)-1-mistakes_round1)/(len(round1_dialogues)-1)*100:.1f}%")
+    if len(round2_dialogues) > 1:
+        print(f"Round2 ordering accuracy: {(len(round2_dialogues)-1-mistakes_round2)/(len(round2_dialogues)-1)*100:.1f}%")
+    if len(round3_dialogues) > 1:
+        print(f"Round3 ordering accuracy: {(len(round3_dialogues)-1-mistakes_round3)/(len(round3_dialogues)-1)*100:.1f}%")
+    print()
+    
+    # Show mistake details for each round
+    all_mistakes = total_mistake_details + round1_mistake_details + round2_mistake_details + round3_mistake_details
+    if all_mistakes:
+        print("=== ORDERING MISTAKES DETAILS ===")
+        for i, mistake in enumerate(all_mistakes[:15]):  # Show first 15 mistakes
+            print(f"Mistake {i+1} ({mistake['round']}):")
+            print(f"  Dialogue {mistake['dialogue_1_id']} (text_index: {mistake['dialogue_1_text_index']}) comes before")
+            print(f"  Dialogue {mistake['dialogue_2_id']} (text_index: {mistake['dialogue_2_text_index']}) but has higher text index")
+            print(f"  Text 1: '{mistake['text_1']}'")
+            print(f"  Text 2: '{mistake['text_2']}'")
+            print()
+        if len(all_mistakes) > 15:
+            print(f"... and {len(all_mistakes) - 15} more mistakes")
+        print()
+    
+    print("=== SCORE STATISTICS ===")
+    print(f"Average round1_score (overall): {avg_round1_overall:.2f}")
+    print(f"Average round1_score (matched): {avg_round1_matched:.2f}")
+    print(f"Average round2_score (overall): {avg_round2_overall:.2f}")
+    print(f"Average round2_score (matched): {avg_round2_matched:.2f}")
+    print(f"Average round3_score (overall): {avg_round3_overall:.2f}")
+    print(f"Average round3_score (matched): {avg_round3_matched:.2f}")
+    print()
+    
+    # Return the 4 requested values
+    return total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3
+
 def get_dialogue_list(dialogues):
     dialogue_list = []
-    dialogue_temp = []
     for scene in dialogues['scenes']:
-        dialogue_temp.extend(scene['dialogues'])
-    for dialogue in dialogue_temp:
-        norm_text = re.sub(r'\([^)]*\)', '', dialogue['text']).strip()
-        norm_text = re.sub(r'\[[^\]]*\]', '', norm_text).strip()
-        norm_text = re.sub(r'\.{4,}', ' ', norm_text)
-        norm_text = word_substitutions_to_make(norm_text)
-        dialogue_words = norm_text.split()
-        normalized_dialogue_words = [normalize_and_clean_word(word) for word in dialogue_words]
-        # Filter out empty normalized words
-        dialogue['normalized_text']  = [word for word in normalized_dialogue_words if word]
-        dialogue_list.append(dialogue)
+        scene_id = scene['id']
+        for dialogue in scene['dialogues']:
+            norm_text = re.sub(r'\([^)]*\)', '', dialogue['text']).strip()
+            norm_text = re.sub(r'\[[^\]]*\]', '', norm_text).strip()
+            norm_text = re.sub(r'\.{3,}', ' ', norm_text)
+            norm_text = word_substitutions_to_make(norm_text)
+            dialogue_words = norm_text.split()
+            normalized_dialogue_words = [normalize_and_clean_word(word) for word in dialogue_words]
+            # Filter out empty normalized words
+            dialogue['normalized_text']  = [word for word in normalized_dialogue_words if word]
+            dialogue['length_normalized_text'] = len(dialogue['normalized_text'])
+            dialogue['scene_id'] = scene_id
+            dialogue['matched_text_index'] = -1
+            dialogue['matched_row_index'] = -1
+            dialogue['matched_word_index'] = -1
+            dialogue['round1_matched'] = False
+            dialogue['round2_matched'] = False
+            dialogue['round3_matched'] = False
+            dialogue['round1_score'] = -1
+            dialogue['round2_score'] = -1
+            dialogue['round3_score'] = -1
+            dialogue_list.append(dialogue)
     return dialogue_list
 
 def normalize_and_clean_word(word):
@@ -206,6 +357,7 @@ def set_dialogue_in_transcript(transcript_data,  dialogue_id, row_idx, word_idx,
     if (transcript_data[row_idx]['dialogue_per_tr'][word_idx] == -1):
         transcript_data[row_idx]['dialogue_per_tr'][word_idx] = dialogue_id
     elif move_to_next_if_taken:
+        print(f'move_to_next_if_taken: dialogue_id: {dialogue_id} row_idx: {row_idx}, word_idx: {word_idx}')
         set_row_idx, set_word_idx = row_idx, word_idx
         len_row = len(transcript_data[row_idx]['words_per_tr'])
         if word_idx < len_row - 1:
@@ -273,35 +425,41 @@ def try_squeeze_in_dialogue(transcript_data, dialogues, dialogue_id):
             words_collected += 1
             
         temp_row += 1
-        temp_word_pos = 0
-    #strategy 1: If 1-2 empty row, then squeeze in the dialogue
-    empty_trs = get_empty_trs_in_range(transcript_data, from_row, to_row)
-    if len(empty_trs) < 5 and len(empty_trs) > 0:
-        fixed_dialogue = True
-        fill_empty_tr_with_dialogue(transcript_data, dialogue_id, empty_trs[0])
-    print('search_words', search_words)
-    #strategy 2: Compute matching ration
-    num_equal =0
-    first_word_pos = None
+        temp_word_pos = 0 
     
-    for word in normalized_dialogue_words:
-        word_search_counter =0
-        for word_s in search_words:
-            if word == word_s:
-                num_equal += 1
-                if first_word_pos is None:
-                    first_word_pos = search_positions[word_search_counter]
-            word_search_counter += 1
-    print(f'first_word_pos: {first_word_pos}')
-    ratio_equal_words = num_equal/len(normalized_dialogue_words)
-    print(f'ratio_equal_words: {ratio_equal_words}')
-    if ratio_equal_words >= 0.5:
+    #strategy 1: Compute matching ration
+    best_match_fuzz = best_variable_fuzzy_match(normalized_dialogue_words, search_words)
+    print(f'best_match_fuzz: {best_match_fuzz}')
+    if (len(normalized_dialogue_words) > 4 and best_match_fuzz['match_score'] > 60) or \
+            (best_match_fuzz['match_score'] >= 70):
+        first_word_pos = search_positions[best_match_fuzz['start_word']]
         transcript_data, fixed_dialogue = set_dialogue_in_transcript(transcript_data, dialogue_id, first_word_pos[0], first_word_pos[1])
-
+        fixed_dialogue = True
+    # num_equal =0
+    # first_word_pos = None
     
-        
+    # for word in normalized_dialogue_words:
+    #     word_search_counter =0
+    #     for word_s in search_words:
+    #         if word == word_s:
+    #             num_equal += 1
+    #             if first_word_pos is None:
+    #                 first_word_pos = search_positions[word_search_counter]
+    #         word_search_counter += 1
+    # print(f'first_word_pos: {first_word_pos}')
+    # ratio_equal_words = num_equal/len(normalized_dialogue_words)
+    # print(f'ratio_equal_words: {ratio_equal_words}')
+    # if ratio_equal_words >= 0.5:
+    #     transcript_data, fixed_dialogue = set_dialogue_in_transcript(transcript_data, dialogue_id, first_word_pos[0], first_word_pos[1])
 
-    print('empty_trs', empty_trs)
+    #strategy 2: If 1-2 empty row, then squeeze in the dialogue
+    if not fixed_dialogue: 
+        empty_trs = get_empty_trs_in_range(transcript_data, from_row, to_row)
+        if len(empty_trs) < 5 and len(empty_trs) > 0:
+            fixed_dialogue = True
+            fill_empty_tr_with_dialogue(transcript_data, dialogue_id, empty_trs[0])
+        print('search_words', search_words)    
+        #print('empty_trs', empty_trs)
     #gap_available = words_collected - prev_dialogue_length
     print('search_words', search_words)
     print('normalized_dialogue_words', normalized_dialogue_words)
@@ -344,6 +502,115 @@ def best_variable_fuzzy_match(short_words, long_words, min_window=None, max_wind
         'matched_text': ' '.join(best_matched_words)
     }
 
+def add_dialogues_to_transcript_v2_big(transcript_data_orig, dialogue_list, min_length, min_match):
+    """
+    Enhanced dialogue matching that processes larger dialogues first and matches against the entire transcript.
+    
+    Args:
+        transcript_data_orig (list): Array of transcript objects from load_transcript_tsv
+        dialogue_list (list): List of dialogues from get_dialogue_list output
+        min_length (int): Minimum length of normalized_text to process
+        min_match (int): Minimum match score required for a successful match
+        
+    Returns:
+        tuple: (enhanced_transcript_data, updated_dialogue_list)
+    """
+    
+    # Initialize dialogue_per_tr for all rows
+    for row in transcript_data_orig:
+        if 'dialogue_per_tr' not in row:
+            row['dialogue_per_tr'] = [-1] * len(row['words_per_tr'])
+        # Assert that words_per_tr and dialogue_per_tr have same length
+        assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
+            f"Length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
+    
+    # Create full text from transcript data
+    full_text_words = []
+    text_to_position_map = []  # Maps text index to (row_idx, word_idx)
+    
+    for row_idx, row in enumerate(transcript_data_orig):
+        for word_idx, word in enumerate(row['words_per_tr']):
+            full_text_words.append(word)
+            text_to_position_map.append((row_idx, word_idx))
+    
+    # Normalize the full text for matching
+    normalized_full_text = [normalize_and_clean_word(word) for word in full_text_words]
+    
+    # Filter and sort dialogues by length (biggest first)
+    eligible_dialogues = [d for d in dialogue_list if d['length_normalized_text'] >= min_length]
+    sorted_dialogues = sorted(eligible_dialogues, key=lambda x: x['length_normalized_text'], reverse=True)
+    
+    matched_count = 0
+    total_eligible = len(sorted_dialogues)
+    
+    print(f"Processing {total_eligible} dialogues with min_length={min_length}, min_match={min_match}")
+    
+    for dialogue in sorted_dialogues:
+        dialogue_id = dialogue['id']
+        dialogue_text = dialogue['text']
+        normalized_dialogue_words = dialogue['normalized_text']
+        
+        if not normalized_dialogue_words:
+            continue  # Skip if no valid words after normalization
+        
+        print(f"Processing dialogue {dialogue_id} (length: {len(normalized_dialogue_words)}): '{dialogue_text}'")
+        
+        # Use fuzzy matching to find best match in the entire text
+        best_match = best_variable_fuzzy_match(normalized_dialogue_words, normalized_full_text)
+        
+        # Update dialogue with round1_score
+        dialogue['round1_score'] = best_match['match_score']
+        
+        print(f"  Best match score: {best_match['match_score']}")
+        print(f"  Matched text: '{best_match['matched_text']}'")
+        
+        # Check if match meets minimum threshold
+        if best_match['match_score'] >= min_match:
+            # Update dialogue with match information
+            dialogue['matched_text_index'] = best_match['start_word']
+            dialogue['round1_matched'] = True
+            
+            # Get row and word indices from the match
+            start_row, start_word = text_to_position_map[best_match['start_word']]
+            end_row, end_word = text_to_position_map[best_match['end_word']]
+            
+            dialogue['matched_row_index'] = start_row
+            dialogue['matched_word_index'] = start_word
+            
+            # Check if the position is already taken
+            if transcript_data_orig[start_row]['dialogue_per_tr'][start_word] == -1:
+                # Mark the first word of the dialogue with dialogue_id
+                transcript_data_orig[start_row]['dialogue_per_tr'][start_word] = dialogue_id
+                matched_count += 1
+                
+                print(f"  ✓ Matched dialogue {dialogue_id} at row {start_row}, word {start_word}")
+                print(f"    Spans from row {start_row} word {start_word} to row {end_row} word {end_word}")
+            else:
+                existing_dialogue_id = transcript_data_orig[start_row]['dialogue_per_tr'][start_word]
+                print(f"  ✗ Position already taken by dialogue {existing_dialogue_id}")
+                # Try to find next available position
+                transcript_data_orig, able_to_set = set_dialogue_in_transcript(
+                    transcript_data_orig, dialogue_id, start_row, start_word, move_to_next_if_taken=True
+                )
+                if able_to_set:
+                    matched_count += 1
+                    print(f"  ✓ Placed dialogue {dialogue_id} at alternative position")
+                else:
+                    print(f"  ✗ Could not find alternative position for dialogue {dialogue_id}")
+        else:
+            print(f"  ✗ Match score {best_match['match_score']} below threshold {min_match}")
+    
+    # Final assertion check for all rows
+    for row in transcript_data_orig:
+        assert len(row['words_per_tr']) == len(row['dialogue_per_tr']), \
+            f"Final length mismatch: words_per_tr={len(row['words_per_tr'])}, dialogue_per_tr={len(row['dialogue_per_tr'])}"
+    
+    print(f"\nSummary:")
+    print(f"  Total eligible dialogues: {total_eligible}")
+    print(f"  Successfully matched: {matched_count}")
+    print(f"  Match rate: {matched_count/total_eligible*100:.1f}%" if total_eligible > 0 else "  Match rate: 0%")
+    
+    return transcript_data_orig, dialogue_list
 
 def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
     """
@@ -409,25 +676,35 @@ def add_dialogues_to_transcript(transcript_data_orig, dialogues, flex_len):
         words_collected = 0
         best_match_fuzz = None
 
-        temp_flex_len = flex_len
+        buffer_flex_len = flex_len
         skip_multiplier = 5
         #if large sentece make flex longer
-        if len(normalized_dialogue_words) > 4:
-            temp_flex_len = 20
+        if len(normalized_dialogue_words) <= 1:
+            buffer_flex_len = 2
+        elif len(normalized_dialogue_words) == 2:
+            buffer_flex_len = 4
+        elif len(normalized_dialogue_words) == 3:
+            buffer_flex_len = 20
+        elif len(normalized_dialogue_words) == 4:
+            buffer_flex_len = 20
+        elif len(normalized_dialogue_words) < 8:
+            buffer_flex_len = 40
+        else:
+            buffer_flex_len = 60
 
         if len(normalized_dialogue_words) > 5 and consecutive_skipped_dialogues > 0:
-            temp_flex_len = 50
+            buffer_flex_len = 50
 
         if consecutive_skipped_dialogues < 2:
-            skip_multiplier = 5
+            skip_multiplier = 2
         elif consecutive_skipped_dialogues < 5:
-            skip_multiplier = 10
+            skip_multiplier = 5
         elif consecutive_skipped_dialogues < 10:
-            skip_multiplier = 20
+            skip_multiplier = 10
         else:
-            skip_multiplier = 30
+            skip_multiplier = 20
 
-        active_flex_len = temp_flex_len + skip_multiplier*consecutive_skipped_dialogues
+        active_flex_len = buffer_flex_len + skip_multiplier*consecutive_skipped_dialogues
         target_words = len(normalized_dialogue_words) + active_flex_len
         print(f'target_words len: {target_words}')
         
@@ -703,7 +980,9 @@ def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
     if run_phase_2:
         print(f"Phase 2:")
         counter = 0
-        for dialogue in skipped_dialogues:
+        #sort dialogues by length of text in descending order
+        sorted_dialogues = sorted(skipped_dialogues, key=lambda x: len(x['text']), reverse=True)
+        for dialogue in sorted_dialogues:
             counter += 1
             # if dialogue['id'] > 228:
             #     break
@@ -717,3 +996,16 @@ def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
         num_skipped_p2 = len(still_skipped_dialogues)
 
     return transcript_data_enhanced, (total_dialogues, num_skipped_p1, num_skipped_p2)
+
+def enhance_transcripts_v2(transcript_data, dialogues_file, run_phase_2=True):
+    dialogues = get_scene_dialogue(dialogues_file)
+    dialogue_list = get_dialogue_list(dialogues)
+    transcript_data_enhanced, dialogue_list = add_dialogues_to_transcript_v2_big(transcript_data, dialogue_list, 8,80)
+    total_mistakes, mistakes_round1, mistakes_round2, mistakes_round3 = check_dialogue_list_validity(dialogue_list)
+    print(f"Total mistakes: {total_mistakes}")
+    print(f"Mistakes round 1: {mistakes_round1}")
+    print(f"Mistakes round 2: {mistakes_round2}")
+    print(f"Mistakes round 3: {mistakes_round3}")
+
+    return transcript_data_enhanced, (0, 0, 0)
+

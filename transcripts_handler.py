@@ -109,11 +109,18 @@ def save_transcript_with_dialogue_tsv(file_path, transcript_data):
             }
             writer.writerow(tsv_row)
 def print_key_stats(key_stats_list):
+    per_skipped_p1_total = 0
+    per_skipped_p2_total = 0
+    total_dialogues_total = 0
     for key_stats in key_stats_list:
         total_dialogues, num_skipped_p1, num_skipped_p2 = key_stats["key_stats"]
-        per_skipped_p1 = num_skipped_p1 / total_dialogues
-        per_skipped_p2 = num_skipped_p2 / total_dialogues
+        per_skipped_p1 = num_skipped_p1 / total_dialogues if total_dialogues > 0 else 0
+        per_skipped_p2 = num_skipped_p2 / total_dialogues if total_dialogues > 0 else 0
         print(f'{key_stats["stim_id"]}: {key_stats["key_stats"]} (p1: {per_skipped_p1*100:.2f}%, p2: {per_skipped_p2*100:.2f}%), {total_dialogues} dialogues, {num_skipped_p1} skipped in p1, {num_skipped_p2} skipped in p2')
+        per_skipped_p1_total += num_skipped_p1
+        per_skipped_p2_total += num_skipped_p2
+        total_dialogues_total += total_dialogues
+    print(f'Average of per_skipped_p1: {per_skipped_p1_total / total_dialogues_total*100:.2f}%, Average of per_skipped_p2: {per_skipped_p2_total / total_dialogues_total*100:.2f}%', f'Total dialogues: {total_dialogues_total}', f'Total skipped in p1: {per_skipped_p1_total}', f'Total skipped in p2: {per_skipped_p2_total}')
 
 def run_for_one_episode(stim_id, stim_path):
     print(f"Processing {stim_id}", stim_path)
@@ -149,7 +156,7 @@ def run_for_one_episode(stim_id, stim_path):
     #enhance the transcripts
     #enhanced_transcript_data = transcript_data
     assert total_tr_len == len(transcript_data), f"Total transcript length {len(transcript_data)} does not match the number of transcript data {total_tr_len}"
-    enhanced_transcript_data, key_stats = transcripts_enhancer.enhance_transcripts(transcript_data, stim_path, run_phase_2=True)
+    enhanced_transcript_data, key_stats = transcripts_enhancer.enhance_transcripts_v2(transcript_data, stim_path, run_phase_2=True)
     assert len(enhanced_transcript_data) == total_tr_len, f"Enhanced transcript length {len(enhanced_transcript_data)} does not match the number of transcript data {total_tr_len}"
 
     #save the enhanced transcripts
@@ -195,7 +202,7 @@ def run_for_all_episodes(print_stats=True):
     if print_stats:
         print_key_stats(key_stats_list)
 def test_with_1_episode(print_stats=True):
-    stim_id = 'friends_s03e05'
+    stim_id = 'friends_s01e05'
     stim_path = os.path.join(utils.get_data_root_dir(), 'stimuli', 'transcripts', 'friends', 'full', f'{stim_id}.txt')
     key_stats_list = []
     key_stats = run_for_one_episode(stim_id, stim_path)
