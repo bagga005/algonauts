@@ -6,7 +6,7 @@ import ast
 import transcripts_enhancer
 import os
 
-def load_transcript_tsv(file_path):
+def load_transcript_tsv(file_path, isEnhanced=False):
     """
     Loads a TSV file containing transcript data with specific fields.
     
@@ -26,7 +26,11 @@ def load_transcript_tsv(file_path):
         reader = csv.DictReader(file, delimiter='\t')
         
         # Check that all required fields are in the header
-        required_fields = ['text_per_tr', 'words_per_tr', 'onsets_per_tr', 'durations_per_tr']
+        if isEnhanced:
+            required_fields = ['text_per_tr', 'words_per_tr', 'onsets_per_tr', 'durations_per_tr', 'dialogue_per_tr']
+        else:
+            required_fields = ['text_per_tr', 'words_per_tr', 'onsets_per_tr', 'durations_per_tr']
+
         for field in required_fields:
             assert field in reader.fieldnames, f"Required field '{field}' not found in TSV header"
         
@@ -65,7 +69,9 @@ def load_transcript_tsv(file_path):
                     'onsets_per_tr': onsets_per_tr,
                     'durations_per_tr': durations_per_tr
                 }
-                
+                if isEnhanced:
+                    transcript_row['dialogue_per_tr'] = row['dialogue_per_tr']
+                    assert len(transcript_row['dialogue_per_tr']) == len(transcript_row['words_per_tr']), f"Length mismatch: words_per_tr={len(transcript_row['words_per_tr'])}, dialogue_per_tr={len(transcript_row['dialogue_per_tr'])}"
                 transcript_data.append(transcript_row)
                 
             except (ValueError, SyntaxError) as e:
@@ -127,16 +133,14 @@ def print_key_stats(key_stats_list):
         total_dialogues_total += total_dialogues
     print(f'Average of per_skipped_p1: {per_skipped_p1_total / total_dialogues_total*100:.2f}%, Average of per_skipped_p2: {per_skipped_p2_total / total_dialogues_total*100:.2f}%', f'Total dialogues: {total_dialogues_total}', f'Total skipped in p1: {per_skipped_p1_total}', f'Total skipped in p2: {per_skipped_p2_total}', f'Total match rate dialogue: {total_match_rate_dialogue_total / num_stats:.2f}%', f'Total match rate transcript: {total_match_rate_transcript_total /num_stats:.2f}%')
 
-def run_for_one_episode(stim_id, stim_path):
-    print(f"Processing {stim_id}", stim_path)
+def load_all_tsv_for_one_episode(stim_id):
     root_data_dir = utils.get_data_root_dir()
     #load transcript files
     t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
     t_files.sort()
     f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
     print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
-    #outfile_path
-    season_id = 's' + stim_id[10]
+    
 
     trans_iterator = enumerate(f_stimuli.items())
     trans_info_list = []
@@ -156,8 +160,13 @@ def run_for_one_episode(stim_id, stim_path):
     total_tr_len = 0
     for trans_info in trans_info_list:
         total_tr_len += trans_info["len"]
-    print(f"Total transcript length: {total_tr_len}")
 
+    return transcript_data, trans_info_list, total_tr_len
+
+def run_for_one_episode(stim_id, stim_path):
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id)
+    #outfile_path
+    season_id = 's' + stim_id[10]
     #enhance the transcripts
     #enhanced_transcript_data = transcript_data
     assert total_tr_len == len(transcript_data), f"Total transcript length {len(transcript_data)} does not match the number of transcript data {total_tr_len}"
@@ -210,7 +219,7 @@ def run_for_all_episodes(print_stats=True):
         print_key_stats(key_stats_list)
 
 def test_with_1_episode(print_stats=True):
-    stim_id = 'friends_s01e19'
+    stim_id = 'friends_s04e21'
     stim_path = os.path.join(utils.get_data_root_dir(), 'stimuli', 'transcripts', 'friends', 'full', f'{stim_id}.txt')
     key_stats_list = []
     key_stats = run_for_one_episode(stim_id, stim_path)
@@ -221,5 +230,5 @@ def test_with_1_episode(print_stats=True):
 
 
 if __name__ == "__main__":
-    run_for_all_episodes()
-    #test_with_1_episode()
+    #run_for_all_episodes()
+    test_with_1_episode()

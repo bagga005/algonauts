@@ -7,9 +7,10 @@ from glob import glob
 import html as ihtml
 import statistics
 from collections import Counter
+from Scenes_and_dialogues import get_scene_dialogue
 
 def print_dialogue_text(stim_path):
-    dialogues = transcripts_enhancer.get_scene_dialogue(stim_path)
+    dialogues = get_scene_dialogue(stim_path)
     print(len(dialogues['scenes']))
     for scene in dialogues['scenes']:
         print(f'scene: {scene["desc"]}')
@@ -91,7 +92,7 @@ def test_loading_text_files():
     files.sort()
     for file in files:
         print(f"Loading {file}")
-        dialogues = transcripts_enhancer.get_scene_dialogue(file)
+        dialogues = get_scene_dialogue(file)
 
 def check_scenes_all_text_files(print_max=None):
     root_data_dir = utils.get_data_root_dir()
@@ -114,7 +115,7 @@ def check_scenes_all_text_files(print_max=None):
         print(f"Processing {filename}")
         
         try:
-            dialogues = transcripts_enhancer.get_scene_dialogue(file)
+            dialogues = get_scene_dialogue(file)
             episode_dialogue_counts = []
             
             for scene_idx, scene in enumerate(dialogues['scenes']):
