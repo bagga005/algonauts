@@ -17,6 +17,20 @@ def get_scene_dialogue(file_path):
         AssertionError: If validation rules are violated
     """
     
+    def is_scene_line(line):
+        """Check if a line starts with [scene (case-insensitive, ignoring spaces)"""
+        if not line.startswith('['):
+            return False
+        
+        # Extract content after the opening bracket
+        content_after_bracket = line[1:]
+        
+        # Remove leading spaces and convert to lowercase
+        content_normalized = content_after_bracket.lstrip().lower()
+        
+        # Check if it starts with 'scene'
+        return content_normalized.startswith('scene')
+    
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
     
@@ -27,7 +41,7 @@ def get_scene_dialogue(file_path):
     assert valid_lines, "No dialogues found"
     
     # Assert that the first valid line is a scene
-    assert valid_lines[0].startswith('['), "First valid line is not a scene"
+    assert is_scene_line(valid_lines[0]), "First valid line is not a scene"
     
     scenes = []
     current_scene = None
@@ -39,7 +53,7 @@ def get_scene_dialogue(file_path):
     
     for line in valid_lines:
         # Check if this is a scene line
-        if line.startswith('['):
+        if is_scene_line(line):
             # Assert that scene has closing bracket
             assert line.endswith(']'), f"Scene line missing closing bracket: {line}"
             
@@ -58,9 +72,19 @@ def get_scene_dialogue(file_path):
             
             # Start new scene
             scene_desc = line[1:-1]  # Remove brackets
-            # Strip 'Scene:' from the beginning if present
-            if scene_desc.startswith('Scene:'):
+            # Strip 'Scene:' from the beginning if present (case-insensitive)
+            scene_desc_lower = scene_desc.lower().lstrip()
+            if scene_desc_lower.startswith('scene:'):
+                # Find the position of ':' and remove everything up to and including it
+                colon_pos = scene_desc.lower().find(':')
+                scene_desc = scene_desc[colon_pos + 1:].strip()
+            elif scene_desc_lower.startswith('scene '):
+                # Remove 'scene ' from the beginning
                 scene_desc = scene_desc[6:].strip()
+            elif scene_desc_lower == 'scene':
+                # If it's just 'scene', make it empty
+                scene_desc = ''
+            
             current_scene = {
                 "id": scene_id,
                 "desc": scene_desc,
@@ -82,11 +106,12 @@ def get_scene_dialogue(file_path):
                 # Save previous dialogue if exists
                 if current_dialogue is not None:
                     # Assert dialogue is not more than 3 lines
-                    assert dialogue_line_count <= 3, f"Dialogue exceeds 3 lines: {current_dialogue}"
+                    assert dialogue_line_count <= 5, f"Dialogue exceeds 5 lines: {current_dialogue}"
                     current_scene["dialogues"].append(current_dialogue)
                 
                 # Start new dialogue
                 speaker = speaker_match.group(1).strip()
+                speaker = speaker.title()  # Convert to title case (first letter of each word capitalized)
                 text = speaker_match.group(2).strip()
                 
                 current_dialogue = {
@@ -104,7 +129,7 @@ def get_scene_dialogue(file_path):
                 if current_dialogue is not None:
                     dialogue_line_count += 1
                     # Assert dialogue is not more than 3 lines
-                    assert dialogue_line_count <= 3, f"Dialogue exceeds 3 lines for speaker: {current_dialogue['speaker']} {current_dialogue['text']}"
+                    assert dialogue_line_count <= 5, f"Dialogue exceeds 5 lines for speaker: {current_dialogue['speaker']} {current_dialogue['text']}"
                     
                     # Add to existing dialogue text
                     if current_dialogue["text"]:
@@ -114,7 +139,7 @@ def get_scene_dialogue(file_path):
     
     # Save the last scene and dialogue
     if current_dialogue is not None:
-        assert dialogue_line_count <= 3, f"Dialogue exceeds 3 lines: {current_dialogue}"
+        assert dialogue_line_count <= 5, f"Dialogue exceeds 5 lines: {current_dialogue}"
         current_scene["dialogues"].append(current_dialogue)
     
     if current_scene is not None:
@@ -539,6 +564,75 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
         total_unmatched_normalized_length = sum(dialogue['length_normalized_text'] for dialogue in unmatched_dialogues)
         avg_unmatched_dialogue_length = total_unmatched_normalized_length / len(unmatched_dialogues)
     
+    # Compute average words per row (for rows that have words)
+    non_empty_rows = []
+    total_words_in_non_empty_rows = 0
+    
+    for row in transcript_data:
+        word_count = len(row['words_per_tr'])
+        if word_count > 0:
+            non_empty_rows.append(word_count)
+            total_words_in_non_empty_rows += word_count
+    
+    avg_words_per_non_empty_row = total_words_in_non_empty_rows / len(non_empty_rows) if non_empty_rows else 0
+    
+    # Compute length distribution statistics
+    length_categories = {
+        1: {'all': [], 'matched': []},
+        2: {'all': [], 'matched': []},
+        3: {'all': [], 'matched': []},
+        4: {'all': [], 'matched': []},
+        5: {'all': [], 'matched': []},
+        6: {'all': [], 'matched': []},
+        7: {'all': [], 'matched': []},
+        8: {'all': [], 'matched': []},
+        9: {'all': [], 'matched': []},
+        10: {'all': [], 'matched': []}  # 10+ words
+    }
+    
+    # Categorize all dialogues by normalized length
+    for dialogue in dialogue_list:
+        length = dialogue['length_normalized_text']
+        
+        # Determine category (1-9 or 10+)
+        category = min(length, 10) if length > 0 else 1
+        
+        # Add to all dialogues in this category
+        length_categories[category]['all'].append(dialogue)
+        
+        # Add to matched dialogues if it's matched
+        if dialogue.get('matched_text_index_start', -1) != -1:
+            length_categories[category]['matched'].append(dialogue)
+    
+    # Calculate statistics for each category
+    length_distribution = {}
+    total_dialogues = len(dialogue_list)
+    
+    for category in range(1, 11):
+        all_in_category = length_categories[category]['all']
+        matched_in_category = length_categories[category]['matched']
+        
+        # Calculate row spans for matched dialogues in this category
+        row_spans = []
+        for dialogue in matched_in_category:
+            start_row = dialogue.get('matched_row_index_start', -1)
+            end_row = dialogue.get('matched_row_index_end', -1)
+            if start_row != -1 and end_row != -1:
+                row_span = end_row - start_row
+                row_spans.append(row_span)
+        
+        avg_row_span = sum(row_spans) / len(row_spans) if row_spans else 0
+        
+        category_name = f"{category}_words" if category < 10 else "10plus_words"
+        
+        length_distribution[category_name] = {
+            'total_count': len(all_in_category),
+            'percentage_of_all': (len(all_in_category) / total_dialogues * 100) if total_dialogues > 0 else 0,
+            'matched_count': len(matched_in_category),
+            'match_rate': (len(matched_in_category) / len(all_in_category) * 100) if all_in_category else 0,
+            'avg_row_span': avg_row_span
+        }
+
     # Show summary
     print("=== DIALOGUE LIST VALIDITY CHECK ===")
     print(f"Total dialogues: {total_dialogues}")
@@ -554,6 +648,17 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
     print(f"Max dialogue distance for overlap: {max_dialogue_distance_for_overlap}")
     print()
     
+    # Print length distribution
+    print("=== LENGTH DISTRIBUTION ===")
+    for category in range(1, 11):
+        category_name = f"{category}_words" if category < 10 else "10plus_words"
+        stats = length_distribution[category_name]
+        
+        print(f"{category_name.replace('_', ' ')}: {stats['total_count']} dialogues ({stats['percentage_of_all']:.1f}%)")
+        print(f"  Matched: {stats['matched_count']} ({stats['match_rate']:.1f}%)")
+        print(f"  Avg row span (matched): {stats['avg_row_span']:.2f}")
+    print()
+    
     print("=== WORD COUNT STATISTICS ===")
     print(f"Total words in dialogues: {total_dialogue_words}")
     print(f"Unmatched words in dialogues: {unmatched_dialogue_words}")
@@ -562,6 +667,9 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
     print(f"Total words in transcript: {total_transcript_words}")
     print(f"Unmatched words in transcript: {unmatched_transcript_words}")
     print(f"Transcript word match rate: {transcript_match_rate:.1f}%")
+    print(f"Total transcript rows: {len(transcript_data)}")
+    print(f"Non-empty transcript rows: {len(non_empty_rows)}")
+    print(f"Average words per non-empty row: {avg_words_per_non_empty_row:.2f}")
     print()
     
     print("=== TRANSCRIPT ENTRY VALIDATION ===")
@@ -725,6 +833,7 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
             },
             'max_dialogue_distance_for_overlap': max_dialogue_distance_for_overlap
         },
+        'length_distribution': length_distribution,
         'word_statistics': {
             'dialogue_words': {
                 'total': total_dialogue_words,
@@ -738,6 +847,11 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
                 'unmatched': unmatched_transcript_words,
                 'matched': total_transcript_words - unmatched_transcript_words,
                 'match_rate': transcript_match_rate
+            },
+            'transcript_rows': {
+                'total_rows': len(transcript_data),
+                'non_empty_rows': len(non_empty_rows),
+                'avg_words_per_non_empty_row': avg_words_per_non_empty_row
             }
         },
         'ordering_mistakes': {
@@ -917,67 +1031,6 @@ def set_dialogue_in_transcript(transcript_data,  dialogue_id, row_idx, word_idx,
             transcript_data[set_row_idx]['dialogue_per_tr'][set_word_idx] = dialogue_id
     return transcript_data, able_to_set
 #from(inclusive) and to(non inclusive)
-def try_squeeze_in_dialogue(transcript_data, dialogues_list, dialogue_id):
-    fixed_dialogue = False
-    normalized_dialogue_words = dialogues_list[dialogue_id]['normalized_text']
-    prev_diaglogue_length = 0
-    if dialogue_id > 0:
-        from_row, from_word_pos, prev_dialogue_id = get_ordered_row_word_index_for_dialogue(transcript_data, dialogues_list, dialogue_id, isNext=False)
-        if from_row is None:
-            print(f'Could not find previous dialogue {dialogue_id}')
-            return transcript_data, fixed_dialogue
-        prev_dialogue_length = len(dialogues_list[prev_dialogue_id]['text'].split())
-    else:
-        from_row, from_word_pos = (0, 0)
-    to_row, to_word_pos, next_dialogue_id = get_ordered_row_word_index_for_dialogue(transcript_data, dialogues_list, dialogue_id, isNext=True)
-    if to_row is None:
-        print(f'Could not find next dialogue {dialogue_id}')
-        return transcript_data, fixed_dialogue
-
-    temp_row = from_row
-    temp_word_pos = from_word_pos
-    search_words = []
-    search_positions = []
-    first_search_word_pos = None
-    last_search_word_pos = None
-    temp_word_pos = from_word_pos
-    words_collected = 0
-    while temp_row <= to_row:
-        row_words = transcript_data[temp_row]['words_per_tr']
-        max_row_words = len(row_words)
-        if temp_row == to_row:
-            max_row_words = to_word_pos
-        while temp_word_pos < max_row_words:
-            search_words.append(normalize_and_clean_word(row_words[temp_word_pos]))
-            search_positions.append((temp_row, temp_word_pos))
-            
-            # Track first word position
-            if first_search_word_pos is None:
-                first_search_word_pos = (temp_row, temp_word_pos)
-            
-            # Always update last word position
-            last_search_word_pos = (temp_row, temp_word_pos)
-            
-            temp_word_pos += 1
-            words_collected += 1
-            
-        temp_row += 1
-        temp_word_pos = 0 
-    
-
-    #strategy 2: If 1-2 empty row, then squeeze in the dialogue
-    if not fixed_dialogue: 
-        empty_trs = get_empty_trs_in_range(transcript_data, from_row, to_row)
-        if len(empty_trs) < 5 and len(empty_trs) > 0:
-            fixed_dialogue = True
-            fill_empty_tr_with_dialogue(transcript_data, dialogue_id, empty_trs[0])
-        print('search_words', search_words)    
-        #print('empty_trs', empty_trs)
-    #gap_available = words_collected - prev_dialogue_length
-    print('search_words', search_words)
-    print('normalized_dialogue_words', normalized_dialogue_words)
-    # print(f'gap_available: {gap_available}')
-    return transcript_data, fixed_dialogue
 
 def best_variable_fuzzy_match(short_words, long_words, min_window=None, max_window=None):
     """
@@ -1343,38 +1396,11 @@ def add_dialogues_to_transcript_phase2(transcript_data, dialogue_list):
     
     return transcript_data, dialogue_list, matched_count
 
-def enhance_transcripts(transcript_data, dialogues_file, run_phase_2=True):
-    dialogues = get_scene_dialogue(dialogues_file)
-    still_skipped_dialogues = []
-    transcript_data_enhanced, skipped_dialogues, total_dialogues = add_dialogues_to_transcript_v2(transcript_data, dialogues, 20, 80, 1)
-    print(f"Skipped dialogues after phase 1:")
-    for dialogue in skipped_dialogues:
-        print(f"  {dialogue['id']}: {dialogue['text']}")
-    num_skipped_p1 = len(skipped_dialogues)
-
-    if run_phase_2:
-        print(f"Phase 2:")
-        counter = 0
-        #sort dialogues by length of text in descending order
-        sorted_dialogues = sorted(skipped_dialogues, key=lambda x: len(x['text']), reverse=True)
-        for dialogue in sorted_dialogues:
-            counter += 1
-            # if dialogue['id'] > 228:
-            #     break
-            transcript_data_enhanced, fixed_dialogue = try_squeeze_in_dialogue(transcript_data_enhanced, dialogues, dialogue['id'])
-            if not fixed_dialogue:
-                still_skipped_dialogues.append(dialogue)
-                print(f"  {dialogue['id']}: {dialogue['text']} (not fixed)")
-            else:
-                print(f"  {dialogue['id']}: {dialogue['text']} (fixed)")
-        print(f"Still skipped dialogues: {len(still_skipped_dialogues)}")
-        num_skipped_p2 = len(still_skipped_dialogues)
-
-    return transcript_data_enhanced, (total_dialogues, num_skipped_p1, num_skipped_p2)
-
 def enhance_transcripts_v2(transcript_data, dialogues_file, run_phase_2=True):
     dialogues = get_scene_dialogue(dialogues_file)
+
     dialogue_list = get_dialogue_list(dialogues)
+    
     transcript_data_enhanced, dialogue_list, positional_conflicts_count = add_dialogues_to_transcript_v2(transcript_data, dialogue_list, 8, 80, 1, match_to_full_text=True)
     #round 2
     transcript_data_enhanced, dialogue_list, positional_conflicts_count = add_dialogues_to_transcript_v2(transcript_data_enhanced, dialogue_list, 5, 80, 2, match_to_full_text=False)
