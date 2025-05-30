@@ -2,14 +2,9 @@ import re
 from rapidfuzz import process, fuzz
 from rapidfuzz.fuzz import ratio
 import copy
-from Scenes_and_dialogues import get_scene_dialogue
+from Scenes_and_dialogues import get_scene_dialogue, normalize_and_clean_word, get_dialogue_list
 
 
-def word_substitutions_to_make(segment):
-    segment = re.sub(r'whaddya', 'what do you', segment.lower())
-    segment = re.sub(r'goodnight', 'good night', segment.lower())
-    segment = re.sub(r'waitwait', 'wait wait', segment.lower())
-    return segment
 
 def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_distance_for_overlap=1):
     """
@@ -766,53 +761,7 @@ def check_dialogue_list_validity(dialogue_list, transcript_data, max_dialogue_di
         }
     }
 
-def get_dialogue_list(dialogues):
-    dialogue_list = []
-    for scene in dialogues['scenes']:
-        scene_id = scene['id']
-        for dialogue in scene['dialogues']:
-            norm_text = re.sub(r'\([^)]*\)', '', dialogue['text']).strip()
-            norm_text = re.sub(r'\[[^\]]*\]', '', norm_text).strip()
-            norm_text = re.sub(r'\.{3,}', ' ', norm_text)
-            norm_text = word_substitutions_to_make(norm_text)
-            dialogue_words = norm_text.split()
-            normalized_dialogue_words = [normalize_and_clean_word(word) for word in dialogue_words]
-            # Filter out empty normalized words
-            dialogue['normalized_text']  = [word for word in normalized_dialogue_words if word]
-            dialogue['length_normalized_text'] = len(dialogue['normalized_text'])
-            dialogue['scene_id'] = scene_id
-            dialogue['matched_text_index_start'] = -1
-            dialogue['matched_text_index_end'] = -1
-            dialogue['matched_row_index_start'] = -1
-            dialogue['matched_row_index_end'] = -1
-            dialogue['matched_word_index_start'] = -1
-            dialogue['matched_word_index_end'] = -1
-            dialogue['round1_matched'] = False
-            dialogue['round2_matched'] = False
-            dialogue['round3_matched'] = False
-            dialogue['round1_score'] = -1
-            dialogue['round2_score'] = -1
-            dialogue['round3_score'] = -1
-            dialogue_list.append(dialogue)
-    return dialogue_list
 
-def normalize_and_clean_word(word):
-        """Normalize word by converting to lowercase and keeping only alphanumeric characters"""
-        new_word = ''.join(c.lower() for c in word if c.isalnum())
-        # if new_word == 'cmon':
-            #new_word = 'come'
-        return new_word
-
-MAX_DIALOGUE_ID = -5
-def get_row_word_index_for_dialogue(transcript_data, dialogue_id):
-    if dialogue_id == MAX_DIALOGUE_ID:
-        return len(transcript_data)-1, len(transcript_data[len(transcript_data)-1]['words_per_tr'])
-    for row_idx, row in enumerate(transcript_data):
-        #print(row_idx, row['dialogue_per_tr'])
-        for word_idx, word in enumerate(row['words_per_tr']):
-            if word == dialogue_id:
-                return row_idx, word_idx
-    return None, None
 
 def get_empty_trs_in_range(transcript_data, from_row, to_row):
     empty_trs = []
@@ -821,31 +770,6 @@ def get_empty_trs_in_range(transcript_data, from_row, to_row):
             empty_trs.append(row_idx)
     return empty_trs
 
-def get_ordered_row_word_index_for_dialogue(transcriptdata, dialogues, dialogue_id, isNext=True):
-    if isNext:
-        found_ordered = False
-        num_check = 1
-        row_idx, word_idx = None, None
-        #print(f'dialogue_id: {dialogue_id}, num_check: {num_check}, len(dialogues): {len(dialogues)}')
-        while not found_ordered and num_check < 4 and dialogue_id+num_check < len(dialogues):
-            row_idx, word_idx = get_row_word_index_for_dialogue(transcriptdata, dialogue_id+num_check)
-            if row_idx is not None:
-                found_ordered = True
-            else:
-                num_check += 1
-
-        return row_idx, word_idx, dialogue_id+num_check
-    else:
-        found_ordered = False
-        num_check = 1
-        row_idx, word_idx = None, None
-        while not found_ordered and num_check < 4 and dialogue_id-num_check > 0:
-            row_idx, word_idx = get_row_word_index_for_dialogue(transcriptdata, dialogue_id-num_check)
-            if row_idx is not None:
-                found_ordered = True
-            else:
-                num_check += 1
-        return row_idx, word_idx, dialogue_id-num_check
 def fill_empty_tr_with_dialogue(transcript_data, dialogue_id, row_idx):
     transcript_data[row_idx]['dialogue_per_tr'] = [dialogue_id]
     transcript_data[row_idx]['words_per_tr'] = ['PLACEHOLDER']

@@ -6,7 +6,7 @@ import utils
 import torch
 import gzip
 import pickle
-from Scenes_and_dialogues import get_scene_dialogue
+from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data
 
 class SentenceDataset(Dataset):
     def __init__(self, sentences, mode="last_n_trs", last_n_trs=5, n_used_words=510):
@@ -35,7 +35,9 @@ class SentenceDataset(Dataset):
 class SentenceDataset_v2(Dataset):
     def __init__(self, transcript_data, scene_and_dialogues, tr_start, length):
         self.scenes_and_dialogues = scene_and_dialogues
+        self.dialogue_list = get_dialogue_list(scene_and_dialogues)
         self.transcript_data = transcript_data
+        self.dialogue_list, self.text_to_position_map, self.position_to_text_map = match_dialogues_to_transcript_data(self.transcript_data, self.dialogue_list)
         self.tr_start = tr_start
         self.length = length
 
