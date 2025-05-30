@@ -17,7 +17,7 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from model_intervl3 import SentenceDataset
+from SentenceDataset import SentenceDataset
 import gzip
 import pickle
 
