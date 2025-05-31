@@ -351,69 +351,115 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
     
     return dialogue_list, text_to_position_map, position_to_text_map
 
-def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=-1):
+def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=-1, add_prefix_continuation=False, add_suffix_continuation=False):
     # Split text into words
     #
-    words = dialogue['normalized_text']
-    start_index = start_index
-    if length == -1:
-        length = len(words) 
-        end_index = len(words) - 1
-    else:
-        end_index = start_index + length -1
-
-    useFuzzy = False
-
-    useFancyText = True
-    fancy_words = dialogue['text'].split()
-    length_of_dialogue_text = len(fancy_words)
-    if length_of_dialogue_text == len(dialogue['normalized_text']):
-        #print("Case 1: length_of_dialogue_text == len(dialogue['normalized_text']")
-        useFancyText = True
-        full_text_start_index = start_index
-        full_text_end_index = end_index
-    else:
-        
-        useFuzzy = True
-        start_word = words[start_index]
-        end_word = words[end_index]
-        full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)
-        print(f"after search full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
-        if full_text_start_index == -1 or full_text_end_index == -1 or full_text_start_index > full_text_end_index or \
-            (full_text_end_index - full_text_start_index) < (length - 1):
-            useFancyText = False
+    print(f"arguements start_index: {start_index}, length: {length}")
+    if length != 0:
+        words = dialogue['normalized_text']
+        if length == -1:
+            length = len(words) 
+            end_index = len(words) - 1
         else:
+            end_index = start_index + length -1
+        print(f"start start_index: {start_index}, end_index: {end_index}")
+        useFuzzy = False
+
+        useFancyText = True
+        fancy_words = dialogue['text'].split()
+        length_of_fancy_words = len(fancy_words)
+        length_of_normal_words = len(words)
+        if length_of_normal_words == length_of_fancy_words:
+            print("Case 1: No need to use fuzzy matching")
             useFancyText = True
+            full_text_start_index = start_index
+            full_text_end_index = end_index
+        else:
+            print("Case 2: Using fuzzy matching")
+            useFuzzy = True
+            start_word = words[start_index]
+            end_word = words[end_index]
+            full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)
+            print(f"after search full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+            if full_text_start_index == -1 or full_text_end_index == -1 or full_text_start_index > full_text_end_index or \
+                (full_text_end_index - full_text_start_index) < (length - 1):
+                useFancyText = False
+            else:
+                useFancyText = True
+                
+        #useFancyText = False
+        if useFancyText:
             if start_index == 0:
                 full_text_start_index = 0
             if end_index == len(words) - 1:
                 full_text_end_index = len(fancy_words) - 1
-    #useFancyText = False
-    if useFancyText:
-        
-        print(f"fancy_words: {fancy_words}")
-        print(fancy_words[full_text_start_index:full_text_end_index+1])
-        selected_text = " ".join(fancy_words[full_text_start_index:full_text_end_index+1])
-    else:
-        selected_text  = " ".join(words[start_index:end_index+1])
-    if useFuzzy:
-        print(f"length: {length}")
+            print(f"fancy_words: {fancy_words}")
+            print(f"about to extract fancy words full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+            print(fancy_words[full_text_start_index:full_text_end_index+1])
+            fancy_text = " ".join(fancy_words[full_text_start_index:full_text_end_index+1])
+        else:
+            fancy_text  = " ".join(words[start_index:end_index+1])
+        if useFuzzy:
+            print(f"length: {length}")
+            print(f"start_index: {start_index}, end_index: {end_index}")
+            print(f"words: {words}")
+            print(f"len(words): {len(words)}")
+            print(f"len(text): {len(dialogue['text'].split())}")
+            print(f"dialogue['text']: {dialogue['text']}")
+            print(f"full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+            #print(f"{dialogue['text'][full_text_start_index:full_text_end_index+1]}")
         print(f"start_index: {start_index}, end_index: {end_index}")
-        print(f"words: {words}")
-        print(f"len(words): {len(words)}")
-        print(f"len(text): {len(dialogue['text'].split())}")
-        print(f"dialogue['text']: {dialogue['text']}")
-        print(f"full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
-        #print(f"{dialogue['text'][full_text_start_index:full_text_end_index+1]}")
-    print(f"selected_text fancy: {selected_text}")
-    print(f"selected_text nrmal: {words[start_index:end_index+1]}")
-    print(f"****************")
-    if dialogue["speaker"] is not None and withSpeaker:
         basic_text = " ".join(words[start_index:end_index+1])
-        return f"{dialogue['speaker']}: {selected_text}", f"{dialogue['speaker']}: {basic_text}"
+        print(f"selected_text fancy: {fancy_text}")
+        print(f"selected_text nrmal: {basic_text}")
+        print(f"****************")
     else:
-        basic_text = " ".join(words[start_index:end_index+1])
-        return selected_text, basic_text
+        fancy_text, basic_text = "", ""
+    
+    #add prefix and suffix continuation if needed
+    if add_prefix_continuation:
+        basic_text = f"... {basic_text}"
+        fancy_text = f"... {fancy_text}"
+    if add_suffix_continuation:
+        basic_text = f"{basic_text} ..."
+        fancy_text = f"{fancy_text} ..."
+
+    #add speaker if needed
+    if dialogue["speaker"] is not None and withSpeaker:
+        if basic_text:
+            basic_text = f"{dialogue['speaker']}: {basic_text}"
+        if fancy_text:
+            fancy_text = f"{dialogue['speaker']}: {fancy_text}"
+
+    response = {
+        "fancy": fancy_text,
+        "normal": basic_text
+    }
+    print(f"response get_dialogue_display_text: {response}")
+    return response
+
+def get_scene_for_dialogue(dialogue, scene_and_dialogues):
+    i = 0
+    print(f"dialogue: {dialogue}")
+    for scene in scene_and_dialogues['scenes']:
+        if i == 0:
+            print(f"found scene: {scene}")  
+        if dialogue['scene_id'] == scene['id']:
+            
+            return scene
+        i += 1
+    return None
+
+def get_scene_display_text(scene):
+    prefeix ='| Scene'
+    middle = scene['desc']
+    if middle:
+        middle = ': ' + middle + ' '
+    else:
+        middle = ' '
+    suffix = '|'
+    return prefeix + middle + suffix
+
 
 def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0, preferred_length=1):
     """
@@ -432,7 +478,7 @@ def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0,
                Returns (-1, -1) if no matches found
     """
     import difflib
-    print(f"start_word: {start_word}, end_word: {end_word}")
+    #print(f"start_word: {start_word}, end_word: {end_word}")
     
     def calculate_similarity(word1, word2):
         """Calculate similarity between two words using sequence matching"""
@@ -485,7 +531,7 @@ def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0,
     start_similarities = []
     for i, word in enumerate(normalized_words):
         similarity = calculate_similarity(norm_start_word, word)
-        print(f"similarity: {similarity}", norm_start_word, word)
+        #print(f"similarity: {similarity}", norm_start_word, word)
         # Give slight bonus to words that come after preferred_start_index
         if original_indices[i] >= preferred_start_index:
             similarity += 0.05  # Small bonus for being at or after preferred start
@@ -494,7 +540,7 @@ def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0,
     
     # Sort by similarity (descending) and get best match
     start_similarities.sort(key=lambda x: x[0], reverse=True)
-    print(f"start_similarities: {start_similarities}")
+    #print(f"start_similarities: {start_similarities}")
     best_start_similarity, start_index = start_similarities[0]
     
     # If no reasonable match for start word, return failure

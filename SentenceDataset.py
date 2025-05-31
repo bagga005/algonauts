@@ -3,7 +3,7 @@ import pandas as pd
 from glob import glob
 from torch.utils.data import Dataset, DataLoader
 import utils
-from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text
+from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text
 from tabulate import tabulate
 
 class SentenceDataset(Dataset):
@@ -31,13 +31,14 @@ class SentenceDataset(Dataset):
         return text
 
 class SentenceDataset_v2(Dataset):
-    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length):
+    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000):
         self.scenes_and_dialogues = scene_and_dialogues
         self.dialogue_list = get_dialogue_list(scene_and_dialogues)
         self.transcript_data = transcript_data
         self.dialogue_list, self.text_to_position_map, self.position_to_text_map = match_dialogues_to_transcript_data(self.transcript_data, self.dialogue_list)
         self.tr_start = tr_start
         self.length = length
+        self.n_used_words = n_used_words
 
     def __len__(self):
         return self.length
@@ -61,7 +62,7 @@ class SentenceDataset_v2(Dataset):
         return list_of_dialogues
     
 
-    def _get_text_from_dialogue_for_row(self, dialogue, row_idx, allow_pre_text=False):
+    def _get_text_from_dialogue_for_row(self, dialogue, row_idx, forcePostSpeaker=False):
         #debug info
         # print(f"dialogue id: {dialogue['id']}")
         # print(f"dialogue normalized text: {dialogue['normalized_text']}")
@@ -71,15 +72,20 @@ class SentenceDataset_v2(Dataset):
         # print(f"dialogue matched text index start: {dialogue['matched_text_index_start']}")
         # print(f"dialogue matched text index end: {dialogue['matched_text_index_end']}")
         # print(f"row position to text map: {self.position_to_text_map.get((row_idx, 0))}")
-        response = " "
         row_word_length = len(self.transcript_data[row_idx]['words_per_tr'])
+        print(f"_get_text_from_dialogue_for_row row_word_length: {row_word_length}")
         #is dialogue starting in this row
         starting_in_this_row = dialogue['matched_row_index_start'] == row_idx
         #is dialogue ending in this row
         ending_in_this_row = dialogue['matched_row_index_end'] == row_idx
 
         if dialogue["length_normalized_text"] == 1 or (starting_in_this_row and ending_in_this_row):
-            response1, response2 = get_dialogue_display_text(dialogue, withSpeaker=True)
+            response_post = get_dialogue_display_text(dialogue, withSpeaker=True)
+            start_index = 0
+            response_pre = {
+                    "fancy": None,
+                    "normal": None
+                }
         else:
             #we have to split this dialogue into multiple parts: middle and possibly pre and post
             #see how many words in the row overlap with the dialogue and which is the first and last word
@@ -99,43 +105,120 @@ class SentenceDataset_v2(Dataset):
             start_index = round(offset*dialogue['run_rate'])
             dialogue_length_for_row = round(dialogue['run_rate'] * overlap_length)
             
-        # print(f"first_overlap_word_index: {first_overlap_word_index}")
-        # print(f"last_overlap_word_index: {last_overlap_word_index}")
-            # print(f"overlap length: {overlap_length}")
-            # print(f"offset: {offset}")
-            # print(f"row_word_length: {row_word_length}")
-            
-            
-            # print(f"run rate: {dialogue['run_rate']}")
-        # print(f"dialogue length for row: {dialogue_length_for_row}")
-        # print(f"start index: {start_index}")
             if dialogue_length_for_row + start_index > len(dialogue['normalized_text']):
                 dialogue_length_for_row = dialogue_length_for_row - 1
-            response1, response2 = get_dialogue_display_text(dialogue, withSpeaker=starting_in_this_row, start_index=start_index, length=dialogue_length_for_row)
             
-            
-        return response1, response2
-            
-            
+            #determine prefix and suffix for post text
+            add_prefix_continuation_for_post = False
+            add_suffix_continuation_for_post = False
 
+            if start_index > 0:
+                add_prefix_continuation_for_post = True
+            if start_index + dialogue_length_for_row < len(dialogue['normalized_text']):
+                add_suffix_continuation_for_post = True
 
+            #prepare response object
+            print(f" calling for post get_dialogue_display_text start_index: {start_index}, length: {dialogue_length_for_row}")
+            response_post = get_dialogue_display_text(dialogue, withSpeaker=starting_in_this_row or forcePostSpeaker, start_index=start_index, length=dialogue_length_for_row,
+                                                      add_prefix_continuation=add_prefix_continuation_for_post, add_suffix_continuation=add_suffix_continuation_for_post)
 
-    def get_post_text_for_tr(self, row_idx):
-        response1, response2 = None, None
-        word_length = len(self.transcript_data[row_idx]['words_per_tr'])
-        if word_length == 0:
-            response1 = "[No words spoken]"
-            response2 = "[No words spoken]"
-        else:
-            list_of_dialogues = self.get_dialogues_for_row(row_idx)
-            for dialogue in list_of_dialogues:
-                resp1, resp2 = self._get_text_from_dialogue_for_row(dialogue, row_idx)
-                if response1 is None:
-                    response1 = resp1
-                    response2 = resp2
-                else:
-                    response1 = response1 + "\n" + resp1
-                    response2 = response2 + "\n" + resp2
-        words_tr = ' '.join(self.transcript_data[row_idx]['words_per_tr'])
+            #get pre text if needed
+            if start_index > 0:
+                print(f" calling for pre get_dialogue_display_text start_index: {0}, length: {start_index }")
+                response_pre = get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=start_index, add_suffix_continuation=True )
+            else:
+                response_pre = {
+                    "fancy": None,
+                    "normal": None
+                }
+
+        response_object = {
+            "fancy_post": response_post["fancy"],
+            "normal_post": response_post["normal"],
+            "fancy_pre":response_pre["fancy"],
+            "normal_pre": response_pre["normal"],
+        }
         
-        return response1, response2, words_tr, word_length
+        return response_object
+            
+            
+
+
+
+    def get_text_for_tr(self, row_idx):
+        print("!!!!!!!!!!starting for row: ", row_idx)
+        fancy_post, normal_post, fancy_pre, normal_pre = None, None, None, None
+        word_length = len(self.transcript_data[row_idx]['words_per_tr'])
+        first_dialogue_in_row = None
+        #setup post main text
+        list_of_dialogues = self.get_dialogues_for_row(row_idx)
+        for dialogue in list_of_dialogues:
+            if first_dialogue_in_row is None:
+                first_dialogue_in_row = dialogue
+            forcePostSpeaker = normal_post is not None
+            resp = self._get_text_from_dialogue_for_row(dialogue, row_idx, forcePostSpeaker = forcePostSpeaker)
+            if resp['fancy_post']:
+                if fancy_post is not None:
+                    fancy_post = fancy_post + "\n" + resp['fancy_post']
+                else:
+                    fancy_post = resp['fancy_post']
+            if resp['normal_post']:
+                print(f"resp['normal_post'] as not none: {resp['normal_post']}")
+                if normal_post is not None:
+                    normal_post = normal_post + "\n" + resp['normal_post']
+                else:
+                    normal_post = resp['normal_post']
+            if resp['fancy_pre']:
+                if fancy_pre is not None:
+                    fancy_pre = fancy_pre + "\n" + resp['fancy_pre']
+                    print(f"got second pre: {resp['fancy_pre']}", "row_idx: ", row_idx)
+                else:
+                    fancy_pre = resp['fancy_pre']
+            if resp['normal_pre']:
+                if normal_pre is not None:
+                    normal_pre = normal_pre + "\n" + resp['normal_pre']
+                else:
+                    normal_pre = resp['normal_pre']
+
+
+        #set post headers        
+        if not fancy_post:
+            fancy_post = "|No Dialogue|"
+        else:
+            print(f"fancy_post: {fancy_post}")
+            fancy_post = "| Dialogue |" + "\n" + fancy_post
+        if not normal_post:
+            normal_post = "|No Dialogue|"
+        else:
+            normal_post = "| Dialogue |" + "\n" + normal_post
+        
+        words_tr = ' '.join(self.transcript_data[row_idx]['words_per_tr'])
+
+        #now build rest of pre
+        words_left = self.n_used_words
+        if fancy_pre:
+            words_left = self.n_used_words - len(fancy_pre.split())
+        #get scene of the dialogue
+        if first_dialogue_in_row:
+            scene = get_scene_for_dialogue(first_dialogue_in_row, self.scenes_and_dialogues)
+            scene_text = get_scene_display_text(scene)
+            if fancy_pre:
+                fancy_pre = scene_text + "\n" + fancy_pre
+            else:
+                fancy_pre = scene_text
+        
+        response = {
+            "fancy_post": fancy_post,
+            "normal_post": normal_post,
+            "fancy_pre": fancy_pre,
+            "normal_pre": normal_pre,
+            "words_tr":words_tr,
+            "word_length": word_length,
+        }
+
+        print(f"response['fancy_post']: {response['fancy_post']}")
+        print(f"response['normal_post']: {response['normal_post']}")
+        print(f"response['fancy_pre']: {response['fancy_pre']}")
+        print(f"response['normal_pre']: {response['normal_pre']}")
+        print("!!!!!!!!!!ending for row: ", row_idx)
+        return response

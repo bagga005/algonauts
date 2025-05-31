@@ -22,6 +22,7 @@ import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
 from transcripts_handler import load_all_tsv_for_one_episode
+from tabulate import tabulate
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -564,15 +565,23 @@ def get_transcript_dataSet(stim_id):
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length)
     return trans_dataset
 
-from tabulate import tabulate
 def test_dataset():
-    stim_id = 'friends_s04e07a'
+    stim_id = 'friends_s01e02a'
     trans_dataset = get_transcript_dataSet(stim_id)
     data = []
-    for i in range(468):
-        response1, response2, words_tr, word_length = trans_dataset.get_post_text_for_tr(i)
-        data.append([response1, response2, words_tr, i, word_length])
-    print(tabulate(data, headers=["Fancy Response", "Basic Response", "Transcript", "index", "words_tr length"], tablefmt="grid"))
+    maxcolwidths=[30, 30, 40, 35, 20, 5, 5]
+    for i in range(0, 186):
+        response= trans_dataset.get_text_for_tr(i)
+        # Replace None values with empty strings to prevent tabulate error
+        fancy_pre = response['fancy_pre'] if response['fancy_pre'] is not None else ""
+        normal_pre = response['normal_pre'] if response['normal_pre'] is not None else ""
+        fancy_post = response['fancy_post'] if response['fancy_post'] is not None else ""
+        normal_post = response['normal_post'] if response['normal_post'] is not None else ""
+        words_tr = response['words_tr'] if response['words_tr'] is not None else ""
+        
+        data.append([ fancy_pre, normal_pre, fancy_post, normal_post, words_tr, i])
+    print(tabulate(data, headers=["Fancy Pre", "Basic Pre", "Fancy Post", "Basic Post", "Transcript", "index"], 
+                   tablefmt="grid"))
 
 #process_all_files_for_extraction()
 episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
