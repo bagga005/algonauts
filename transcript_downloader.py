@@ -59,7 +59,7 @@ def clean_up_dialogue_text(file_path):
                 
                 # Add the bracket content on its own line
                 processed_lines.append(bracket_content)
-                print('separated out a scene:', bracket_content)
+                #print('separated out a scene:', bracket_content)
                 
                 # Add the part after bracket (if any)
                 if after_bracket:
@@ -91,7 +91,7 @@ def test_loading_text_files():
     files = updated_files
     files.sort()
     for file in files:
-        print(f"Loading {file}")
+        #print(f"Loading {file}")
         dialogues = get_scene_dialogue(file)
 
 def check_scenes_all_text_files(print_max=None):

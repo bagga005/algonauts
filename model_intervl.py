@@ -565,23 +565,60 @@ def get_transcript_dataSet(stim_id):
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length)
     return trans_dataset
 
+def wrap_text(text, max_length):
+    words = text.split()
+    wrapped_text = []
+    current_line = []
+    current_length = 0
+    
+    for word in words:
+        if current_length + len(word) + 1 > max_length:
+            # If current line is not empty, join it and add to wrapped_text
+            if current_line:
+                wrapped_text.append(' '.join(current_line))
+                current_line = []
+                current_length = 0
+            
+            # If the word itself is longer than max_length, split it
+            while len(word) > max_length:
+                wrapped_text.append(word[:max_length])
+                word = word[max_length:]
+            
+            # Add the remaining part of the word (or the whole word if it fits)
+            if word:
+                current_line = [word]
+                current_length = len(word)
+        else:
+            # Add word to current line
+            if current_line:
+                current_length += 1  # For the space
+            current_line.append(word)
+            current_length += len(word)
+    
+    # Add the last line if it's not empty
+    if current_line:
+        wrapped_text.append(' '.join(current_line))
+    
+    return '\n'.join(wrapped_text)
+
 def test_dataset():
     stim_id = 'friends_s01e02a'
     trans_dataset = get_transcript_dataSet(stim_id)
     data = []
     maxcolwidths=[30, 30, 40, 35, 20, 5, 5]
-    for i in range(0, 186):
+    for i in range(0, 400):
         response= trans_dataset.get_text_for_tr(i)
         # Replace None values with empty strings to prevent tabulate error
-        fancy_pre = response['fancy_pre'] if response['fancy_pre'] is not None else ""
-        normal_pre = response['normal_pre'] if response['normal_pre'] is not None else ""
-        fancy_post = response['fancy_post'] if response['fancy_post'] is not None else ""
-        normal_post = response['normal_post'] if response['normal_post'] is not None else ""
+        fancy_pre = wrap_text(response['fancy_pre'], 70) if response['fancy_pre'] is not None else ""
+        normal_pre = wrap_text(response['normal_pre'], 30) if response['normal_pre'] is not None else ""
+        fancy_post = wrap_text(response['fancy_post'], 30) if response['fancy_post'] is not None else ""
+        normal_post = wrap_text(response['normal_post'], 30) if response['normal_post'] is not None else ""
         words_tr = response['words_tr'] if response['words_tr'] is not None else ""
+        word_length = response['word_length'] if response['word_length'] is not None else ""
         
-        data.append([ fancy_pre, normal_pre, fancy_post, normal_post, words_tr, i])
-    print(tabulate(data, headers=["Fancy Pre", "Basic Pre", "Fancy Post", "Basic Post", "Transcript", "index"], 
-                   tablefmt="grid"))
+        data.append([ fancy_pre, fancy_post, words_tr, word_length])
+    # print(tabulate(data, headers=["Fancy Pre", "Fancy Post", "Transcript", "index"], 
+    #                tablefmt="grid"))
 
 #process_all_files_for_extraction()
 episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"

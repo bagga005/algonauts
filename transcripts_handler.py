@@ -21,7 +21,7 @@ def load_transcript_tsv(file_path, isEnhanced=False):
     """
     
     transcript_data = []
-    
+    #print(f"Loading {file_path}")
     with open(file_path, 'r', encoding='utf-8') as file:
         reader = csv.DictReader(file, delimiter='\t')
         
@@ -70,8 +70,15 @@ def load_transcript_tsv(file_path, isEnhanced=False):
                     'durations_per_tr': durations_per_tr
                 }
                 if isEnhanced:
-                    transcript_row['dialogue_per_tr'] = row['dialogue_per_tr']
-                    assert len(transcript_row['dialogue_per_tr']) == len(transcript_row['words_per_tr']), f"Length mismatch: words_per_tr={len(transcript_row['words_per_tr'])}, dialogue_per_tr={len(transcript_row['dialogue_per_tr'])}"
+                    dialogue_str = row['dialogue_per_tr'].strip()
+                    if dialogue_str:
+                        dialogue_per_str = ast.literal_eval(dialogue_str)
+                    else:
+                        dialogue_per_str = []
+                    transcript_row['dialogue_per_tr'] = dialogue_per_str
+                    # print(f"dialogue_per_tr: {transcript_row['dialogue_per_tr']}, length: {len(transcript_row['dialogue_per_tr'])}")
+                    # print(f"words_per_tr: {transcript_row['words_per_tr']}, length: {len(transcript_row['words_per_tr'])}")
+                    assert len(transcript_row['dialogue_per_tr']) == len(transcript_row['words_per_tr']), f"Length mismatch: words_per_tr={len(transcript_row['words_per_tr'])}, dialogue_per_tr={len(transcript_row['dialogue_per_tr'])} in row {row_num}"
                 transcript_data.append(transcript_row)
                 
             except (ValueError, SyntaxError) as e:
@@ -133,13 +140,16 @@ def print_key_stats(key_stats_list):
         total_dialogues_total += total_dialogues
     print(f'Average of per_skipped_p1: {per_skipped_p1_total / total_dialogues_total*100:.2f}%, Average of per_skipped_p2: {per_skipped_p2_total / total_dialogues_total*100:.2f}%', f'Total dialogues: {total_dialogues_total}', f'Total skipped in p1: {per_skipped_p1_total}', f'Total skipped in p2: {per_skipped_p2_total}', f'Total match rate dialogue: {total_match_rate_dialogue_total / num_stats:.2f}%', f'Total match rate transcript: {total_match_rate_transcript_total /num_stats:.2f}%')
 
-def load_all_tsv_for_one_episode(stim_id):
+def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
     root_data_dir = utils.get_data_root_dir()
     #load transcript files
-    t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
+    if isEnhanced:
+        t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/enhanced/{stim_id}*.tsv")
+    else:
+        t_files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
     t_files.sort()
     f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
-    print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
+    #print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
     
 
     trans_iterator = enumerate(f_stimuli.items())
@@ -147,8 +157,8 @@ def load_all_tsv_for_one_episode(stim_id):
     transcript_data = None
     isfirst = True
     for j, (trans_id, trans_path) in trans_iterator:
-        print(f"Handling {trans_id}", trans_path)
-        tr_lines = load_transcript_tsv(trans_path)
+        #print(f"Handling {trans_id}", trans_path)
+        tr_lines = load_transcript_tsv(trans_path, isEnhanced)
         num_lines = len(tr_lines)
         if isfirst:
             transcript_data = tr_lines

@@ -280,7 +280,7 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
     matched_count = 0
     approximated_ends = 0
     
-    print(f"Processing {len(dialogue_list)} dialogues to populate match information")
+    #print(f"Processing {len(dialogue_list)} dialogues to populate match information")
     
     for dialogue in dialogue_list:
         dialogue_id = dialogue['id']
@@ -315,7 +315,7 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
                 dialogue['matched_row_index_end'] = end_row
                 dialogue['matched_word_index_end'] = end_word
                 
-                print(f"  ✓ Dialogue {dialogue_id}: start ({start_row}, {start_word}), end ({end_row}, {end_word})")
+                #print(f"  ✓ Dialogue {dialogue_id}: start ({start_row}, {start_word}), end ({end_row}, {end_word})")
             else:
                 # Approximate end position
                 end_row, end_word = approximate_end_position(dialogue, start_row, start_word)
@@ -326,11 +326,11 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
                 dialogue['matched_word_index_end'] = end_word
                 
                 approximated_ends += 1
-                print(f"  ≈ Dialogue {dialogue_id}: start ({start_row}, {start_word}), end approximated ({end_row}, {end_word})")
+                #print(f"  ≈ Dialogue {dialogue_id}: start ({start_row}, {start_word}), end approximated ({end_row}, {end_word})")
             
             matched_count += 1
-        else:
-            print(f"  ✗ Dialogue {dialogue_id}: not found in dialogue_per_tr")
+        
+            #print(f"  ✗ Dialogue {dialogue_id}: not found in dialogue_per_tr")
     
     #for all matched dialogues, set run_rate
     for dialogue in dialogue_list:
@@ -343,18 +343,17 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
         else:
             dialogue['run_rate'] = 0
     
-    print(f"\nMatch Summary:")
-    print(f"  Total dialogues: {len(dialogue_list)}")
-    print(f"  Successfully matched: {matched_count}")
-    print(f"  Approximated ends: {approximated_ends}")
-    print(f"  Match rate: {matched_count/len(dialogue_list)*100:.1f}%" if dialogue_list else "  Match rate: 0%")
+    #print(f"\nMatch Summary:")
+    #print(f"  Total dialogues: {len(dialogue_list)}")
+    #print(f"  Successfully matched: {matched_count}")
+    #print(f"  Approximated ends: {approximated_ends}")
+    #print(f"  Match rate: {matched_count/len(dialogue_list)*100:.1f}%" if dialogue_list else "  Match rate: 0%")
     
     return dialogue_list, text_to_position_map, position_to_text_map
 
 def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=-1, add_prefix_continuation=False, add_suffix_continuation=False):
     # Split text into words
     #
-    print(f"arguements start_index: {start_index}, length: {length}")
     if length != 0:
         words = dialogue['normalized_text']
         if length == -1:
@@ -362,7 +361,6 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
             end_index = len(words) - 1
         else:
             end_index = start_index + length -1
-        print(f"start start_index: {start_index}, end_index: {end_index}")
         useFuzzy = False
 
         useFancyText = True
@@ -370,17 +368,17 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
         length_of_fancy_words = len(fancy_words)
         length_of_normal_words = len(words)
         if length_of_normal_words == length_of_fancy_words:
-            print("Case 1: No need to use fuzzy matching")
+            #print("Case 1: No need to use fuzzy matching")
             useFancyText = True
             full_text_start_index = start_index
             full_text_end_index = end_index
         else:
-            print("Case 2: Using fuzzy matching")
+            #print("Case 2: Using fuzzy matching")
             useFuzzy = True
             start_word = words[start_index]
             end_word = words[end_index]
             full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)
-            print(f"after search full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+            #print(f"after search full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
             if full_text_start_index == -1 or full_text_end_index == -1 or full_text_start_index > full_text_end_index or \
                 (full_text_end_index - full_text_start_index) < (length - 1):
                 useFancyText = False
@@ -393,26 +391,10 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
                 full_text_start_index = 0
             if end_index == len(words) - 1:
                 full_text_end_index = len(fancy_words) - 1
-            print(f"fancy_words: {fancy_words}")
-            print(f"about to extract fancy words full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
-            print(fancy_words[full_text_start_index:full_text_end_index+1])
             fancy_text = " ".join(fancy_words[full_text_start_index:full_text_end_index+1])
         else:
             fancy_text  = " ".join(words[start_index:end_index+1])
-        if useFuzzy:
-            print(f"length: {length}")
-            print(f"start_index: {start_index}, end_index: {end_index}")
-            print(f"words: {words}")
-            print(f"len(words): {len(words)}")
-            print(f"len(text): {len(dialogue['text'].split())}")
-            print(f"dialogue['text']: {dialogue['text']}")
-            print(f"full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
-            #print(f"{dialogue['text'][full_text_start_index:full_text_end_index+1]}")
-        print(f"start_index: {start_index}, end_index: {end_index}")
         basic_text = " ".join(words[start_index:end_index+1])
-        print(f"selected_text fancy: {fancy_text}")
-        print(f"selected_text nrmal: {basic_text}")
-        print(f"****************")
     else:
         fancy_text, basic_text = "", ""
     
@@ -435,19 +417,13 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
         "fancy": fancy_text,
         "normal": basic_text
     }
-    print(f"response get_dialogue_display_text: {response}")
+    #print(f"response get_dialogue_display_text: {response}")
     return response
 
 def get_scene_for_dialogue(dialogue, scene_and_dialogues):
-    i = 0
-    print(f"dialogue: {dialogue}")
     for scene in scene_and_dialogues['scenes']:
-        if i == 0:
-            print(f"found scene: {scene}")  
         if dialogue['scene_id'] == scene['id']:
-            
             return scene
-        i += 1
     return None
 
 def get_scene_display_text(scene):
@@ -587,6 +563,130 @@ def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0,
     
     # Return original text indices instead of cleaned text indices
     return (original_indices[start_index], original_indices[end_index])
+
+def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, scene_id, starting_diaglogue_id=-1, max_words=1000):
+    def get_dialogue_by_id(dialogue_id):
+        for dialogue in dialogue_list:
+            if dialogue['id'] == dialogue_id:
+                return dialogue
+        return None
+    def get_scene_by_id(scene_id):
+            for scene in scene_and_dialogues['scenes']:
+                if scene['id'] == scene_id:
+                    return scene
+            return None
+    response = {
+        "fancy_scene_text": "",
+        "normal_scene_text": ""
+    }
+
+    scene = get_scene_by_id(scene_id)
+    if scene is None:
+        raise ValueError(f"Scene {scene_id} not found")
+    
+    scene_text = get_scene_display_text(scene)
+    words_left = max_words - len(scene_text.split())
+    if words_left < 0:
+        return response
+    
+    ending_index_of_dialogue_in_scene = -1
+    need_scene_contituation_suffix = False
+    if starting_diaglogue_id != -1:
+        starting_dialogue = get_dialogue_by_id(starting_diaglogue_id)
+        if starting_dialogue is None or starting_dialogue['scene_id'] != scene_id:
+            raise ValueError(f"Starting dialogue {starting_diaglogue_id} is not in scene {scene_id} or is not a valid dialogue id")
+        for i in range(len(scene['dialogues'])-1, -1, -1):
+            if scene['dialogues'][i]['id'] == starting_diaglogue_id:
+                ending_index_of_dialogue_in_scene = i
+                break
+    else:
+        scene_dialogues = scene['dialogues']
+        scene_dialogues.sort(key=lambda x: x['id'])
+        ending_index_of_dialogue_in_scene = len(scene_dialogues) - 1
+    
+    if ending_index_of_dialogue_in_scene > 0:
+        for i in range(ending_index_of_dialogue_in_scene, -1, -1):
+            dialogue = scene['dialogues'][i]
+            display_dialogue_text = get_dialogue_display_text(dialogue, withSpeaker=True)
+            if display_dialogue_text['fancy']:
+                if words_left > len(display_dialogue_text['fancy'].split()):
+                    if response['fancy_scene_text']:
+                        response['fancy_scene_text'] = display_dialogue_text['fancy'] + "\n" + response['fancy_scene_text']
+                    else:
+                        response['fancy_scene_text'] = display_dialogue_text['fancy']
+                    words_left = words_left - len(display_dialogue_text['fancy'].split())
+                    if display_dialogue_text['normal'] and words_left > len(display_dialogue_text['normal'].split()):
+                        if response['normal_scene_text']:
+                            response['normal_scene_text'] = display_dialogue_text['normal'] + "\n" + response['normal_scene_text']
+                        else:
+                            response['normal_scene_text'] = display_dialogue_text['normal']
+                else:
+                    need_scene_contituation_suffix = True
+                    break
+    if need_scene_contituation_suffix:
+        scene_text = scene_text + "\n" + "..."
+   
+    if response['fancy_scene_text']:
+        response['fancy_scene_text'] = scene_text + "\n" + response['fancy_scene_text']
+    else:
+        response['fancy_scene_text'] = scene_text
+    if response['normal_scene_text']:
+        response['normal_scene_text'] = scene_text + "\n" + response['normal_scene_text']
+    else:
+        response['normal_scene_text'] = scene_text
+    
+    #print(f"words_left: {words_left}")
+    return response
+
+
+
+def get_closest_dialogue_for_row(row_idx, dialogue_list):
+    """
+    Find the dialogue that best matches a given row index.
+    
+    First tries to find a dialogue whose range covers the row.
+    If none found, returns the dialogue whose range ends closest to (but before) the row.
+    
+    Args:
+        row_idx (int): The row index to find a dialogue for
+        dialogue_list (list): List of dialogues with match information
+        
+    Returns:
+        dict or None: The best matching dialogue, or None if no suitable dialogue found
+    """
+    
+    # Filter out dialogues that don't have valid match information
+    valid_dialogues = [d for d in dialogue_list 
+                      if d.get('matched_row_index_start', -1) != -1 
+                      and d.get('matched_row_index_end', -1) != -1]
+    
+    if not valid_dialogues:
+        return None
+    
+    # Sort dialogues by id in ascending order
+    sorted_dialogues = sorted(valid_dialogues, key=lambda x: x['id'])
+    
+    # First pass: find first dialogue whose range covers the row (inclusive)
+    for dialogue in sorted_dialogues:
+        start_row = dialogue['matched_row_index_start']
+        end_row = dialogue['matched_row_index_end']
+        
+        if start_row <= row_idx <= end_row:
+            return dialogue
+    
+    # Second pass: find dialogue whose range ends closest to the row but before the row
+    closest_dialogue = None
+    closest_end_row = -1
+    
+    for dialogue in sorted_dialogues:
+        end_row = dialogue['matched_row_index_end']
+        
+        # Check if this dialogue ends before the target row and is closer than previous best
+        if end_row < row_idx and end_row > closest_end_row:
+            closest_dialogue = dialogue
+            closest_end_row = end_row
+    
+    return closest_dialogue
 
 
 

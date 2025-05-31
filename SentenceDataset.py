@@ -3,7 +3,7 @@ import pandas as pd
 from glob import glob
 from torch.utils.data import Dataset, DataLoader
 import utils
-from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text
+from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text, get_closest_dialogue_for_row, get_scene_and_dialogues_display_text
 from tabulate import tabulate
 
 class SentenceDataset(Dataset):
@@ -64,16 +64,16 @@ class SentenceDataset_v2(Dataset):
 
     def _get_text_from_dialogue_for_row(self, dialogue, row_idx, forcePostSpeaker=False):
         #debug info
-        # print(f"dialogue id: {dialogue['id']}")
-        # print(f"dialogue normalized text: {dialogue['normalized_text']}")
-        # print(f"dialogue length normalized text: {dialogue['length_normalized_text']}")
-        # print(f"dialogue matched row index start: {dialogue['matched_row_index_start']}")
-        # print(f"dialogue matched row index end: {dialogue['matched_row_index_end']}")
-        # print(f"dialogue matched text index start: {dialogue['matched_text_index_start']}")
-        # print(f"dialogue matched text index end: {dialogue['matched_text_index_end']}")
-        # print(f"row position to text map: {self.position_to_text_map.get((row_idx, 0))}")
+        # #print(f"dialogue id: {dialogue['id']}")
+        # #print(f"dialogue normalized text: {dialogue['normalized_text']}")
+        # #print(f"dialogue length normalized text: {dialogue['length_normalized_text']}")
+        # #print(f"dialogue matched row index start: {dialogue['matched_row_index_start']}")
+        # #print(f"dialogue matched row index end: {dialogue['matched_row_index_end']}")
+        # #print(f"dialogue matched text index start: {dialogue['matched_text_index_start']}")
+        # #print(f"dialogue matched text index end: {dialogue['matched_text_index_end']}")
+        # #print(f"row position to text map: {self.position_to_text_map.get((row_idx, 0))}")
         row_word_length = len(self.transcript_data[row_idx]['words_per_tr'])
-        print(f"_get_text_from_dialogue_for_row row_word_length: {row_word_length}")
+        #print(f"_get_text_from_dialogue_for_row row_word_length: {row_word_length}")
         #is dialogue starting in this row
         starting_in_this_row = dialogue['matched_row_index_start'] == row_idx
         #is dialogue ending in this row
@@ -118,13 +118,13 @@ class SentenceDataset_v2(Dataset):
                 add_suffix_continuation_for_post = True
 
             #prepare response object
-            print(f" calling for post get_dialogue_display_text start_index: {start_index}, length: {dialogue_length_for_row}")
+            #print(f" calling for post get_dialogue_display_text start_index: {start_index}, length: {dialogue_length_for_row}")
             response_post = get_dialogue_display_text(dialogue, withSpeaker=starting_in_this_row or forcePostSpeaker, start_index=start_index, length=dialogue_length_for_row,
                                                       add_prefix_continuation=add_prefix_continuation_for_post, add_suffix_continuation=add_suffix_continuation_for_post)
 
             #get pre text if needed
             if start_index > 0:
-                print(f" calling for pre get_dialogue_display_text start_index: {0}, length: {start_index }")
+                #print(f" calling for pre get_dialogue_display_text start_index: {0}, length: {start_index }")
                 response_pre = get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=start_index, add_suffix_continuation=True )
             else:
                 response_pre = {
@@ -146,7 +146,57 @@ class SentenceDataset_v2(Dataset):
 
 
     def get_text_for_tr(self, row_idx):
-        print("!!!!!!!!!!starting for row: ", row_idx)
+        def get_dialogue_by_id(dialogue_id):
+            for dialogue in self.dialogue_list:
+                if dialogue['id'] == dialogue_id:
+                    return dialogue
+            return None
+        
+        def get_scene_by_id(scene_id):
+            for scene in self.scenes_and_dialogues['scenes']:
+                if scene['id'] == scene_id:
+                    return scene
+            return None
+        
+        def get_previous_matched_dialogue_in_scene(dialogue):
+            # Get all dialogues in the same scene that have been matched to transcript data
+            dialogues_in_scene = []
+            for d in self.dialogue_list:
+                if (d['matched_text_index_start'] != -1 and 
+                    d['scene_id'] == dialogue['scene_id']):
+                    dialogues_in_scene.append(d)
+            
+            # Sort by id to maintain proper dialogue order
+            dialogues_in_scene.sort(key=lambda x: x['id'])
+            
+            # Find the current dialogue and return the previous one
+            for i, d in enumerate(dialogues_in_scene):
+                if d['id'] == dialogue['id']:
+                    if i > 0:
+                        return dialogues_in_scene[i - 1]
+                    break
+            
+            return None
+        
+        def get_last_matched_dialogue_from_previous_scene(dialogue):
+            current_scene_id = dialogue['scene_id']
+            previous_scene_id = current_scene_id - 1
+            
+            # Get all dialogues from the previous scene that have been matched to transcript data
+            previous_scene_dialogues = []
+            for d in self.dialogue_list:
+                if (d['matched_text_index_start'] != -1 and 
+                    d['scene_id'] == previous_scene_id):
+                    previous_scene_dialogues.append(d)
+            
+            if not previous_scene_dialogues:
+                return None
+            
+            # Sort by id to maintain proper dialogue order and return the last one
+            previous_scene_dialogues.sort(key=lambda x: x['id'])
+            return previous_scene_dialogues[-1]
+
+        #print("!!!!!!!!!!starting for row: ", row_idx)
         fancy_post, normal_post, fancy_pre, normal_pre = None, None, None, None
         word_length = len(self.transcript_data[row_idx]['words_per_tr'])
         first_dialogue_in_row = None
@@ -163,7 +213,7 @@ class SentenceDataset_v2(Dataset):
                 else:
                     fancy_post = resp['fancy_post']
             if resp['normal_post']:
-                print(f"resp['normal_post'] as not none: {resp['normal_post']}")
+                #print(f"resp['normal_post'] as not none: {resp['normal_post']}")
                 if normal_post is not None:
                     normal_post = normal_post + "\n" + resp['normal_post']
                 else:
@@ -171,7 +221,7 @@ class SentenceDataset_v2(Dataset):
             if resp['fancy_pre']:
                 if fancy_pre is not None:
                     fancy_pre = fancy_pre + "\n" + resp['fancy_pre']
-                    print(f"got second pre: {resp['fancy_pre']}", "row_idx: ", row_idx)
+                    #print(f"got second pre: {resp['fancy_pre']}", "row_idx: ", row_idx)
                 else:
                     fancy_pre = resp['fancy_pre']
             if resp['normal_pre']:
@@ -185,7 +235,7 @@ class SentenceDataset_v2(Dataset):
         if not fancy_post:
             fancy_post = "|No Dialogue|"
         else:
-            print(f"fancy_post: {fancy_post}")
+            #print(f"fancy_post: {fancy_post}")
             fancy_post = "| Dialogue |" + "\n" + fancy_post
         if not normal_post:
             normal_post = "|No Dialogue|"
@@ -198,14 +248,35 @@ class SentenceDataset_v2(Dataset):
         words_left = self.n_used_words
         if fancy_pre:
             words_left = self.n_used_words - len(fancy_pre.split())
+
         #get scene of the dialogue
         if first_dialogue_in_row:
-            scene = get_scene_for_dialogue(first_dialogue_in_row, self.scenes_and_dialogues)
-            scene_text = get_scene_display_text(scene)
-            if fancy_pre:
-                fancy_pre = scene_text + "\n" + fancy_pre
-            else:
-                fancy_pre = scene_text
+            closest_dialogue = first_dialogue_in_row
+        else:
+            closest_dialogue = get_closest_dialogue_for_row(row_idx, self.dialogue_list)
+
+        if closest_dialogue:
+            scene = get_scene_for_dialogue(closest_dialogue, self.scenes_and_dialogues)
+            starting_diaglogue_id = closest_dialogue['id']
+            scene_id = scene['id']
+            while words_left > 0 and scene_id > 0:   
+                display_text = get_scene_and_dialogues_display_text(self.scenes_and_dialogues, self.dialogue_list, scene_id, starting_diaglogue_id=starting_diaglogue_id, max_words=words_left)
+                if display_text['fancy_scene_text']:
+                    if fancy_pre:
+                        fancy_pre = display_text['fancy_scene_text'] + "\n" + fancy_pre
+                    else:
+                        fancy_pre = display_text['fancy_scene_text']
+
+                if display_text['normal_scene_text']:
+                    if normal_pre:
+                        normal_pre = display_text['normal_scene_text'] + "\n" + normal_pre
+                    else:
+                        normal_pre = display_text['normal_scene_text']
+                words_left = words_left - len(display_text['fancy_scene_text'].split())
+                starting_diaglogue_id = -1
+                scene_id = scene_id - 1
+
+
         
         response = {
             "fancy_post": fancy_post,
@@ -213,12 +284,12 @@ class SentenceDataset_v2(Dataset):
             "fancy_pre": fancy_pre,
             "normal_pre": normal_pre,
             "words_tr":words_tr,
-            "word_length": word_length,
+            "word_length": words_left,
         }
 
-        print(f"response['fancy_post']: {response['fancy_post']}")
-        print(f"response['normal_post']: {response['normal_post']}")
-        print(f"response['fancy_pre']: {response['fancy_pre']}")
-        print(f"response['normal_pre']: {response['normal_pre']}")
-        print("!!!!!!!!!!ending for row: ", row_idx)
+        # print(f"response['fancy_post']: {response['fancy_post']}")
+        # print(f"response['normal_post']: {response['normal_post']}")
+        # print(f"response['fancy_pre']: {response['fancy_pre']}")
+        # print(f"response['normal_pre']: {response['normal_pre']}")
+        # print("!!!!!!!!!!ending for row: ", row_idx)
         return response
