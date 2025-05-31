@@ -595,18 +595,20 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         starting_dialogue = get_dialogue_by_id(starting_diaglogue_id)
         if starting_dialogue is None or starting_dialogue['scene_id'] != scene_id:
             raise ValueError(f"Starting dialogue {starting_diaglogue_id} is not in scene {scene_id} or is not a valid dialogue id")
-        for i in range(len(scene['dialogues'])-1, -1, -1):
+        for i in range(len(scene['dialogues'])-1, 0, -1):
             if scene['dialogues'][i]['id'] == starting_diaglogue_id:
-                ending_index_of_dialogue_in_scene = i
+                ending_index_of_dialogue_in_scene = i-1
+                #print(f"ending_index_of_dialogue_in_scene: {ending_index_of_dialogue_in_scene} for starting_diaglogue_id: {starting_diaglogue_id}")
                 break
     else:
         scene_dialogues = scene['dialogues']
         scene_dialogues.sort(key=lambda x: x['id'])
         ending_index_of_dialogue_in_scene = len(scene_dialogues) - 1
     
-    if ending_index_of_dialogue_in_scene > 0:
+    if ending_index_of_dialogue_in_scene >= 0:
         for i in range(ending_index_of_dialogue_in_scene, -1, -1):
             dialogue = scene['dialogues'][i]
+            #print(f"adding text for dialogue: {dialogue['id']}")
             display_dialogue_text = get_dialogue_display_text(dialogue, withSpeaker=True)
             if display_dialogue_text['fancy']:
                 if words_left > len(display_dialogue_text['fancy'].split()):

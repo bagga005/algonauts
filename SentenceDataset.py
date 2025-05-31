@@ -61,6 +61,14 @@ class SentenceDataset_v2(Dataset):
         list_of_dialogues.sort(key=lambda x: x['id'])
         return list_of_dialogues
     
+    def get_closest_row_with_dialogue(self, row_idx):
+        row_idx = row_idx - 1
+        while row_idx > 0:
+            if len(self.get_dialogues_for_row(row_idx)) > 0:
+                return row_idx
+            row_idx = row_idx - 1
+        return -1
+    
 
     def _get_text_from_dialogue_for_row(self, dialogue, row_idx, forcePostSpeaker=False):
         #debug info
@@ -157,44 +165,6 @@ class SentenceDataset_v2(Dataset):
                 if scene['id'] == scene_id:
                     return scene
             return None
-        
-        def get_previous_matched_dialogue_in_scene(dialogue):
-            # Get all dialogues in the same scene that have been matched to transcript data
-            dialogues_in_scene = []
-            for d in self.dialogue_list:
-                if (d['matched_text_index_start'] != -1 and 
-                    d['scene_id'] == dialogue['scene_id']):
-                    dialogues_in_scene.append(d)
-            
-            # Sort by id to maintain proper dialogue order
-            dialogues_in_scene.sort(key=lambda x: x['id'])
-            
-            # Find the current dialogue and return the previous one
-            for i, d in enumerate(dialogues_in_scene):
-                if d['id'] == dialogue['id']:
-                    if i > 0:
-                        return dialogues_in_scene[i - 1]
-                    break
-            
-            return None
-        
-        def get_last_matched_dialogue_from_previous_scene(dialogue):
-            current_scene_id = dialogue['scene_id']
-            previous_scene_id = current_scene_id - 1
-            
-            # Get all dialogues from the previous scene that have been matched to transcript data
-            previous_scene_dialogues = []
-            for d in self.dialogue_list:
-                if (d['matched_text_index_start'] != -1 and 
-                    d['scene_id'] == previous_scene_id):
-                    previous_scene_dialogues.append(d)
-            
-            if not previous_scene_dialogues:
-                return None
-            
-            # Sort by id to maintain proper dialogue order and return the last one
-            previous_scene_dialogues.sort(key=lambda x: x['id'])
-            return previous_scene_dialogues[-1]
 
         #print("!!!!!!!!!!starting for row: ", row_idx)
         fancy_post, normal_post, fancy_pre, normal_pre = None, None, None, None
@@ -230,6 +200,11 @@ class SentenceDataset_v2(Dataset):
                 else:
                     normal_pre = resp['normal_pre']
 
+        #copy over words if we have none
+        words_tr = ' '.join(self.transcript_data[row_idx]['words_per_tr'])
+        if not fancy_post and words_tr:
+            fancy_post = words_tr
+
 
         #set post headers        
         if not fancy_post:
@@ -242,18 +217,32 @@ class SentenceDataset_v2(Dataset):
         else:
             normal_post = "| Dialogue |" + "\n" + normal_post
         
-        words_tr = ' '.join(self.transcript_data[row_idx]['words_per_tr'])
+        
+
+
 
         #now build rest of pre
         words_left = self.n_used_words
         if fancy_pre:
             words_left = self.n_used_words - len(fancy_pre.split())
+        closest_dialogue = None
+
+        # if first_dialogue_in_row:   
+            #print(f"dataset frist dialogue id: {first_dialogue_in_row['id']}")
 
         #get scene of the dialogue
         if first_dialogue_in_row:
             closest_dialogue = first_dialogue_in_row
         else:
-            closest_dialogue = get_closest_dialogue_for_row(row_idx, self.dialogue_list)
+            #try to change row to previous row with dialogue
+            closest_row_with_dialogue = self.get_closest_row_with_dialogue(row_idx)
+            if closest_row_with_dialogue != -1:
+                closest_dialogue = self.get_dialogues_for_row(closest_row_with_dialogue)[-1]
+            else:
+                closest_dialogue = None
+
+        # if closest_dialogue:
+            #print(f"dataset closest_dialogue id: {closest_dialogue['id']}")
 
         if closest_dialogue:
             scene = get_scene_for_dialogue(closest_dialogue, self.scenes_and_dialogues)

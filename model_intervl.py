@@ -601,22 +601,29 @@ def wrap_text(text, max_length):
     
     return '\n'.join(wrapped_text)
 
-def test_dataset():
-    stim_id = 'friends_s01e02a'
+def test_dataset(stim_id):
+    #stim_id = 'friends_s01e23a'
     trans_dataset = get_transcript_dataSet(stim_id)
     data = []
     maxcolwidths=[30, 30, 40, 35, 20, 5, 5]
-    for i in range(0, 400):
+    for i in range(len(trans_dataset)):
         response= trans_dataset.get_text_for_tr(i)
+        # print(response['fancy_pre'])
+        # print("\n")
+        # print(response['fancy_post'])
+        # print('*'*100)
+        #
+        #
+
         # Replace None values with empty strings to prevent tabulate error
-        fancy_pre = wrap_text(response['fancy_pre'], 70) if response['fancy_pre'] is not None else ""
-        normal_pre = wrap_text(response['normal_pre'], 30) if response['normal_pre'] is not None else ""
-        fancy_post = wrap_text(response['fancy_post'], 30) if response['fancy_post'] is not None else ""
-        normal_post = wrap_text(response['normal_post'], 30) if response['normal_post'] is not None else ""
-        words_tr = response['words_tr'] if response['words_tr'] is not None else ""
-        word_length = response['word_length'] if response['word_length'] is not None else ""
+    #     fancy_pre = wrap_text(response['fancy_pre'], 70) if response['fancy_pre'] is not None else ""
+    #     normal_pre = wrap_text(response['normal_pre'], 30) if response['normal_pre'] is not None else ""
+    #     fancy_post = wrap_text(response['fancy_post'], 30) if response['fancy_post'] is not None else ""
+    #     normal_post = wrap_text(response['normal_post'], 30) if response['normal_post'] is not None else ""
+    #     words_tr = response['words_tr'] if response['words_tr'] is not None else ""
+    #     word_length = response['word_length'] if response['word_length'] is not None else ""
         
-        data.append([ fancy_pre, fancy_post, words_tr, word_length])
+    #     data.append([ fancy_pre, fancy_post, words_tr, i])
     # print(tabulate(data, headers=["Fancy Pre", "Fancy Post", "Transcript", "index"], 
     #                tablefmt="grid"))
 
@@ -629,5 +636,13 @@ tr = 1.49
 #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
 #extract_video_chucks()
 #process_all_files_for_embedding_extraction()
-test_dataset()
+root_data_dir = utils.get_data_root_dir()
+files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/*.tsv")
+files.sort()
+#/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/transcripts/friends/s3/friends_s03e02a.tsv
+stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+for stim_id, stim_path in stimuli.items():
+    print(stim_id)
+    test_dataset(stim_id)
 
