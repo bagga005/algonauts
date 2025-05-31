@@ -1,8 +1,4 @@
-from vllm import LLM
-
-
-
-# For pooling tasks
-llm = LLM(model='OpenGVLab/InternVL2_5-1B', task='embed', dtype='float16')
-embedding = llm.encode("Describe the image.")
-print(embedding)
+import difflib
+word1 = "byebye"
+word2 = "Bye-bye!"
+print(difflib.SequenceMatcher(None, word1.lower(), word2.lower()).ratio())

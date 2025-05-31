@@ -549,7 +549,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
             pbar.update(1)
 def get_transcript_dataSet(stim_id):
     root_data_dir = utils.get_data_root_dir()
-    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1])
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
     tr_start = 0
     tr_length =0
     for tr_info in trans_info_list:
@@ -564,12 +564,16 @@ def get_transcript_dataSet(stim_id):
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length)
     return trans_dataset
 
-
+from tabulate import tabulate
 def test_dataset():
-    stim_id = 'friends_s03e06b'
+    stim_id = 'friends_s04e07a'
     trans_dataset = get_transcript_dataSet(stim_id)
-    print('trans_dataset', trans_dataset[468])
-    print('trans_dataset', trans_dataset[469])
+    data = []
+    for i in range(468):
+        response1, response2, words_tr, word_length = trans_dataset.get_post_text_for_tr(i)
+        data.append([response1, response2, words_tr, i, word_length])
+    print(tabulate(data, headers=["Fancy Response", "Basic Response", "Transcript", "index", "words_tr length"], tablefmt="grid"))
+
 #process_all_files_for_extraction()
 episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
 save_dir = "/home/bagga005/algo/comp_data/tmp/vid"

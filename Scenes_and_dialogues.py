@@ -350,3 +350,198 @@ def match_dialogues_to_transcript_data(transcript_data, dialogue_list):
     print(f"  Match rate: {matched_count/len(dialogue_list)*100:.1f}%" if dialogue_list else "  Match rate: 0%")
     
     return dialogue_list, text_to_position_map, position_to_text_map
+
+def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=-1):
+    # Split text into words
+    #
+    words = dialogue['normalized_text']
+    start_index = start_index
+    if length == -1:
+        length = len(words) 
+        end_index = len(words) - 1
+    else:
+        end_index = start_index + length -1
+
+    useFuzzy = False
+
+    useFancyText = True
+    fancy_words = dialogue['text'].split()
+    length_of_dialogue_text = len(fancy_words)
+    if length_of_dialogue_text == len(dialogue['normalized_text']):
+        #print("Case 1: length_of_dialogue_text == len(dialogue['normalized_text']")
+        useFancyText = True
+        full_text_start_index = start_index
+        full_text_end_index = end_index
+    else:
+        
+        useFuzzy = True
+        start_word = words[start_index]
+        end_word = words[end_index]
+        full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)
+        print(f"after search full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+        if full_text_start_index == -1 or full_text_end_index == -1 or full_text_start_index > full_text_end_index or \
+            (full_text_end_index - full_text_start_index) < (length - 1):
+            useFancyText = False
+        else:
+            useFancyText = True
+            if start_index == 0:
+                full_text_start_index = 0
+            if end_index == len(words) - 1:
+                full_text_end_index = len(fancy_words) - 1
+    #useFancyText = False
+    if useFancyText:
+        
+        print(f"fancy_words: {fancy_words}")
+        print(fancy_words[full_text_start_index:full_text_end_index+1])
+        selected_text = " ".join(fancy_words[full_text_start_index:full_text_end_index+1])
+    else:
+        selected_text  = " ".join(words[start_index:end_index+1])
+    if useFuzzy:
+        print(f"length: {length}")
+        print(f"start_index: {start_index}, end_index: {end_index}")
+        print(f"words: {words}")
+        print(f"len(words): {len(words)}")
+        print(f"len(text): {len(dialogue['text'].split())}")
+        print(f"dialogue['text']: {dialogue['text']}")
+        print(f"full_text_start_index: {full_text_start_index}, full_text_end_index: {full_text_end_index}")
+        #print(f"{dialogue['text'][full_text_start_index:full_text_end_index+1]}")
+    print(f"selected_text fancy: {selected_text}")
+    print(f"selected_text nrmal: {words[start_index:end_index+1]}")
+    print(f"****************")
+    if dialogue["speaker"] is not None and withSpeaker:
+        basic_text = " ".join(words[start_index:end_index+1])
+        return f"{dialogue['speaker']}: {selected_text}", f"{dialogue['speaker']}: {basic_text}"
+    else:
+        basic_text = " ".join(words[start_index:end_index+1])
+        return selected_text, basic_text
+
+def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0, preferred_length=1):
+    """
+    Find the indices of words in text that best match start_word and end_word using fuzzy matching.
+    Ignores words inside () and [] brackets.
+    
+    Args:
+        start_word (str): The word to find at the start
+        end_word (str): The word to find at the end
+        text (str): The text to search in
+        preferred_start_index (int): Give slight preference to start words after this index
+        preferred_length (int): Give preference to end words after preferred_start_index + preferred_length
+        
+    Returns:
+        tuple: (start_index, end_index) where indices refer to word positions in the original text
+               Returns (-1, -1) if no matches found
+    """
+    import difflib
+    print(f"start_word: {start_word}, end_word: {end_word}")
+    
+    def calculate_similarity(word1, word2):
+        """Calculate similarity between two words using sequence matching"""
+        if not word1 or not word2:
+            return 0.0
+        return difflib.SequenceMatcher(None, word1.lower(), word2.lower()).ratio()
+    
+    # Remove content inside brackets and parentheses
+    import re
+    cleaned_text = re.sub(r'\([^)]*\)', '', text)
+    cleaned_text = re.sub(r'\[[^\]]*\]', '', cleaned_text)
+    
+    # Split original text into words for index mapping
+    original_words = text.split()
+    
+    # Split cleaned text into words and normalize them
+    cleaned_words = cleaned_text.split()
+    normalized_words = []
+    original_indices = []  # Track original word positions
+    
+    # Create mapping between cleaned words and original positions
+    original_word_idx = 0
+    for cleaned_word in cleaned_words:
+        # Find this cleaned word in the original words
+        while original_word_idx < len(original_words):
+            # Remove brackets from original word for comparison
+            orig_word_clean = re.sub(r'\([^)]*\)', '', original_words[original_word_idx])
+            orig_word_clean = re.sub(r'\[[^\]]*\]', '', orig_word_clean)
+            
+            if orig_word_clean.strip() == cleaned_word:
+                normalized_word = normalize_and_clean_word(cleaned_word)
+                if normalized_word:  # Only include non-empty normalized words
+                    normalized_words.append(normalized_word)
+                    original_indices.append(original_word_idx)
+                original_word_idx += 1
+                break
+            original_word_idx += 1
+    
+    if not normalized_words:
+        return (-1, -1)
+    
+    # Normalize input words
+    norm_start_word = normalize_and_clean_word(start_word)
+    norm_end_word = normalize_and_clean_word(end_word)
+    
+    if not norm_start_word or not norm_end_word:
+        return (-1, -1)
+    
+    # Find best match for start word with preference for words after preferred_start_index
+    start_similarities = []
+    for i, word in enumerate(normalized_words):
+        similarity = calculate_similarity(norm_start_word, word)
+        print(f"similarity: {similarity}", norm_start_word, word)
+        # Give slight bonus to words that come after preferred_start_index
+        if original_indices[i] >= preferred_start_index:
+            similarity += 0.05  # Small bonus for being at or after preferred start
+        
+        start_similarities.append((similarity, i))
+    
+    # Sort by similarity (descending) and get best match
+    start_similarities.sort(key=lambda x: x[0], reverse=True)
+    print(f"start_similarities: {start_similarities}")
+    best_start_similarity, start_index = start_similarities[0]
+    
+    # If no reasonable match for start word, return failure
+    if best_start_similarity < 0.3:  # Minimum similarity threshold
+        return (-1, -1)
+    
+    # Calculate preferred end position
+    preferred_end_index = preferred_start_index + preferred_length
+    
+    # Find best match for end word with preference for words after calculated position
+    end_similarities = []
+    for i, word in enumerate(normalized_words):
+        similarity = calculate_similarity(norm_end_word, word)
+        
+        # Give bonus to words that come after the found start word
+        if i > start_index:
+            similarity += 0.1  # Bonus for being after actual start word
+        
+        # Give additional bonus to words that come after preferred end position
+        if original_indices[i] >= preferred_end_index:
+            similarity += 0.05  # Additional bonus for being at or after preferred end
+        
+        end_similarities.append((similarity, i))
+    
+    # Sort by similarity (descending) and get best match
+    end_similarities.sort(key=lambda x: x[0], reverse=True)
+    best_end_similarity, end_index = end_similarities[0]
+    
+    # If no reasonable match for end word, return failure
+    if best_end_similarity < 0.3:  # Minimum similarity threshold
+        return (-1, -1)
+    
+    # Ensure end comes at or after start
+    if end_index < start_index:
+        # Find the best end word that comes after start
+        valid_end_matches = [(sim, idx) for sim, idx in end_similarities if idx >= start_index]
+        if valid_end_matches:
+            best_end_similarity, end_index = max(valid_end_matches, key=lambda x: x[0])
+            if best_end_similarity < 0.3:
+                return (-1, -1)
+        else:
+            # No valid end word after start, use start index as end
+            end_index = start_index
+    
+    # Return original text indices instead of cleaned text indices
+    return (original_indices[start_index], original_indices[end_index])
+
+
+
+
