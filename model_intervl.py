@@ -27,7 +27,22 @@ from tabulate import tabulate
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
-
+def log_to_file(*args):
+    """
+    Append a message to a hardcoded log file.
+    
+    Args:
+        *args: Multiple arguments that will be converted to strings and joined
+    """
+    log_file_path = "/home/bagga005/algo/algo_src/debug_log.txt"  # Hardcoded file path
+    
+    try:
+        # Convert all arguments to strings and join them with spaces
+        message = ' '.join(str(arg) for arg in args)
+        with open(log_file_path, 'a', encoding='utf-8') as f:
+            f.write(message + '\n')
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
 
 def build_transform(input_size):
     MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
@@ -193,6 +208,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if not torch.is_tensor(embedding):
             print('not single tensor')
             embedding = torch.tensor(embedding)
+        log_to_file(layer_name, embedding.shape)
         if 'language' in layer_name:
             #print('language', embedding.shape)
             embedding = embedding.squeeze(0)
@@ -659,9 +675,9 @@ tr = 1.49
 #extract_video_chucks()
 #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
 #extract_video_chucks()
-#process_all_files_for_embedding_extraction()
+process_all_files_for_embedding_extraction()
 
-test_dataset('friends_s03e06a')
+#test_dataset('friends_s03e06a')
 #   exit()
 
 # root_data_dir = utils.get_data_root_dir()
