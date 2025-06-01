@@ -46,10 +46,7 @@ class SentenceDataset_v2(Dataset):
     def __getitem__(self, idx):
         if idx >= self.length:
             raise IndexError(f"Index {idx} is out of range for length {self.length}")
-        data = {
-            "pre_text": f"pre {idx}",
-            "post_text": f"post {idx}",
-        }
+        data = self.get_text_for_tr(idx)
         return data
     
     def get_dialogues_for_row(self, row_idx):
@@ -88,6 +85,7 @@ class SentenceDataset_v2(Dataset):
         ending_in_this_row = dialogue['matched_row_index_end'] == row_idx
 
         if dialogue["length_normalized_text"] == 1 or (starting_in_this_row and ending_in_this_row):
+            #print(f"calling from 1")
             response_post = get_dialogue_display_text(dialogue, withSpeaker=True)
             start_index = 0
             response_pre = {
@@ -127,12 +125,14 @@ class SentenceDataset_v2(Dataset):
 
             #prepare response object
             #print(f" calling for post get_dialogue_display_text start_index: {start_index}, length: {dialogue_length_for_row}")
+            #print(f"calling from 2")
             response_post = get_dialogue_display_text(dialogue, withSpeaker=starting_in_this_row or forcePostSpeaker, start_index=start_index, length=dialogue_length_for_row,
                                                       add_prefix_continuation=add_prefix_continuation_for_post, add_suffix_continuation=add_suffix_continuation_for_post)
 
             #get pre text if needed
             if start_index > 0:
                 #print(f" calling for pre get_dialogue_display_text start_index: {0}, length: {start_index }")
+                #print(f"calling from 3")
                 response_pre = get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=start_index, add_suffix_continuation=True )
             else:
                 response_pre = {
@@ -154,18 +154,6 @@ class SentenceDataset_v2(Dataset):
 
 
     def get_text_for_tr(self, row_idx):
-        def get_dialogue_by_id(dialogue_id):
-            for dialogue in self.dialogue_list:
-                if dialogue['id'] == dialogue_id:
-                    return dialogue
-            return None
-        
-        def get_scene_by_id(scene_id):
-            for scene in self.scenes_and_dialogues['scenes']:
-                if scene['id'] == scene_id:
-                    return scene
-            return None
-
         #print("!!!!!!!!!!starting for row: ", row_idx)
         fancy_post, normal_post, fancy_pre, normal_pre = None, None, None, None
         word_length = len(self.transcript_data[row_idx]['words_per_tr'])

@@ -523,13 +523,24 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
                 pixel_values = pixel_values.to(torch.bfloat16).cuda()
                 textData = text_dataset[trans_index]
-                print('textData', textData)
-                video_prefix = textData['pre_text'] + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+
+                pre_text = textData['fancy_pre']
+                post_text = textData['fancy_post']
+                if pre_text:
+                    video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+                else:
+                    video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
                 
+                if post_text:
+                    question_for_embeddings = video_prefix + "\n" + post_text
+                else:
+                    question_for_embeddings = video_prefix
+                
+                #print('question_for_embeddings', question_for_embeddings)
                 # if trans_index >= len_trans_dataset:
                 #     print('trans_index >= len_trans_dataset', trans_index, len_trans_dataset)
                 #     trans_index = len_trans_dataset - 1
-                question_for_embeddings = video_prefix +  textData['post_text']
+                # question_for_embeddings = video_prefix 
                 # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
                 #print('question_for_embeddings:', question_for_embeddings)
                 #if meta file exists, skip the extraction
@@ -607,7 +618,20 @@ def test_dataset(stim_id):
     data = []
     maxcolwidths=[30, 30, 40, 35, 20, 5, 5]
     for i in range(len(trans_dataset)):
-        response= trans_dataset.get_text_for_tr(i)
+        textData= trans_dataset[i]
+        pre_text = textData['fancy_pre']
+        post_text = textData['fancy_post']
+        if pre_text:
+            video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(8)])
+        else:
+            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(8)])
+        
+        if post_text:
+            question_for_embeddings = video_prefix + "\n" + post_text
+        else:
+            question_for_embeddings = video_prefix
+        print(question_for_embeddings)
+        # print(i, "length", len(trans_dataset))
         # print(response['fancy_pre'])
         # print("\n")
         # print(response['fancy_post'])
@@ -636,13 +660,17 @@ tr = 1.49
 #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
 #extract_video_chucks()
 #process_all_files_for_embedding_extraction()
-root_data_dir = utils.get_data_root_dir()
-files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/*.tsv")
-files.sort()
-#/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/transcripts/friends/s3/friends_s03e02a.tsv
-stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
-print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
-for stim_id, stim_path in stimuli.items():
-    print(stim_id)
-    test_dataset(stim_id)
+
+test_dataset('friends_s03e06a')
+#   exit()
+
+# root_data_dir = utils.get_data_root_dir()
+# files = glob(f"{root_data_dir}/stimuli/transcripts/friends/s*/*.tsv")
+# files.sort()
+# #/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/transcripts/friends/s3/friends_s03e02a.tsv
+# stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+# print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+# for stim_id, stim_path in stimuli.items():
+#     print(stim_id)
+#     test_dataset(stim_id)
 

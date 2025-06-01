@@ -356,6 +356,9 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
     #
     if length != 0:
         words = dialogue['normalized_text']
+        # print(f"dialogue['text']: {dialogue['text']}")
+        # print(f"dialogue['normalized_text']: {dialogue['normalized_text']}")
+        # print(f"dialogue_normalized_length: {dialogue['length_normalized_text']}")
         if length == -1:
             length = len(words) 
             end_index = len(words) - 1
@@ -372,9 +375,15 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
             useFancyText = True
             full_text_start_index = start_index
             full_text_end_index = end_index
+            #case where there is only fancy word and no normal word.
+        elif length_of_normal_words == 0 and length_of_fancy_words > 0:
+            useFancyText = True
+            full_text_start_index = 0
+            full_text_end_index = length_of_fancy_words - 1
         else:
             #print("Case 2: Using fuzzy matching")
             useFuzzy = True
+            # print(f"start_index: {start_index}, end_index: {end_index}, words: {words}")
             start_word = words[start_index]
             end_word = words[end_index]
             full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)
@@ -609,6 +618,7 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         for i in range(ending_index_of_dialogue_in_scene, -1, -1):
             dialogue = scene['dialogues'][i]
             #print(f"adding text for dialogue: {dialogue['id']}")
+            #print(f"calling from 5")
             display_dialogue_text = get_dialogue_display_text(dialogue, withSpeaker=True)
             if display_dialogue_text['fancy']:
                 if words_left > len(display_dialogue_text['fancy'].split()):
