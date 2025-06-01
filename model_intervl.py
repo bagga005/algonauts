@@ -563,7 +563,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     # Loop over chunks
     with tqdm(total=len_trans_dataset, desc="Extracting visual features", disable= not use_progress_bar) as pbar:
         for counter in range(len_trans_dataset):
-            embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
+            embeddings_dir = os.path.join(utils.get_output_dir(), utils.get_embeddings_dir())
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
             if not os.path.exists(meta_file):
@@ -587,13 +587,14 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 else:
                     question_for_embeddings = video_prefix
                 
-                enc = tokenizer(
-                    question_for_embeddings,
-                    return_offsets_mapping=True,   # char positions → token idx
-                    return_tensors="pt"
-                )
-                # print('enc', enc)
+                # enc = tokenizer(
+                #     question_for_embeddings,
+                #     return_offsets_mapping=True,   # char positions → token idx
+                #     return_tensors="pt"
+                # )
+                # # print('enc', enc)
                 # input_ids = enc.input_ids  # (1, T)
+                # log_to_file(counter,'input_ids', input_ids.shape)
                 # offsets = enc.offset_mapping  # (1, T, 2)
                 # print_input_tokens(question_for_embeddings, offsets)
                 # exit()
@@ -635,7 +636,7 @@ def get_transcript_dataSet(stim_id):
         else:
             tr_start += tr_info['len']
 
-    dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors''stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
+    dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length)
     return trans_dataset
