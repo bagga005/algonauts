@@ -34,7 +34,7 @@ def log_to_file(*args):
     Args:
         *args: Multiple arguments that will be converted to strings and joined
     """
-    log_file_path = "/home/bagga005/algo/algo_src/debug_log.txt"  # Hardcoded file path
+    log_file_path = "debug_log.txt"  # Hardcoded file path
     
     try:
         # Convert all arguments to strings and join them with spaces
