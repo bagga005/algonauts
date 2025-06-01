@@ -218,8 +218,9 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
             #print('vision', embedding.shape)
             embedding = embedding[:,0,:]
             #print('vision', embedding.shape)
-        with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
-            pickle.dump(embedding.cpu(), f)
+        # with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
+        #     pickle.dump(embedding.cpu(), f)
+
         # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
         #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
         metadata[layer_name] = {
@@ -229,8 +230,8 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
     
     metadata['text'] = text
     # Save metadata
-    with open(os.path.join(save_dir, f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
-        json.dump(metadata, f, indent=2)
+    # with open(os.path.join(save_dir, f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
+    #     json.dump(metadata, f, indent=2)
 
 def load_embeddings(save_dir, prefix="", use_numpy=False):
     """
@@ -384,15 +385,18 @@ def process_all_files_for_embedding_extraction():
         llm_int8_threshold=6.0,
         llm_int8_has_fp16_weight=False
     )
-    model = AutoModel.from_pretrained(
-        hf_path,
-        torch_dtype=torch.bfloat16,
-        quantization_config=quantization_config,
-        low_cpu_mem_usage=True,
-        use_flash_attn=True,
-        trust_remote_code=True,
-        device_map=device_map).eval()
-    tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=False)
+    if utils.isMockMode():
+        model = None
+    else:
+        model = AutoModel.from_pretrained(
+            hf_path,
+            torch_dtype=torch.bfloat16,
+            quantization_config=quantization_config,
+            low_cpu_mem_usage=True,
+            use_flash_attn=True,
+            trust_remote_code=True,
+            device_map=device_map).eval()
+    tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True, use_fast=True)
     # if tokenizer.pad_token is None:
     #     tokenizer.pad_token = tokenizer.eos_token
     #     tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -414,11 +418,16 @@ def process_all_files_for_embedding_extraction():
             ]
 
     # Set up hooks once before processing all files
-    hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
+    if utils.isMockMode():
+        hooks, layer_outputs, hook_storage = None, None, None
+        use_progress_bar = False
+    else:
+        hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
+        use_progress_bar = True
     
     try:
         # iterate across all the stimuli movie files
-        iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+        iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)), disable= not use_progress_bar)
         for i, (stim_id, stim_path) in iterator:
             print(f"Extracting visual features for {stim_id}", stim_path)
             if stim_id in exclude_list:
@@ -427,11 +436,12 @@ def process_all_files_for_embedding_extraction():
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
-                                 layer_outputs)
+                                 layer_outputs, use_progress_bar)
     finally:
         # Clean up hooks after all processing is done
-        for h in hooks:
-            h.remove()
+        if not utils.isMockMode():
+            for h in hooks:
+                h.remove()
 
 def save_pixel_values(pixel_values, save_dir, prefix):
     """
@@ -511,7 +521,7 @@ def get_num_chunks(episode_id):
     return len(files), season_folder
 
 def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer, 
-                          layer_outputs):
+                          layer_outputs, use_progress_bar):
     num_chunks, season_folder = get_num_chunks(episode_id)
     # print('num_chunks', num_chunks)
     # print('season_folder', season_folder)
@@ -526,7 +536,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     #     print('len(trans_dataset) != num_chunks', len_trans_dataset, num_chunks)
     #assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
     # Loop over chunks
-    with tqdm(total=num_chunks, desc="Extracting visual features") as pbar:
+    with tqdm(total=num_chunks, desc="Extracting visual features", disable= not use_progress_bar) as pbar:
         for counter in range(num_chunks):
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
@@ -552,6 +562,16 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 else:
                     question_for_embeddings = video_prefix
                 
+                enc = tokenizer(
+                    question_for_embeddings,
+                    return_offsets_mapping=True,   # char positions → token idx
+                    return_tensors="pt"
+                )
+                # print('enc', enc)
+                input_ids = enc.input_ids  # (1, T)
+                offsets = enc.offset_mapping  # (1, T, 2)
+                # print('input_ids', input_ids)
+                # print('offsets', offsets)
                 #print('question_for_embeddings', question_for_embeddings)
                 # if trans_index >= len_trans_dataset:
                 #     print('trans_index >= len_trans_dataset', trans_index, len_trans_dataset)
@@ -562,19 +582,20 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 #if meta file exists, skip the extraction
                 # if not utils.isMockMode() or counter == 0:
                     # Use the existing hooks to get embeddings
-                extracted_features = get_embeddings_with_existing_hooks(
-                    model, 
-                    tokenizer, 
-                    pixel_values, 
-                    question_for_embeddings,
-                    layer_outputs
-                )
+                if not utils.isMockMode():
+                    extracted_features = get_embeddings_with_existing_hooks(
+                        model, 
+                        tokenizer, 
+                        pixel_values, 
+                        question_for_embeddings,
+                        layer_outputs
+                    )
 
-                
-                save_embeddings(extracted_features, embeddings_dir, text=text_dataset[counter], 
-                          prefix=embeddings_prefix)
+                    
+                    save_embeddings(extracted_features, embeddings_dir, text=text_dataset[counter], 
+                            prefix=embeddings_prefix)
             counter += 1
-            pbar.update(1)
+            pbar.update(1) if use_progress_bar else None
 def get_transcript_dataSet(stim_id):
     root_data_dir = utils.get_data_root_dir()
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
