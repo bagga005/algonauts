@@ -360,7 +360,7 @@ def process_all_files_for_embedding_extraction():
     # Collecting the paths to all the movie stimuli
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/stimuli/movies/friends/s3/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s3/*.mkv")
 
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
@@ -520,6 +520,31 @@ def get_num_chunks(episode_id):
     files = glob(f"{season_folder}/{episode_id}_*.mp4")
     return len(files), season_folder
 
+def print_input_tokens(prompt, offsets):
+    """
+    Prints token number and corresponding text span for each token.
+    Args:
+        prompt (str): The original input string.
+        offsets (list or tensor): Shape (T, 2). List of [start, end] for each token.
+    """
+    # If offsets is a PyTorch tensor, convert to list
+    if hasattr(offsets, 'tolist'):
+        offsets = offsets.tolist()
+    
+    # If batch dimension exists, use the first example
+    if len(offsets) == 1 and isinstance(offsets[0], list):
+        offsets = offsets[0]
+
+    print("Token # | Token Text")
+    print("--------+------------------")
+    for i, (start, end) in enumerate(offsets):
+        # Some special tokens may have (0, 0)
+        if start == end:
+            token_text = "[special token]"
+        else:
+            token_text = prompt[start:end]
+        print(f"{i:7} | {repr(token_text)}")
+
 def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer, 
                           layer_outputs, use_progress_bar):
     num_chunks, season_folder = get_num_chunks(episode_id)
@@ -531,13 +556,13 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     n_used_words = 1000
 
     len_trans_dataset = len(text_dataset)
-    assert len_trans_dataset == num_chunks, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
+    assert num_chunks -1 <= len_trans_dataset <= num_chunks, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
     # if len_trans_dataset != num_chunks:
     #     print('len(trans_dataset) != num_chunks', len_trans_dataset, num_chunks)
     #assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
     # Loop over chunks
-    with tqdm(total=num_chunks, desc="Extracting visual features", disable= not use_progress_bar) as pbar:
-        for counter in range(num_chunks):
+    with tqdm(total=len_trans_dataset, desc="Extracting visual features", disable= not use_progress_bar) as pbar:
+        for counter in range(len_trans_dataset):
             embeddings_dir = os.path.join(utils.get_output_dir(), 'embeddings')
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
@@ -568,8 +593,10 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     return_tensors="pt"
                 )
                 # print('enc', enc)
-                input_ids = enc.input_ids  # (1, T)
-                offsets = enc.offset_mapping  # (1, T, 2)
+                # input_ids = enc.input_ids  # (1, T)
+                # offsets = enc.offset_mapping  # (1, T, 2)
+                # print_input_tokens(question_for_embeddings, offsets)
+                # exit()
                 # print('input_ids', input_ids)
                 # print('offsets', offsets)
                 #print('question_for_embeddings', question_for_embeddings)
@@ -608,7 +635,7 @@ def get_transcript_dataSet(stim_id):
         else:
             tr_start += tr_info['len']
 
-    dialogue_file = os.path.join(root_data_dir, 'stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
+    dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors''stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length)
     return trans_dataset
