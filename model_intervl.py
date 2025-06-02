@@ -66,8 +66,12 @@ def save_embeddings(embeddings, prompt_markers, save_dir, text="", prefix="", co
     metadata = {}
     
     for layer_name, embedding in embeddings.items():
+        # Create the save directory if it doesn't exist
+         
         # Create a safe filename from the layer name
         safe_name = layer_name.replace('.', '_').replace('/', '_')
+        base_dir = os.path.join(save_dir, safe_name)
+        os.makedirs(base_dir, exist_ok=True)
         if prefix:
             safe_name = f"{prefix}_{safe_name}"
             
@@ -89,10 +93,13 @@ def save_embeddings(embeddings, prompt_markers, save_dir, text="", prefix="", co
             #print('language', embedding.shape)
         if 'vision' in layer_name:
             #print('vision', embedding.shape)
-            embedding = embedding[:,0,:]
-            #print('vision', embedding.shape)
-        # with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
-        #     pickle.dump(embedding.cpu(), f)
+            embedding_cls = embedding[:,0,:]
+            embedding_non_cls = embedding[:,1:,:]
+            avg_embedding_non_cls = torch.mean(embedding_non_cls, dim=1)
+            embedding = torch.cat([embedding_cls.unsqueeze(0), avg_embedding_non_cls.unsqueeze(0)], dim=0)
+
+        with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
+            pickle.dump(embedding.cpu(), f)
 
         # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
         #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
@@ -103,8 +110,8 @@ def save_embeddings(embeddings, prompt_markers, save_dir, text="", prefix="", co
     
     metadata['text'] = text
     # Save metadata
-    # with open(os.path.join(save_dir, f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
-    #     json.dump(metadata, f, indent=2)
+    with open(os.path.join(save_dir, 'metadata',f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
+        json.dump(metadata, f, indent=2)
 
 def load_embeddings(save_dir, prefix="", use_numpy=False):
     """
@@ -392,17 +399,16 @@ def process_all_files_for_embedding_extraction():
 
     custom_layers = [
                 'vision_model.encoder.layers.2',
-                'vision_model.encoder.layers.5',
-                'vision_model.encoder.layers.10',
-                'vision_model.encoder.layers.17',
+                'vision_model.encoder.layers.4',
+                'vision_model.encoder.layers.12',
+                'vision_model.encoder.layers.22',
                 'vision_model.encoder.layers.23',
                 'vision_model',                     # Vision encoder
-                'language_model.model.layers.0',    # First layer
                 'language_model.model.layers.4',    # First layer
-                'language_model.model.layers.8',    # First layer
                 'language_model.model.layers.12',    # First layer
-                'language_model.model.layers.16',    # Middle layer
-                'language_model.model.layers.20',   # Later layer
+                'language_model.model.layers.20',    # First layer
+                'language_model.model.layers.21',    # Middle layer
+                'language_model.model.layers.22',   # Later layer
                 'language_model.model.layers.23',   # Later layer
                 'language_model.model.norm'         # Final normalization
             ]
@@ -490,7 +496,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
             embeddings_dir = os.path.join(utils.get_output_dir(), utils.get_embeddings_dir())
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
-            if True:
+            if not os.path.exists(meta_file):
                 chunk_path = os.path.join(season_folder, f'{episode_id}_tr_{counter}.mp4')
                 #log_to_file(counter,'chunk_path', chunk_path)
                 # Load the frames from the chunked movie clip
@@ -513,29 +519,6 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
 
                 #log_to_file(counter,'question_for_embeddings', question_for_embeddings)
                 
-                # enc = tokenizer(
-                #     question_for_embeddings,
-                #     return_offsets_mapping=True,   # char positions → token idx
-                #     return_tensors="pt"
-                # )
-                # # print('enc', enc)
-                # input_ids = enc.input_ids  # (1, T)
-                # log_to_file(counter,'input_ids', input_ids.shape)
-                # offsets = enc.offset_mapping  # (1, T, 2)
-                # print_input_tokens(question_for_embeddings, offsets)
-                # exit()
-                # print('input_ids', input_ids)
-                # print('offsets', offsets)
-                #print('question_for_embeddings', question_for_embeddings)
-                # if trans_index >= len_trans_dataset:
-                #     print('trans_index >= len_trans_dataset', trans_index, len_trans_dataset)
-                #     trans_index = len_trans_dataset - 1
-                # question_for_embeddings = video_prefix 
-                # Frame1: <image>\nFrame2: <image>\n...\nFrame8: <image>\n{question}
-                #print('question_for_embeddings:', question_for_embeddings)
-                #if meta file exists, skip the extraction
-                # if not utils.isMockMode() or counter == 0:
-                    # Use the existing hooks to get embeddings
                 if not utils.isMockMode():
                     extracted_features, prompt_markers = get_embeddings_with_existing_hooks(
                         model, 
