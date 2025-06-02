@@ -4,6 +4,13 @@ import torchvision.transforms as T
 from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 import numpy as np
+import requests
+from moviepy.editor import VideoFileClip
+from PIL import Image
+import os
+from glob import glob
+import utils
+from tqdm import tqdm
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -102,3 +109,57 @@ def load_video(video_path, bound=None, input_size=448, max_num=1, num_segments=3
         pixel_values_list.append(pixel_values)
     pixel_values = torch.cat(pixel_values_list)
     return pixel_values, num_patches_list
+
+def extract_video_chucks():
+    root_data_dir = utils.get_data_root_dir()
+    out_data_dir = os.path.join(utils.get_output_dir(), 'video_chunks')
+    os.makedirs(out_data_dir, exist_ok=True)
+    tr = 1.49
+    seasons = ['s4']
+    for season in seasons:
+        file_in_filter = ''
+        exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+        files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/{season}/*.mkv")
+
+        if file_in_filter:
+            files = [f for f in files if file_in_filter in f]
+        files.sort(reverse=True)
+
+        stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+        print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+        season_out_dir = os.path.join(out_data_dir, season)
+        os.makedirs(season_out_dir, exist_ok=True)
+        for stim_id, stim_path in stimuli.items():
+            if stim_id in exclude_list:
+                continue
+            extract_save_video_chunks(stim_path, season_out_dir, stim_id, tr)
+
+
+def extract_save_video_chunks(episode_path, save_dir, stim_id, tr):
+    clip = VideoFileClip(episode_path)
+    start_times = [x for x in np.arange(0, clip.duration, tr)][:-1]
+    counter = 0
+    px_save_dir = os.path.join(save_dir, 'px')
+    with tqdm(total=len(start_times), desc="Extracting video chunks for {}".format(stim_id)) as pbar:
+        for start in start_times:
+            chunk_path = os.path.join(save_dir, f'{stim_id}_tr_{counter}.mp4')
+            if not os.path.exists(chunk_path):
+                clip_chunk = clip.subclip(start, start+tr)
+                clip_chunk.write_videofile(chunk_path, verbose=False, audio=False,
+                    logger=None)
+            #pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
+            #save_pixel_values(pixel_values, save_dir, f'{stim_id}_tr_{counter}')
+            counter += 1
+            pbar.update(1)
+            # Divide the movie in chunks of length TR, and save the resulting	
+
+def load_image(image_file, input_size=448, max_num=12):
+    if image_file.startswith('http'):
+        image = Image.open(requests.get(image_file, stream=True).raw).convert('RGB')
+    else:
+        image = Image.open(image_file).convert('RGB')
+    transform = build_transform(input_size=input_size)
+    images = dynamic_preprocess(image, image_size=input_size, use_thumbnail=True, max_num=max_num)
+    pixel_values = [transform(image) for image in images]
+    pixel_values = torch.stack(pixel_values)
+    return pixel_values

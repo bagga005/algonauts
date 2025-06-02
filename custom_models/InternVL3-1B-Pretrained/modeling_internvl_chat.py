@@ -101,33 +101,33 @@ class InternVLChatModel(PreTrainedModel):
             return_dict: Optional[bool] = None,
             output_loss: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-        print("using custom forward")
+        #print("using custom forward")
         assert self.img_context_token_id is not None
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         image_flags = image_flags.squeeze(-1)
         input_embeds = self.language_model.get_input_embeddings()(input_ids).clone()
-        print("input_embeds", input_embeds.shape)
+        #print("input_embeds", input_embeds.shape)
         vit_embeds = self.extract_feature(pixel_values)
-        print("vit_embeds", vit_embeds.shape)
+        #print("vit_embeds", vit_embeds.shape)
         vit_embeds = vit_embeds[image_flags == 1]
-        print("vit_embeds", vit_embeds.shape)
+        #print("vit_embeds", vit_embeds.shape)
         vit_batch_size = pixel_values.shape[0]
-        print("vit_batch_size", vit_batch_size)
+        #print("vit_batch_size", vit_batch_size)
         B, N, C = input_embeds.shape
-        print("B, N, C", B, N, C)   
+        #print("B, N, C", B, N, C)   
         input_embeds = input_embeds.reshape(B * N, C)
-        print("input_embeds post reshape", input_embeds.shape)
+        #print("input_embeds post reshape", input_embeds.shape)
         if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             print(f'dynamic ViT batch size: {vit_batch_size}, images per sample: {vit_batch_size / B}, dynamic token length: {N}')
-        print("input_ids pre reshape", input_ids.shape) 
+        #print("input_ids pre reshape", input_ids.shape) 
         input_ids = input_ids.reshape(B * N)
-        print("input_ids post reshape", input_ids.shape)
+        #print("input_ids post reshape", input_ids.shape)
         selected = (input_ids == self.img_context_token_id)
-        print("selected", selected)
+        #print("selected", selected)
         assert selected.sum() == pixel_values.shape[0] * self.num_image_token, "selected.sum() != pixel_values.shape[0] * self.num_image_token"
         vit_embeds_reshaped = vit_embeds.reshape(-1, C)
-        print("vit_embeds_reshaped", vit_embeds_reshaped.shape)
+        #print("vit_embeds_reshaped", vit_embeds_reshaped.shape)
         # try:
         orig_input_embeds = input_embeds[selected].clone()
         input_embeds[selected] = input_embeds[selected] * 0.0 + vit_embeds_reshaped
@@ -268,24 +268,24 @@ class InternVLChatModel(PreTrainedModel):
     def chat(self, tokenizer, pixel_values, question, generation_config, history=None, return_history=False,
              num_patches_list=None, IMG_START_TOKEN='<img>', IMG_END_TOKEN='</img>', IMG_CONTEXT_TOKEN='<IMG_CONTEXT>',
              verbose=False, output_hidden_states=False):
-        print("using custom chat")
+        #print("using custom chat")
         if history is None and pixel_values is not None and '<image>' not in question:
             question = '<image>\n' + question
 
         if num_patches_list is None:
             num_patches_list = [pixel_values.shape[0]] if pixel_values is not None else []
         assert pixel_values is None or len(pixel_values) == sum(num_patches_list)
-        print("num_patches_list", num_patches_list[0])
-        print("num_image_token", self.num_image_token)
+        #print("num_patches_list", num_patches_list[0])
+        #print("num_image_token", self.num_image_token)
 
         img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
         self.img_context_token_id = img_context_token_id
 
-        print("img_context_token_id", img_context_token_id)
+        #print("img_context_token_id", img_context_token_id)
 
         template = get_conv_template(self.template)
         template.system_message = self.system_message
-        #print('system_message', self.system_message)
+        ##print('system_message', self.system_message)
         eos_token_id = tokenizer.convert_tokens_to_ids(template.sep.strip())
 
         history = [] if history is None else history
@@ -296,24 +296,24 @@ class InternVLChatModel(PreTrainedModel):
         template.append_message(template.roles[1], None)
         query = template.get_prompt()
 
-        print("query", query)
+        #print("query", query)
         if verbose and pixel_values is not None:
             image_bs = pixel_values.shape[0]
             print(f'dynamic ViT batch size: {image_bs}')
 
         len_image_tokens = self.num_image_token * num_patches_list[0]
-        print("len_image_tokens", len_image_tokens)
+        #print("len_image_tokens", len_image_tokens)
         for num_patches in num_patches_list:
             image_tokens = IMG_START_TOKEN + IMG_CONTEXT_TOKEN * self.num_image_token  + IMG_END_TOKEN
             query = query.replace('<image>', image_tokens, 8)
-        print("query", query)
+        #print("query", query)
 
         model_inputs = tokenizer(query, return_tensors='pt')
         input_ids = model_inputs['input_ids'].to(self.device)
-        print("input_ids", input_ids.shape)
+        #print("input_ids", input_ids.shape)
         attention_mask = model_inputs['attention_mask'].to(self.device)
-        print(f"Number of 1s in attention_mask: {(attention_mask == 1).sum().item()}")
-        print(f"Number of 0s in attention_mask: {(attention_mask == 0).sum().item()}")
+        #print(f"Number of 1s in attention_mask: {(attention_mask == 1).sum().item()}")
+        #print(f"Number of 0s in attention_mask: {(attention_mask == 0).sum().item()}")
         generation_config['eos_token_id'] = eos_token_id
         generation_output = self.generate(
             pixel_values=pixel_values,
@@ -345,33 +345,33 @@ class InternVLChatModel(PreTrainedModel):
             output_hidden_states: Optional[bool] = None,
             **generate_kwargs,
     ) -> torch.LongTensor:
-        print("using custom generate")
+        #print("using custom generate")
         assert self.img_context_token_id is not None
         if pixel_values is not None:
             if visual_features is not None:
                 vit_embeds = visual_features
             else:
                 vit_embeds = self.extract_feature(pixel_values)
-                print("vit_embeds", vit_embeds.shape)
+                #print("vit_embeds", vit_embeds.shape)
                 
             input_embeds = self.language_model.get_input_embeddings()(input_ids)
-            print("input_embeds", input_embeds.shape)
+            #print("input_embeds", input_embeds.shape)
             B, N, C = input_embeds.shape
             input_embeds = input_embeds.reshape(B * N, C)
-            print("input_embeds", input_embeds.shape)
+            #print("input_embeds", input_embeds.shape)
 
             input_ids = input_ids.reshape(B * N)
-            print("input_ids pre select", input_ids.shape)
+            #print("input_ids pre select", input_ids.shape)
             selected = (input_ids == self.img_context_token_id)
-            print("selected", selected.sum(), selected.shape)
+            #print("selected", selected.sum(), selected.shape)
             assert selected.sum() != 0
             input_embeds[selected] = vit_embeds.reshape(-1, C).to(input_embeds.device)
 
             input_embeds = input_embeds.reshape(B, N, C)
         else:
             input_embeds = self.language_model.get_input_embeddings()(input_ids)
-        print("input_ids", input_ids.shape)
-        print("input_embeds", input_embeds.shape)
+        #print("input_ids", input_ids.shape)
+        #print("input_embeds", input_embeds.shape)
 
         outputs = self.language_model.generate(
             inputs_embeds=input_embeds,
