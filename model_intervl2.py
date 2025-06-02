@@ -10,6 +10,7 @@ from conversation import get_conv_template  # You'll need to import this
 hf_path = "OpenGVLab/InternVL3-1B-Pretrained"      # change if you use a different size
 device = "cuda" if torch.cuda.is_available() else "cpu"
 hf_path = utils.get_mvl_model()
+hf_path = "./custom_models/InternVL3-1B-Pretrained"
 
     # For the second model loading instance
     # Configure quantization
@@ -71,38 +72,30 @@ attention_mask = model_inputs['attention_mask'].to(device)
 # Since we have 1 image, image_flags should be a tensor with a single 1
 image_flags = torch.ones(pixel_values.shape[0], dtype=torch.long, device=device)
 
-# Call forward method
-with torch.no_grad():
-    # outputs = model(
-    #     pixel_values=pixel_values,
-    #     input_ids=input_ids,
-    #     attention_mask=attention_mask,
-    #     image_flags=image_flags,
-    #     return_dict=True,
-    #     output_hidden_states  = True
-    # )
-    gen_out = model.generate(
-            **tokenizer(query, return_tensors="pt").to(device),
-            pixel_values            = pixel_values.to(device),
-            max_new_tokens          = 1,
-            output_hidden_states    = True,
-            return_dict_in_generate = True,   # valid here
+
+gen_out = model.generate(
+    **tokenizer(query, return_tensors="pt").to(device),
+    pixel_values            = pixel_values.to(device),
+    max_new_tokens          = 100,
+    output_hidden_states    = True,
+    return_dict_in_generate = True,   # valid here
 )
-print(gen_out.sequences)
-# Get logits
-#logits = outputs.logits
-#print(gen_out.hidden_states[-1])
+seq = gen_out.sequences
+print(seq[0][-1])
+for i in range(len(seq[0])):
+    print(tokenizer.decode(seq[0][i]))
 
-
-# If you want to generate text, use the generate method instead:
-# generation_config = dict(max_new_tokens=100, do_sample=False)
+# Call forward method
 # with torch.no_grad():
-#     generation_output = model.generate(
+#     outputs = model(
 #         pixel_values=pixel_values,
 #         input_ids=input_ids,
 #         attention_mask=attention_mask,
-#         **generation_config
+#         image_flags=image_flags,
+#         return_dict=True,
+#         output_hidden_states  = True
 #     )
-# response = tokenizer.batch_decode(generation_output, skip_special_tokens=True)[0]
-
-#print("Forward pass completed. Logits shape:", logits.shape)
+# Get logits
+#logits = outputs.logits
+#print(gen_out.hidden_states[-1])
+# print("Forward pass completed. Logits shape:", logits.shape)
