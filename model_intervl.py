@@ -176,7 +176,7 @@ def split_model(model_name):
     device_map[f'language_model.model.layers.{num_layers - 1}'] = 0
 
     return device_map
-def save_embeddings(embeddings, save_dir, text="", prefix=""):
+def save_embeddings(embeddings, save_dir, text="", prefix="", counter=0):
     """
     Save embeddings to files.
     
@@ -208,7 +208,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix=""):
         if not torch.is_tensor(embedding):
             print('not single tensor')
             embedding = torch.tensor(embedding)
-        log_to_file(layer_name, embedding.shape)
+        log_to_file(counter,layer_name, embedding.shape)
         if 'language' in layer_name:
             #print('language', embedding.shape)
             embedding = embedding.squeeze(0)
@@ -324,7 +324,7 @@ def create_layer_hooks(model, layers=None):
     
     return hooks, layer_outputs, hook_storage
 
-def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prompt, layer_outputs):
+def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prompt, layer_outputs, counter):
     """
     Get embeddings using existing hooks
     
@@ -358,7 +358,7 @@ def process_all_files_for_embedding_extraction():
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    file_in_filter = ''
+    file_in_filter = 'friends_s03e01a'
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/s3/*.mkv")
 
@@ -520,31 +520,6 @@ def get_num_chunks(episode_id):
     files = glob(f"{season_folder}/{episode_id}_*.mp4")
     return len(files), season_folder
 
-def print_input_tokens(prompt, offsets):
-    """
-    Prints token number and corresponding text span for each token.
-    Args:
-        prompt (str): The original input string.
-        offsets (list or tensor): Shape (T, 2). List of [start, end] for each token.
-    """
-    # If offsets is a PyTorch tensor, convert to list
-    if hasattr(offsets, 'tolist'):
-        offsets = offsets.tolist()
-    
-    # If batch dimension exists, use the first example
-    if len(offsets) == 1 and isinstance(offsets[0], list):
-        offsets = offsets[0]
-
-    print("Token # | Token Text")
-    print("--------+------------------")
-    for i, (start, end) in enumerate(offsets):
-        # Some special tokens may have (0, 0)
-        if start == end:
-            token_text = "[special token]"
-        else:
-            token_text = prompt[start:end]
-        print(f"{i:7} | {repr(token_text)}")
-
 def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer, 
                           layer_outputs, use_progress_bar):
     num_chunks, season_folder = get_num_chunks(episode_id)
@@ -566,9 +541,9 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
             embeddings_dir = os.path.join(utils.get_output_dir(), utils.get_embeddings_dir())
             embeddings_prefix = f"{episode_id}_tr_{counter}"
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
-            if not os.path.exists(meta_file):
+            if True:
                 chunk_path = os.path.join(season_folder, f'{episode_id}_tr_{counter}.mp4')
-                # print('chunk_path', chunk_path)
+                log_to_file(counter,'chunk_path', chunk_path)
                 # Load the frames from the chunked movie clip
                 trans_index = counter
                 pixel_values, num_patches_list = load_video(chunk_path, num_segments=8, max_num=1)
@@ -586,6 +561,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     question_for_embeddings = video_prefix + "\n" + post_text
                 else:
                     question_for_embeddings = video_prefix
+
+                log_to_file(counter,'question_for_embeddings', question_for_embeddings)
                 
                 # enc = tokenizer(
                 #     question_for_embeddings,
@@ -616,13 +593,13 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                         tokenizer, 
                         pixel_values, 
                         question_for_embeddings,
-                        layer_outputs
+                        layer_outputs,
+                        counter
                     )
 
                     
                     save_embeddings(extracted_features, embeddings_dir, text=text_dataset[counter], 
-                            prefix=embeddings_prefix)
-            counter += 1
+                            prefix=embeddings_prefix, counter=counter)
             pbar.update(1) if use_progress_bar else None
 def get_transcript_dataSet(stim_id):
     root_data_dir = utils.get_data_root_dir()
