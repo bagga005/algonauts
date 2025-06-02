@@ -42,7 +42,7 @@ img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
 model.img_context_token_id = img_context_token_id
 
 # Your text prompt
-text_prompt = '| Scene: Central Perk, the whole gang is there including Janice. <image>|\nFrame1:  More text'
+text_prompt = '| Scene: Central Perk, the whole gang is there including Janice. |\nFrame1: <image>  More text'
 
 # Set up conversation template
 template = get_conv_template(model.template)
