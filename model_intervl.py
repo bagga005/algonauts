@@ -312,10 +312,8 @@ def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prom
     """
     # Clear previous outputs
     layer_outputs.clear()
-
+    #forward method implementation
     input_ids, image_flags, prompt_markers = get_params_for_forward(model, tokenizer, pixel_values, text_prompt, counter)
-
-
     with torch.no_grad():
         model(
             pixel_values=pixel_values,
@@ -324,8 +322,25 @@ def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prom
             return_dict=False,
             output_hidden_states  = False
         )
-    
-    return dict(layer_outputs), prompt_markers  # Return a copy of the outputs
+    return dict(layer_outputs), prompt_markers
+
+    #chat method implementation
+    # generation_config = dict(
+    #     max_new_tokens=1000,
+    #     pad_token_id=tokenizer.pad_token_id  # Explicitly set to avoid warning
+    # )
+    # response = model.chat(
+    #     tokenizer, 
+    #     pixel_values, 
+    #     text_prompt, 
+    #     generation_config,
+    #     history=None, 
+    #     return_history=False,
+    #     verbose=False,
+    #     output_hidden_states=False
+    # )
+    # utils.log_to_file(counter, ':', response)
+    # return dict(layer_outputs), None
 
 def process_all_files_for_embedding_extraction():
     root_data_dir = utils.get_data_root_dir()

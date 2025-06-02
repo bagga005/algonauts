@@ -147,11 +147,6 @@ def check_img_index_values(img_index_values):
     for i in range(len(img_index_values)):
         assert img_index_values[i][1] - img_index_values[i][0] == model.num_image_token +1
 
-check_img_index_values(img_index_values)
-
-#print("pre_index_values", pre_index_values)
-
-
 def get_pre_post_index_values(input_ids, tokenzier, img_index_values):
     pre_start_index = None
     pre_end_index = None
@@ -186,21 +181,159 @@ def get_pre_post_index_values(input_ids, tokenzier, img_index_values):
     post_end_index = chat_end_index_values[1] - 1
     return pre_start_index, pre_end_index, post_start_index, post_end_index, last_chat_end_index
 
+check_img_index_values(img_index_values)
 pre_start_index, pre_end_index, post_start_index, post_end_index, last_chat_end_index = get_pre_post_index_values(input_ids, tokenizer, img_index_values)
-utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index, last_chat_end=last_chat_end_index)
+#utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index, last_chat_end=last_chat_end_index)
 # Call forward method
-with torch.no_grad():
-    outputs = model(
-        pixel_values=pixel_values,
-        input_ids=input_ids,
-        #attention_mask=attention_mask,
-        image_flags=image_flags,
-        return_dict=False,
-        output_hidden_states  = True
-    )
+
 #Get logits
 #print("outputs", outputs)
 # logits = outputs.logits
 #print(outputs.hidden_states[-1].shape)
 # print("Forward pass completed. Logits shape:", logits.shape)
 
+import os
+
+def create_layer_hooks(model, layers=None):
+    """
+    Create and return hooks for specified layers along with storage for outputs
+    
+    Args:
+        model: The InternVL model
+        layers: List of layer names to extract from
+        
+    Returns:
+        tuple of (hooks list, layer_outputs dict, hook_storage dict)
+    """
+    if layers is None:
+        layers = [
+            'vision_model',
+            'mlp1',
+            'language_model.model.layers.0',
+            'language_model.model.layers.2',
+            'language_model.model.layers.5', 
+            'language_model.model.layers.10',
+            'language_model.model.norm'
+        ]
+    
+    hooks = []
+    hook_storage = {}  # Will store the actual hook functions
+    layer_outputs = {}  # Will store the outputs
+    
+    def get_hook(name):
+        def hook(module, input, output):
+            if hasattr(output, 'last_hidden_state'):
+                layer_outputs[name] = output.last_hidden_state.detach()
+            elif isinstance(output, tuple):
+                layer_outputs[name] = tuple(x.detach() if torch.is_tensor(x) else x for x in output)
+            elif torch.is_tensor(output):
+                layer_outputs[name] = output.detach()
+            else:
+                layer_outputs[name] = output
+        return hook
+    
+    for layer_name in layers:
+        if '.' in layer_name:
+            parts = layer_name.split('.')
+            module = model
+            for part in parts:
+                module = getattr(module, part)
+            hook_fn = get_hook(layer_name)
+            hook_storage[layer_name] = hook_fn
+            hooks.append(module.register_forward_hook(hook_fn))
+        else:
+            hook_fn = get_hook(layer_name)
+            hook_storage[layer_name] = hook_fn
+            hooks.append(getattr(model, layer_name).register_forward_hook(hook_fn))
+    
+    return hooks, layer_outputs, hook_storage
+
+def save_embeddings(embeddings, save_dir, text="", prefix="", counter=0):
+    """
+    Save embeddings to files.
+    
+    Args:
+        embeddings: Dictionary of layer names to embeddings
+        save_dir: Directory to save the embeddings
+        prefix: Optional prefix for the filenames (e.g., image name or ID)
+        use_numpy: If True, save as numpy arrays. If False, save as PyTorch tensors
+    """
+    # Create the save directory if it doesn't exist
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Create a metadata dictionary to store shapes and types
+    metadata = {}
+    
+    for layer_name, embedding in embeddings.items():
+        # Create a safe filename from the layer name
+        safe_name = layer_name.replace('.', '_').replace('/', '_')
+        if prefix:
+            safe_name = f"{prefix}_{safe_name}"
+            
+        file_ext = ".pt.gz"
+        
+        if isinstance(embedding, tuple):
+            # Handle tuple by taking first element
+            embedding = embedding[0]
+
+        # Save single tensor
+        if not torch.is_tensor(embedding):
+            print('not single tensor')
+            embedding = torch.tensor(embedding)
+        print(counter,layer_name, embedding.shape)
+        if 'language' in layer_name:
+            #print('language', embedding.shape)
+            embedding = embedding.squeeze(0)
+            embedding = embedding[-10:,:]
+            #print average of embedding
+            print(f'{layer_name} average of embedding', embedding.mean())
+            #print('language', embedding.shape)
+        if 'vision' in layer_name:
+            #print('vision', embedding.shape)
+            embedding = embedding[:,0,:]
+            #print('vision', embedding.shape)
+        # with gzip.open(os.path.join(save_dir, safe_name + file_ext), 'wb') as f:
+        #     pickle.dump(embedding.cpu(), f)
+
+        # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
+        #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
+        metadata[layer_name] = {
+            'type': 'tensor',
+            'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
+        }
+    
+    metadata['text'] = text
+    # Save metadata
+    # with open(os.path.join(save_dir, f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
+    #     json.dump(metadata, f, indent=2)
+
+
+custom_layers = [
+            'vision_model.encoder.layers.2',
+            'vision_model.encoder.layers.5',
+            'vision_model.encoder.layers.10',
+            'vision_model.encoder.layers.17',
+            'vision_model.encoder.layers.23',
+            'vision_model',                     # Vision encoder
+            'language_model.model.layers.0',    # First layer
+            'language_model.model.layers.4',    # First layer
+            'language_model.model.layers.8',    # First layer
+            'language_model.model.layers.12',    # First layer
+            'language_model.model.layers.16',    # Middle layer
+            'language_model.model.layers.20',   # Later layer
+            'language_model.model.layers.23',   # Later layer
+            'language_model.model.norm'         # Final normalization
+        ]
+hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
+
+with torch.no_grad():
+    outputs = model(
+        pixel_values=pixel_values,
+        input_ids=input_ids,
+        image_flags=image_flags,
+        return_dict=False,
+        output_hidden_states  = False
+    )
+
+save_embeddings(layer_outputs, "embeddings4")
+       
