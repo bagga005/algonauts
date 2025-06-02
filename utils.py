@@ -401,21 +401,22 @@ def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, 
     if len(input_ids) == 1 and isinstance(input_ids[0], list):
         input_ids = input_ids[0]
 
-    # Create mapping of token numbers to parameter names
-    marker_map = {}
+    # Create mapping of token numbers to parameter names (allow multiple per token)
+    from collections import defaultdict
+    marker_map = defaultdict(list)
     if pre_start is not None:
-        marker_map[pre_start] = 'pre_start'
+        marker_map[pre_start].append('pre_start')
     if pre_end is not None:
-        marker_map[pre_end] = 'pre_end'
+        marker_map[pre_end].append('pre_end')
     if post_start is not None:
-        marker_map[post_start] = 'post_start'
+        marker_map[post_start].append('post_start')
     if post_end is not None:
-        marker_map[post_end] = 'post_end'
+        marker_map[post_end].append('post_end')
     if last_chat_end is not None:
-        marker_map[last_chat_end] = 'last_chat_end'
+        marker_map[last_chat_end].append('last_chat_end')
 
-    print("Token # | Token Text           | Input ID | Marker")
-    print("--------+----------------------+----------+---------------")
+    log_to_file("Token # | Token Text           | Input ID | Marker")
+    log_to_file("--------+----------------------+----------+---------------")
     for i, ((start, end), token_id) in enumerate(zip(offsets, input_ids)):
         # Some special tokens may have (0, 0)
         if start == end:
@@ -427,10 +428,11 @@ def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, 
         if token_text == "<IMG_CONTEXT>":
             continue
         
-        # Get marker if token number matches any parameter
-        marker = marker_map.get(i, "")
+        # Get markers if token number matches any parameter (comma-separated)
+        markers = marker_map.get(i, [])
+        marker = ", ".join(markers) if markers else ""
         
-        print(f"{i:7} | {repr(token_text):20} | {token_id:8} | {marker}")
+        log_to_file(f"{i:7} | {repr(token_text):20} | {token_id:8} | {marker}")
 
 def compare_tensors(tensor1, tensor2):
     mismatch_count = 0
@@ -440,3 +442,20 @@ def compare_tensors(tensor1, tensor2):
                 mismatch_count += 1
                 break
     return mismatch_count
+
+def log_to_file(*args):
+    """
+    Append a message to a hardcoded log file.
+    
+    Args:
+        *args: Multiple arguments that will be converted to strings and joined
+    """
+    log_file_path = "debug_log.txt"  # Hardcoded file path
+    
+    try:
+        # Convert all arguments to strings and join them with spaces
+        message = ' '.join(str(arg) for arg in args)
+        with open(log_file_path, 'a', encoding='utf-8') as f:
+            f.write(message + '\n')
+    except Exception as e:
+        print(f"Error writing to log file: {e}")

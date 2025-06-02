@@ -18,22 +18,7 @@ from transcripts_handler import load_all_tsv_for_one_episode
 from tabulate import tabulate
 from conversation import get_conv_template
 
-def log_to_file(*args):
-    """
-    Append a message to a hardcoded log file.
-    
-    Args:
-        *args: Multiple arguments that will be converted to strings and joined
-    """
-    log_file_path = "debug_log.txt"  # Hardcoded file path
-    
-    try:
-        # Convert all arguments to strings and join them with spaces
-        message = ' '.join(str(arg) for arg in args)
-        with open(log_file_path, 'a', encoding='utf-8') as f:
-            f.write(message + '\n')
-    except Exception as e:
-        print(f"Error writing to log file: {e}")
+
 
 
 
@@ -64,7 +49,7 @@ def split_model(model_name):
     device_map[f'language_model.model.layers.{num_layers - 1}'] = 0
 
     return device_map
-def save_embeddings(embeddings, save_dir, text="", prefix="", counter=0):
+def save_embeddings(embeddings, prompt_markers, save_dir, text="", prefix="", counter=0):
     """
     Save embeddings to files.
     
@@ -96,7 +81,7 @@ def save_embeddings(embeddings, save_dir, text="", prefix="", counter=0):
         if not torch.is_tensor(embedding):
             print('not single tensor')
             embedding = torch.tensor(embedding)
-        log_to_file(counter,layer_name, embedding.shape)
+        #log_to_file(counter,layer_name, embedding.shape)
         if 'language' in layer_name:
             #print('language', embedding.shape)
             embedding = embedding.squeeze(0)
@@ -236,13 +221,79 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
     input_ids = model_inputs['input_ids'].to(model.device)
     offsets = model_inputs.offset_mapping
     #set img_context_token_id
+    img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
+    img_start_token_id = tokenizer.convert_tokens_to_ids(IMG_START_TOKEN)
+    img_end_token_id = tokenizer.convert_tokens_to_ids(IMG_END_TOKEN)
     if model.img_context_token_id is None:
-        img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
         model.img_context_token_id = img_context_token_id
 
 
     image_flags = torch.ones(pixel_values.shape[0], dtype=torch.long, device=model.device)
-    return input_ids, offsets, image_flags
+
+    def get_img_index_values(input_ids, img_start_token_id, img_end_token_id):
+    #populate key index values from inputs
+        img_index_values = []
+        start_index = None
+        for i in range(input_ids.shape[1]):
+            if input_ids[0, i] == img_start_token_id:
+                start_index = i
+            elif input_ids[0, i] == img_end_token_id:
+                img_index_values.append((start_index, i))
+                start_index = None
+        return img_index_values
+
+    def check_img_index_values(img_index_values):
+        assert len(img_index_values) == pixel_values.shape[0]
+        for i in range(len(img_index_values)):
+            assert img_index_values[i][1] - img_index_values[i][0] == model.num_image_token +1
+
+    def get_pre_post_index_values(input_ids, tokenzier, img_index_values):
+        pre_start_index = None
+        pre_end_index = None
+        post_start_index = None
+        post_end_index = None
+        last_chat_end_index = None
+        image_end_index = None
+        chat_start_word = '<|im_start|>'
+        chat_end_word = '<|im_end|>'
+        chat_start_token_id = tokenizer.convert_tokens_to_ids(chat_start_word)
+        chat_end_token_id = tokenizer.convert_tokens_to_ids(chat_end_word)
+        chat_start_index_values = []
+        chat_end_index_values = []
+        for i in range(input_ids.shape[1]):
+            if input_ids[0, i] == chat_start_token_id:
+                chat_start_index_values.append(i)
+            elif input_ids[0, i] == chat_end_token_id:
+                chat_end_index_values.append(i)
+        assert len(chat_end_index_values) == 2, f"len(chat_end_index_values) {len(chat_end_index_values)} != 2"
+        assert len(chat_start_index_values) == 3, f"len(chat_start_index_values) {len(chat_start_index_values)} != 3"
+        last_chat_end_index = chat_end_index_values[1]
+        #4 tokens after start of second chat
+        pre_start_index = chat_start_index_values[1] + 4
+        #4 tokens before the start of first image
+        pre_end_index = img_index_values[0][0] - 5
+        #4 chars after the last image end
+        post_start_index = img_index_values[len(img_index_values)-1][1] + 5
+        #1 char before the last chat end
+        post_end_index = chat_end_index_values[1] - 1
+        return pre_start_index, pre_end_index, post_start_index, post_end_index, last_chat_end_index
+    
+    img_index_values = get_img_index_values(input_ids, img_start_token_id, img_end_token_id)
+    check_img_index_values(img_index_values)
+    pre_start_index, pre_end_index, post_start_index, post_end_index, last_chat_end_index = get_pre_post_index_values(input_ids, tokenizer, img_index_values)
+
+    prompt_markers ={
+        'pre_start_index': pre_start_index,
+        'pre_end_index': pre_end_index,
+        'post_start_index': post_start_index,
+        'post_end_index': post_end_index,
+        'last_chat_end_index': last_chat_end_index,
+        'img_index_values': img_index_values,
+    }
+
+    #utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index, last_chat_end=last_chat_end_index)
+
+    return input_ids, image_flags, prompt_markers
 
 
 def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prompt, layer_outputs, counter):
@@ -261,17 +312,9 @@ def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prom
     """
     # Clear previous outputs
     layer_outputs.clear()
-    input_ids, offsets, image_flags = get_params_for_forward(model, tokenizer, pixel_values, text_prompt, counter)
-    
-    # Run the model
-    # response, _ = model.chat(
-    #     tokenizer, 
-    #     pixel_values, 
-    #     text_prompt, 
-    #     dict(max_new_tokens=1),
-    #     history=None, 
-    #     return_history=True
-    # )
+
+    input_ids, image_flags, prompt_markers = get_params_for_forward(model, tokenizer, pixel_values, text_prompt, counter)
+
 
     with torch.no_grad():
         model(
@@ -282,7 +325,7 @@ def get_embeddings_with_existing_hooks(model, tokenizer, pixel_values, text_prom
             output_hidden_states  = False
         )
     
-    return dict(layer_outputs)  # Return a copy of the outputs
+    return dict(layer_outputs), prompt_markers  # Return a copy of the outputs
 
 def process_all_files_for_embedding_extraction():
     root_data_dir = utils.get_data_root_dir()
@@ -434,7 +477,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
             meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
             if True:
                 chunk_path = os.path.join(season_folder, f'{episode_id}_tr_{counter}.mp4')
-                log_to_file(counter,'chunk_path', chunk_path)
+                #log_to_file(counter,'chunk_path', chunk_path)
                 # Load the frames from the chunked movie clip
                 trans_index = counter
                 pixel_values, num_patches_list = utils_video.load_video(chunk_path, num_segments=8, max_num=1)
@@ -453,7 +496,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 else:
                     question_for_embeddings = video_prefix
 
-                log_to_file(counter,'question_for_embeddings', question_for_embeddings)
+                #log_to_file(counter,'question_for_embeddings', question_for_embeddings)
                 
                 # enc = tokenizer(
                 #     question_for_embeddings,
@@ -479,7 +522,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 # if not utils.isMockMode() or counter == 0:
                     # Use the existing hooks to get embeddings
                 if not utils.isMockMode():
-                    extracted_features = get_embeddings_with_existing_hooks(
+                    extracted_features, prompt_markers = get_embeddings_with_existing_hooks(
                         model, 
                         tokenizer, 
                         pixel_values, 
@@ -489,7 +532,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     )
 
                     
-                    save_embeddings(extracted_features, embeddings_dir, text=text_dataset[counter], 
+                    save_embeddings(extracted_features, prompt_markers, embeddings_dir, text=text_dataset[counter], 
                             prefix=embeddings_prefix, counter=counter)
             pbar.update(1) if use_progress_bar else None
 def get_transcript_dataSet(stim_id):
