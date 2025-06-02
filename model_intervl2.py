@@ -42,7 +42,7 @@ img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
 model.img_context_token_id = img_context_token_id
 
 # Your text prompt
-text_prompt = '| Scene: Central Perk, the whole gang is there including Janice. |\nFrame1: <image> More text'
+text_prompt = '| Scene: Central Perk, the whole gang is there including Janice. <image>|\nFrame1:  More text'
 
 # Set up conversation template
 template = get_conv_template(model.template)
@@ -73,16 +73,26 @@ image_flags = torch.ones(pixel_values.shape[0], dtype=torch.long, device=device)
 
 # Call forward method
 with torch.no_grad():
-    outputs = model(
-        pixel_values=pixel_values,
-        input_ids=input_ids,
-        attention_mask=attention_mask,
-        image_flags=image_flags,
-        return_dict=True
-    )
-
+    # outputs = model(
+    #     pixel_values=pixel_values,
+    #     input_ids=input_ids,
+    #     attention_mask=attention_mask,
+    #     image_flags=image_flags,
+    #     return_dict=True,
+    #     output_hidden_states  = True
+    # )
+    gen_out = model.generate(
+            **tokenizer(query, return_tensors="pt").to(device),
+            pixel_values            = pixel_values.to(device),
+            max_new_tokens          = 1,
+            output_hidden_states    = True,
+            return_dict_in_generate = True,   # valid here
+)
+print(gen_out.sequences)
 # Get logits
-logits = outputs.logits
+#logits = outputs.logits
+#print(gen_out.hidden_states[-1])
+
 
 # If you want to generate text, use the generate method instead:
 # generation_config = dict(max_new_tokens=100, do_sample=False)
@@ -95,4 +105,4 @@ logits = outputs.logits
 #     )
 # response = tokenizer.batch_decode(generation_output, skip_special_tokens=True)[0]
 
-print("Forward pass completed. Logits shape:", logits.shape)
+#print("Forward pass completed. Logits shape:", logits.shape)
