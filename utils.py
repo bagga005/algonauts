@@ -29,6 +29,9 @@ def get_data_root_dir():
 def get_tmp_dir():
     return os.getenv("TMP_DIR")
 
+def get_embeddings_dir():
+    return os.getenv("EMBEDDINGS_DIR")
+
 def get_output_dir():
     return os.getenv("OUTPUT_DIR")
 
@@ -369,3 +372,71 @@ def get_roi_name(parcel):
     
     # If no matching ROI found
     return None
+
+def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, pre_end=None, post_start=None, post_end=None, last_chat_end=None):
+    """
+    Prints token number, corresponding text span, input ID, and marker for each token.
+    Args:
+        prompt (str): The original input string.
+        offsets (list or tensor): Shape (T, 2). List of [start, end] for each token.
+        input_ids (list or tensor): Shape (T,). List of token IDs.
+        pre_start (int, optional): Token number to mark as 'pre_start'. Defaults to None.
+        pre_end (int, optional): Token number to mark as 'pre_end'. Defaults to None.
+        post_start (int, optional): Token number to mark as 'post_start'. Defaults to None.
+        post_end (int, optional): Token number to mark as 'post_end'. Defaults to None.
+        last_chat_end (int, optional): Token number to mark as 'last_chat_end'. Defaults to None.
+    """
+    # If offsets is a PyTorch tensor, convert to list
+    if hasattr(offsets, 'tolist'):
+        offsets = offsets.tolist()
+    
+    # If input_ids is a PyTorch tensor, convert to list
+    if hasattr(input_ids, 'tolist'):
+        input_ids = input_ids.tolist()
+    
+    # If batch dimension exists, use the first example
+    if len(offsets) == 1 and isinstance(offsets[0], list):
+        offsets = offsets[0]
+    
+    if len(input_ids) == 1 and isinstance(input_ids[0], list):
+        input_ids = input_ids[0]
+
+    # Create mapping of token numbers to parameter names
+    marker_map = {}
+    if pre_start is not None:
+        marker_map[pre_start] = 'pre_start'
+    if pre_end is not None:
+        marker_map[pre_end] = 'pre_end'
+    if post_start is not None:
+        marker_map[post_start] = 'post_start'
+    if post_end is not None:
+        marker_map[post_end] = 'post_end'
+    if last_chat_end is not None:
+        marker_map[last_chat_end] = 'last_chat_end'
+
+    print("Token # | Token Text           | Input ID | Marker")
+    print("--------+----------------------+----------+---------------")
+    for i, ((start, end), token_id) in enumerate(zip(offsets, input_ids)):
+        # Some special tokens may have (0, 0)
+        if start == end:
+            token_text = "[special token]"
+        else:
+            token_text = prompt[start:end]
+        
+        # Skip rows where token text is <IMG_CONTEXT>
+        if token_text == "<IMG_CONTEXT>":
+            continue
+        
+        # Get marker if token number matches any parameter
+        marker = marker_map.get(i, "")
+        
+        print(f"{i:7} | {repr(token_text):20} | {token_id:8} | {marker}")
+
+def compare_tensors(tensor1, tensor2):
+    mismatch_count = 0
+    for i in range(tensor1.shape[0]):
+        for j in range(tensor1.shape[1]):
+            if tensor1[i, j] != tensor2[i, j]:
+                mismatch_count += 1
+                break
+    return mismatch_count
