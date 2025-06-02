@@ -18,3 +18,5 @@ runpodctl
 .runpod/config.toml
 .wget-hsts
 .runpod/ssh/RunPod-Key-Go
+/custom_models/InternVL3-1B-Pretrained/examples
+/custom_models/InternVL3-1B-Pretrained/model.safetensors
