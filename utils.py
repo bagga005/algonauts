@@ -32,6 +32,9 @@ def get_tmp_dir():
 def get_embeddings_dir():
     return os.getenv("EMBEDDINGS_DIR")
 
+def get_embeddings_combined_dir():
+    return os.getenv("EMBEDDINGS_COMBINED_DIR")
+
 def get_output_dir():
     return os.getenv("OUTPUT_DIR")
 
