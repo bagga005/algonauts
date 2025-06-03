@@ -118,7 +118,6 @@ print("offsets (phase 3)", offsets.shape)
 
 # # Create image_flags tensor (1 for each image that should be processed)
 # # Since we have 1 image, image_flags should be a tensor with a single 1
-image_flags = torch.ones(pixel_values.shape[0], dtype=torch.long, device=device)
 img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
 model.img_context_token_id = img_context_token_id
 img_start_token_id = tokenizer.convert_tokens_to_ids(IMG_START_TOKEN)
@@ -283,10 +282,12 @@ def save_embeddings(embeddings, save_dir, text="", prefix="", counter=0):
         print(counter,layer_name, embedding.shape)
         if 'language' in layer_name:
             #print('language', embedding.shape)
-            embedding = embedding.squeeze(0)
-            embedding = embedding[-10:,:]
+            #embedding = embedding.squeeze(0)
+            #embedding = embedding[-10:,:]
             #print average of embedding
-            print(f'{layer_name} average of embedding', embedding.mean())
+            print(f'{layer_name} average of embedding batch 0', embedding[0,:,:].mean())
+            if embedding.shape[0] > 1:
+                print(f'{layer_name} average of embedding batch 1', embedding[1,:,:].mean())
             #print('language', embedding.shape)
         if 'vision' in layer_name:
             #print('vision', embedding.shape)
@@ -326,13 +327,80 @@ custom_layers = [
         ]
 hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
 
+def generate_attention_mask_batch(input_ids_list, pad_token_id, device, max_length=None):
+    """
+    Generate attention masks for a batch of sequences with different lengths.
+    
+    Args:
+        input_ids_list: List of lists/tensors, each containing token ids
+        pad_token_id: int, the token id used for padding
+        max_length: int, optional max length to pad to (if None, uses longest sequence)
+    
+    Returns:
+        input_ids_padded: torch.Tensor [batch_size, max_seq_len] - padded input_ids
+        attention_mask: torch.Tensor [batch_size, max_seq_len] - corresponding attention mask
+    """
+    import torch
+    
+    # Convert all to tensors
+    input_ids_tensors = input_ids_list
+    # for ids in input_ids_list:
+    #     if isinstance(ids, list):
+    #         ids = torch.tensor(ids)
+    #     input_ids_tensors.append(ids)
+    
+    # Find max length
+    if max_length is None:
+        max_length = max(len(ids) for ids in input_ids_tensors)
+    print("max_length", max_length)
+    # Pad sequences and create attention masks
+    batch_input_ids = []
+    batch_attention_mask = []
+    
+    for ids in input_ids_tensors:
+        current_length = len(ids)
+        
+        if current_length < max_length:
+            # Pad if shorter than max_length
+            padding_length = max_length - current_length
+            paddings = torch.full((padding_length,), pad_token_id, dtype=ids.dtype, device=device)
+            print("paddings", paddings.shape)
+            print("ids", ids.shape)
+            ids_padded = torch.cat([paddings, ids])
+            attention = torch.cat([torch.zeros(padding_length, dtype=torch.long, device=device),
+                                   torch.ones(current_length, dtype=torch.long, device=device)])
+            ids = ids_padded
+        else:
+            attention = torch.ones(max_length, dtype=torch.long, device=device)
+        batch_input_ids.append(ids)
+        batch_attention_mask.append(attention)
+    
+    return torch.stack(batch_input_ids), torch.stack(batch_attention_mask)
+
+
+
+input_ids_2 = input_ids.detach().clone().to(device)
+input_ids_2 = input_ids_2[:,40:]
+input_ids_list = [input_ids.squeeze(0), input_ids_2.squeeze(0)]
+input_ids_padded, attention_mask = generate_attention_mask_batch(input_ids_list, pad_token_id=tokenizer.pad_token_id)
+print("input_ids_padded shape", input_ids_padded.shape)
+print("attention_mask shape", attention_mask.shape)
+print("input_ids_padded", input_ids_padded)
+print("attention_mask", attention_mask)
+
+print("pixel_values", pixel_values.shape)
+pixel_values_2 = pixel_values.detach().clone().to(device)
+pixel_values = torch.cat((pixel_values, pixel_values_2), dim=0)
+print("pixel_values", pixel_values.shape)
+image_flags = torch.ones(pixel_values.shape[0], dtype=torch.long, device=device) 
 with torch.no_grad():
     outputs = model(
         pixel_values=pixel_values,
-        input_ids=input_ids,
+        input_ids=input_ids_padded,
         image_flags=image_flags,
         return_dict=False,
-        output_hidden_states  = False
+        output_hidden_states  = False,
+        attention_mask=attention_mask
     )
 
 save_embeddings(layer_outputs, "embeddings4")

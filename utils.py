@@ -38,6 +38,12 @@ def get_output_dir():
 def get_mvl_model():
     return os.getenv("MVL_MODEL")
 
+def get_mvl_batch_size():
+    return int(os.getenv("MVL_BATCH_SIZE"))
+
+def get_stimuli_prefix():
+    return os.getenv("STIMULI_PREFIX")
+
 def get_wandb_config():
     return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 

@@ -101,7 +101,7 @@ class InternVLChatModel(PreTrainedModel):
             return_dict: Optional[bool] = None,
             output_loss: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-        #print("using custom forward")
+        # print("using custom forward")
         assert self.img_context_token_id is not None
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -111,7 +111,7 @@ class InternVLChatModel(PreTrainedModel):
         vit_embeds = self.extract_feature(pixel_values)
         #print("vit_embeds", vit_embeds.shape)
         vit_embeds = vit_embeds[image_flags == 1]
-        #print("vit_embeds", vit_embeds.shape)
+        #rint("vit_embeds", vit_embeds.shape)
         vit_batch_size = pixel_values.shape[0]
         #print("vit_batch_size", vit_batch_size)
         B, N, C = input_embeds.shape
@@ -131,7 +131,7 @@ class InternVLChatModel(PreTrainedModel):
         # try:
         orig_input_embeds = input_embeds[selected].clone()
         input_embeds[selected] = input_embeds[selected] * 0.0 + vit_embeds_reshaped
-        assert utils.compare_tensors(orig_input_embeds, input_embeds[selected]) == selected.sum(), "orig_input_embeds != input_embeds[selected]"
+        #assert utils.compare_tensors(orig_input_embeds, input_embeds[selected]) == selected.sum(), "orig_input_embeds != input_embeds[selected]"
         # except Exception as e:
         #     vit_embeds = vit_embeds.reshape(-1, C)
         #     print(f'warning: {e}, input_embeds[selected].shape={input_embeds[selected].shape}, '
