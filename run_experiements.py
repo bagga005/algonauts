@@ -115,11 +115,11 @@ def run_for_stimulus_window():
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 5  #@param {type:"slider", min:1, max:20, step:1}
     include_viewing_sessions = False
-    movies_train = ["friends-s02","friends-s04"]#["friends-s01","friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf"] # @param {allow-input: true}
+    movies_train = ["friends-s05"]#["friends-s01","friends-s02", "friends-s06", "friends-s04", "friends-s05", "movie10-bourne",  "movie10-wolf"] # @param {allow-input: true}
     movies_val = ["friends-s03"] # @param {allow-input: true}c
     training_handler = 'pytorch'
     experiment_comments = 'test for stimulus window'
-    specific_modalities = ["all"]
+    specific_modalities = ["visual"]
     print('starting for handler:', training_handler, ' with comments: ',experiment_comments)
     print('train_movies', movies_train)
     print('moviels_val', movies_val)

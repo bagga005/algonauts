@@ -337,7 +337,7 @@ def compute_tr_upper(dir_path, stim_id, layer_name):
     files = glob(f"{dir_path}/{stim_id}_tr_*_{layer_name}.pt.gz")
     return len(files)
 
-def segment_to_extract(loaded_tensor, combine_strategy):
+def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
     if combine_strategy == COMBINE_STRATEGY_LAST:
         ten = loaded_tensor[-1,:]
     elif combine_strategy == COMBINE_STRATEGY_LAST3:
@@ -352,6 +352,13 @@ def segment_to_extract(loaded_tensor, combine_strategy):
         # print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_FIRST:
         ten = loaded_tensor[0,:]
+    elif combine_strategy == COMBINE_STRATEGY_I:
+        #print('loaded_tensor.shape', loaded_tensor.shape)
+        ten = loaded_tensor[i,:]
+    elif combine_strategy == COMBINE_STRATEGY_I_J:
+        ten = loaded_tensor[i:j+1,:].flatten()
+    elif combine_strategy == COMBINE_STRATEGY_INDEXS:
+        ten = loaded_tensor[indexes,:].flatten()
     else:
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
@@ -379,7 +386,9 @@ STRATEGY_LANG_4_12_NORM = 2
 STRATEGY_LANG_NORM_7 = 7
 STRATEGY_LANG_NORM_10 = 8
 STRATEGY_LANG_NORM_7_AVG = 9
-
+STRATEGY_V2_LANG_NORM_1 = 100
+STRATEGY_V2_LANG_NORM_3 = 101
+STRATEGY_V2_LANG_NORM_7 = 102
 #Vision 
 STRATEGY_VISION_NORM = 10
 STRATEGY_VISION_23= 11
@@ -401,6 +410,9 @@ COMBINE_STRATEGY_LAST9 = 'last9'
 COMBINE_STRATEGY_LAST10 = 'last10'
 COMBINE_STRATEGY_LAST7_AVG = 'last7_avg'
 COMBINE_STRATEGY_FIRST = 'first'
+COMBINE_STRATEGY_I ='ith'
+COMBINE_STRATEGY_I_J = 'ith_jth'
+COMBINE_STRATEGY_INDEXS = 'indexs'
 def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name, add_layer_to_path)
     num_skipped = 0
@@ -458,6 +470,12 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_LAST)
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST)
                 ten1 = torch.cat((ten0, ten1, ten2), dim=1)
+            elif strategy == STRATEGY_V2_LANG_NORM_1:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=6)
+            elif strategy == STRATEGY_V2_LANG_NORM_3:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+            elif strategy == STRATEGY_V2_LANG_NORM_7:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J, i=0,j=6)
                 #print('combined_tensor.shape', ten1.shape)
             else:
                 raise ValueError(f"Invalid strategy: {strategy}")
@@ -472,7 +490,7 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
         if num_skipped > 0:
             print(f"****Skipped {num_skipped} files")
         
-def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_path=True):
+def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_path=True, i=0, j=0, indexes=[]):
     tensor_list = []
     if add_layer_to_path:
         dir_path = os.path.join(dir_path, layer_name)
@@ -485,7 +503,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
      #print('file_path', file_path)
         with gzip.open(file_path, 'rb') as f:
             loaded_tensor = pickle.load(f)
-        extracted_tensor = segment_to_extract(loaded_tensor, strategy)
+        extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
         #print('extracted_tensor.shape', extracted_tensor.shape)
         tensor_list.append(extracted_tensor)
         #print('tensor_list.shape', len(tensor_list))
@@ -519,8 +537,16 @@ if __name__ == "__main__":
     
 
     # STRATEGY_LANG_NORM_1
-    dir_output_path = os.path.join(out_dir, "STRATEGY_LANG_NORM_1")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_1, modality, pca_skip=True)
+    # dir_output_path = os.path.join(out_dir, "STRATEGY_LANG_NORM_1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_1, modality)
+
+    #STRATEGY_V2_LANG_NORM_1
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name)
+
+    #STRATEGY_V2_LANG_NORM_7
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_7, modality)
 
     # # # # STRATEGY_LANG_NORM_3
     # dir_output_path = os.path.join(out_dir,  "STRATEGY_LANG_NORM_3")

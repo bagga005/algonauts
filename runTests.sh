@@ -9,7 +9,7 @@ fi
 
 # Get the first argument as the EMBEDDINGS_PATH
 STRATEGY_FOLDER="$1"
-EMBEDDINGS_COMBINED_PATH="/workspace/algo_data/embeddings_combined3"
+EMBEDDINGS_COMBINED_PATH="/workspace/algo_data/combined_embeddings3"
 DESTINATION_PATH="/workspace/stimulus_features/pca/friends_movie10/visual/features_train.npy"
 
 
