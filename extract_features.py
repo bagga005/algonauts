@@ -572,14 +572,14 @@ if __name__ == "__main__":
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s03", "s06", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
 
     # STRATEGY_LANG_NORM_1 v1 - OOOOLLLLDDD
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1_v1")
-    exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1_v1")
+    # exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
     #STRATEGY_V2_LANG_NORM_1
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
@@ -594,8 +594,8 @@ if __name__ == "__main__":
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_PRE, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
-    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality, filter_in_name=filter_in_name)
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_FIRST")
