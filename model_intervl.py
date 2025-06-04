@@ -420,7 +420,6 @@ def generate_attention_mask_batch(input_ids_list, pad_token_id, device, max_leng
         input_ids_padded: torch.Tensor [batch_size, max_seq_len] - padded input_ids
         attention_mask: torch.Tensor [batch_size, max_seq_len] - corresponding attention mask
     """
-    import torch
     
     # Convert all to tensors
     input_ids_tensors = input_ids_list
