@@ -353,12 +353,27 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
     elif combine_strategy == COMBINE_STRATEGY_FIRST:
         ten = loaded_tensor[0,:]
     elif combine_strategy == COMBINE_STRATEGY_I:
-        #print('loaded_tensor.shape', loaded_tensor.shape)
+        #regular code
         ten = loaded_tensor[i,:]
+    elif combine_strategy == COMBINE_STRATEGY_VISION_V2:
+        ##special handling of vision for season 1
+        id1, id2, id3 = 0, 0, 8
+        if i == 1:
+            id1, id2, id3 = 1, 8, 16
+        if len(loaded_tensor.shape) == 3: #vision of season 1
+            ten = loaded_tensor[id1,:,:].flatten()
+            #print('ten.shape***', ten.shape)
+        else:
+            ten = loaded_tensor[id2:id3,:].flatten()
+            #print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_I_J:
         ten = loaded_tensor[i:j+1,:].flatten()
     elif combine_strategy == COMBINE_STRATEGY_INDEXS:
         ten = loaded_tensor[indexes,:].flatten()
+    elif combine_strategy == COMBINE_STRATEGY_I_J_AVG:
+        ten = torch.mean(loaded_tensor[i:j+1,:], dim=0)
+    elif combine_strategy == COMBINE_STRATEGY_INDEXS_AVG:
+        ten = torch.mean(loaded_tensor[indexes,:], dim=0)
     else:
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
@@ -399,7 +414,8 @@ STRATEGY_V2_POST_POST = 107
 STRATEGY_VISION_NORM = 10
 STRATEGY_VISION_23= 11
 STRATEGY_VISION_2_5_10_17_NORM = 12
-STRATEGY_V2_VISION_NORM = 200
+STRATEGY_V2_VISION_NORM_CLS = 200
+STRATEGY_V2_VISION_NORM_AVG = 201
 
 #LLM + Vision
 STRATEGY_LN_1_VN = 20
@@ -420,7 +436,11 @@ COMBINE_STRATEGY_LAST7_AVG = 'last7_avg'
 COMBINE_STRATEGY_FIRST = 'first'
 COMBINE_STRATEGY_I ='ith'
 COMBINE_STRATEGY_I_J = 'ith_jth'
+COMBINE_STRATEGY_I_J_AVG = 'ith_jth_avg'
 COMBINE_STRATEGY_INDEXS = 'indexs'
+COMBINE_STRATEGY_INDEXS_AVG = 'indexs_avg'
+COMBINE_STRATEGY_VISION_V2 = 'vision_v2'
+
 def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name, add_layer_to_path)
     num_skipped = 0
@@ -492,8 +512,10 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=7)
             elif strategy == STRATEGY_V2_POST_IMG:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=32)
-            elif strategy == STRATEGY_V2_VISION_NORM:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_I, i=0)
+            elif strategy == STRATEGY_V2_VISION_NORM_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_VISION_V2, i=0)
+            elif strategy == STRATEGY_V2_VISION_NORM_AVG:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_VISION_V2, i=1)
             else:
                 raise ValueError(f"Invalid strategy: {strategy}")
             if ten1.dtype == torch.bfloat16:
@@ -550,14 +572,14 @@ if __name__ == "__main__":
     dir_input_path = os.path.join(out_dir, embeddings_dir)
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s03"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s03", "s06"] #["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
 
     # STRATEGY_LANG_NORM_1
-    # dir_output_path = os.path.join(out_dir, "STRATEGY_LANG_NORM_1")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_1, modality)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
 
     #STRATEGY_V2_LANG_NORM_1
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
@@ -565,26 +587,26 @@ if __name__ == "__main__":
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_7, modality)
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_7, modality, filter_in_name=filter_in_name)
 
     #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_PRE")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_PRE, modality)
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_PRE, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
-    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality)
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_FIRST")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_FIRST, modality)
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_FIRST, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_POST_IMG")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_POST_IMG, modality)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_POST_IMG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_POST_IMG, modality, filter_in_name=filter_in_name)
 
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM, modality)
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM, modality, filter_in_name=filter_in_name)
 
     # # # # STRATEGY_LANG_NORM_3
     # dir_output_path = os.path.join(out_dir,  "STRATEGY_LANG_NORM_3")
