@@ -591,7 +591,7 @@ if __name__ == "__main__":
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s01", "s02", "s03", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04", "s05"] #["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
