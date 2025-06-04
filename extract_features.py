@@ -412,6 +412,7 @@ STRATEGY_V2_POST_LAST = 107
 STRATEGY_V2_POST_L4_LAST = 108
 STRATEGY_V2_LANG_NORM_I1 = 109
 STRATEGY_V2_LANG_NORM_I2 = 110
+STRATEGY_V2_PRE_LAST = 111
 #Vision 
 STRATEGY_VISION_NORM = 10
 STRATEGY_VISION_23= 11
@@ -510,6 +511,8 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=1)
             elif strategy == STRATEGY_V2_LANG_NORM_I2:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=2)
+            elif strategy == STRATEGY_V2_PRE_LAST:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=15)
             elif strategy == STRATEGY_V2_LANG_NORM_AVG_PRE:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=8)
             elif strategy == STRATEGY_V2_LANG_NORM_AVG_POST:
@@ -591,7 +594,7 @@ if __name__ == "__main__":
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s01", "s02", "s03", "s04", "s05"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
@@ -636,11 +639,14 @@ if __name__ == "__main__":
     # dir_output_path_40 = os.path.join(dir_output_path, "STRATEGY_V2_POST_L4_LAST_40")
     # exec_emb_and_pca(dir_input_path, dir_output_path_40, STRATEGY_V2_POST_L4_LAST, modality, filter_in_name=filter_in_name)
 
-    dir_output_path_i1 = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_I1")
-    exec_emb_and_pca(dir_input_path, dir_output_path_i1, STRATEGY_V2_LANG_NORM_I1, modality, filter_in_name=filter_in_name)
+    # dir_output_path_i1 = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_I1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_i1, STRATEGY_V2_LANG_NORM_I1, modality, filter_in_name=filter_in_name)
 
-    dir_output_path_i2 = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_I2")
-    exec_emb_and_pca(dir_input_path, dir_output_path_i2, STRATEGY_V2_LANG_NORM_I2, modality, filter_in_name=filter_in_name)
+    # dir_output_path_i2 = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_I2")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_i2, STRATEGY_V2_LANG_NORM_I2, modality, filter_in_name=filter_in_name)
+
+    dir_output_path_pre_last = os.path.join(dir_output_path, "STRATEGY_V2_PRE_LAST")
+    exec_emb_and_pca(dir_input_path, dir_output_path_pre_last, STRATEGY_V2_PRE_LAST, modality, filter_in_name=filter_in_name)
 
     # # # # STRATEGY_LANG_NORM_3
     # dir_output_path = os.path.join(out_dir,  "STRATEGY_LANG_NORM_3")
