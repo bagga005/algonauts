@@ -9,7 +9,26 @@ fi
 
 # Get the first argument as the EMBEDDINGS_PATH
 STRATEGY_FOLDER="$1"
-EMBEDDINGS_COMBINED_PATH="/workspace/algo_data/combined_embeddings3"
+
+#set embeddings folder
+EMBEDDINGS_COMBINED_FOLDER="combined_embeddings3"
+
+# Loop through the rest of the arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v1)
+      EMBEDDINGS_COMBINED_FOLDER="embeddings_combined"
+      echo "Using embeddings folder: $EMBEDDINGS_COMBINED_FOLDER for v1"
+      shift
+      ;;
+    *)
+      # Unknown option
+      shift
+      ;;
+  esac
+done
+
+EMBEDDINGS_COMBINED_PATH="/workspace/algo_data/$EMBEDDINGS_COMBINED_FOLDER"
 DESTINATION_PATH="/workspace/stimulus_features/pca/friends_movie10/visual/features_train.npy"
 
 

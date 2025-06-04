@@ -549,9 +549,8 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
     combined_tensor = torch.stack(tensor_list)
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True):
     os.makedirs(dir_output_path, exist_ok=True)	
-    add_layer_to_path = True
     if not pca_only:
         print(f"**Starting save_combined_vlm_features for {strategy}")
         save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite, add_layer_to_path)
@@ -570,20 +569,21 @@ if __name__ == "__main__":
     out_dir = utils.get_output_dir()
     embeddings_dir = utils.get_embeddings_dir()
     dir_input_path = os.path.join(out_dir, embeddings_dir)
+    DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s03", "s06"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s03", "s06", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
 
-    # STRATEGY_LANG_NORM_1
-    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
+    # STRATEGY_LANG_NORM_1 v1 - OOOOLLLLDDD
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1_v1")
+    exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
     #STRATEGY_V2_LANG_NORM_1
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name)
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
@@ -594,8 +594,8 @@ if __name__ == "__main__":
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_PRE, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality, filter_in_name=filter_in_name)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_POST")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_AVG_POST, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_FIRST")
