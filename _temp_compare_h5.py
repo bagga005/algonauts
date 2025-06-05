@@ -1,7 +1,13 @@
 import h5py
 import numpy as np
+import gzip
+import pickle
 from utils import get_shortstim_name
 from glob import glob
+import utils
+import os
+import torch
+
 def compare_h5_datasets(file1_path, file2_path, group_name1, group_name2, dataset_name, rtol=1e-5, atol=1e-8, max_diff_to_show=10):
     """
     Compare datasets from two HDF5 files and return correlation coefficient.
@@ -235,6 +241,46 @@ def compare_npy_values(file1_path, file2_path):
     except Exception as e:
         print(f"Error comparing files: {str(e)}")
 
+def return_r_score(tensor1, tensor2, verbose=False):
+    mask = ~(np.isnan(tensor1) | np.isnan(tensor2))
+    nan_count = np.sum(~mask)
+    if verbose:
+        print('nan_count', nan_count)
+    flat1 = tensor1[mask].flatten()
+    flat2 = tensor2[mask].flatten()
+    r_score = np.corrcoef(flat1, flat2)[0, 1]
+    return r_score, nan_count
+
+def get_tensor_from_file(file_path, verbose=False, take_first_n=True):
+    with gzip.open(file_path, 'rb') as f:
+        loaded_tensor = pickle.load(f)
+        if loaded_tensor.dtype == torch.bfloat16:
+            print(f'{file_path} is bfloat16, converting to float')
+            loaded_tensor = loaded_tensor.float()
+        if loaded_tensor.shape[0] > 7:
+            if take_first_n:
+                loaded_tensor = loaded_tensor[:7,:]
+            else:
+                loaded_tensor = loaded_tensor[-7:,:]
+        if verbose:
+            print('loaded_tensor.shape', loaded_tensor.shape)
+    return loaded_tensor.numpy()
+
+def compare_two_tensor_files(file1_path, file2_path, verbose=False, take_first_n=True):
+    loaded_tensor1 = get_tensor_from_file(file1_path, verbose)
+    loaded_tensor2 = get_tensor_from_file(file2_path, verbose)
+    max_size = min(loaded_tensor1.shape[0], loaded_tensor2.shape[0])
+    for i in range(max_size):
+        print('loaded_tensor1.shape', loaded_tensor1.shape, i)
+        print('loaded_tensor2.shape', loaded_tensor2.shape)
+        print('loaded_tensor1[i].shape', loaded_tensor1[i].shape)
+        print('loaded_tensor2[i].shape', loaded_tensor2[i].shape)
+        r_score, nan_count = return_r_score(loaded_tensor1[i], loaded_tensor2[i], verbose)
+        print('r_score', r_score)
+    r_score, nan_count = return_r_score(loaded_tensor1, loaded_tensor2, verbose)
+    print('r_score full', r_score)
+    print('nan_count', nan_count)
+
 
 if __name__ == "__main__":
         # Example usage
@@ -250,7 +296,7 @@ if __name__ == "__main__":
     group1 = "friends_s01e24a"
     group2 = "friends_s01e24a"
     dataset = "visual" #"language_pooler_output"
-    compare_h5_datasets(file1, file2, group1, group2, dataset)
+    #compare_h5_datasets(file1, file2, group1, group2, dataset)
     # are_equal, r_score = compare_h5_datasets(file1, file2, group1, group2, dataset)
     # print('r_score', r_score)
     # print(f"Are datasets equal? {are_equal}, R-score: {r_score:.6f}")
@@ -260,3 +306,12 @@ if __name__ == "__main__":
     # file1_path = "/mnt/c/temp/friends_s01e01a.npy"
     # file2_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.npy"
     #compare_npy_shapes(file1, file2)
+    folder1 = "embeddings3"
+    folder2 = "embeddings4"
+    layer = "language_model_model_norm"
+    out_dir = utils.get_output_dir()
+    file_name1 = "friends_s06e01b_tr_108_language_model_model_norm.pt.gz"
+    file_name2 = "friends_s05e01a_tr_11_language_model_model_norm.pt.gz"
+    file1 = os.path.join(out_dir, folder1, layer,  file_name2)
+    file2 = os.path.join(out_dir, folder2, layer, file_name2)
+    compare_two_tensor_files(file1, file2, verbose=True)
