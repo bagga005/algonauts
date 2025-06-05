@@ -305,12 +305,29 @@ def create_layer_hooks(model, layers=None):
             hooks.append(getattr(model, layer_name).register_forward_hook(hook_fn))
     
     return hooks, layer_outputs, hook_storage
+
+# # Define special tokens
+IMG_START_TOKEN = '<img>'
+IMG_END_TOKEN = '</img>'
+IMG_CONTEXT_TOKEN = '<IMG_CONTEXT>'
+def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
+    template = get_conv_template(model.template)
+    template.append_message(template.roles[0], text_prompt)
+    template.append_message(template.roles[1], None)
+    query = template.get_prompt()
+
+    model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
+    input_ids = model_inputs['input_ids'].to(model.device)
+
+    img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
+    if model.img_context_token_id is None:
+        model.img_context_token_id = img_context_token_id
+
+    return input_ids
+
 def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
 
-    # # Define special tokens
-    IMG_START_TOKEN = '<img>'
-    IMG_END_TOKEN = '</img>'
-    IMG_CONTEXT_TOKEN = '<IMG_CONTEXT>'
+
     #phase 1
     model_inputs = tokenizer(text_prompt, return_tensors='pt')
     input_ids = model_inputs['input_ids'].to(model.device)
@@ -461,7 +478,7 @@ def generate_attention_mask_batch(input_ids_list, pad_token_id, device, max_leng
     
     return torch.stack(batch_input_ids), torch.stack(batch_attention_mask)
 
-def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_values, list_text_prompt, layer_outputs, counter):
+def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_values, list_text_prompt, layer_outputs, counter, skip_pix=False):
     """
     Get embeddings using existing hooks
     
@@ -483,27 +500,31 @@ def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_valu
     final_image_flags = None
     final_pixel_values = None
     prompt_markers_list = []
-    for pixel_values, text_prompt in zip(list_pixel_values, list_text_prompt):
-        input_ids, image_flags, prompt_markers = get_params_for_forward(model, tokenizer, pixel_values, text_prompt, counter)
-        final_input_ids.append(input_ids.squeeze(0))
-        prompt_markers_list.append(prompt_markers)
-        if final_image_flags is None:
-            final_image_flags = image_flags
-        else:
-            final_image_flags = torch.cat((final_image_flags, image_flags), dim=0)
-        if final_pixel_values is None:
-            final_pixel_values = pixel_values
-        else:
-            final_pixel_values = torch.cat((final_pixel_values, pixel_values), dim=0)
-        
-    
-    #print('final_input_ids.shape', final_input_ids[0].shape)
-    final_input_ids, final_attention_mask = generate_attention_mask_batch(final_input_ids, tokenizer.pad_token_id, model.device)
-    final_input_ids = final_input_ids[0].unsqueeze(0)
-    assert len(prompt_markers_list) == len(list_text_prompt)
-    #print('final_input_ids.shape', final_input_ids.shape)
+    if not skip_pix:
+        for pixel_values, text_prompt in zip(list_pixel_values, list_text_prompt):
+            input_ids, image_flags, prompt_markers = get_params_for_forward(model, tokenizer, pixel_values, text_prompt, counter)
+            final_input_ids.append(input_ids.squeeze(0))
+            prompt_markers_list.append(prompt_markers)
+            if final_image_flags is None:
+                final_image_flags = image_flags
+            else:
+                final_image_flags = torch.cat((final_image_flags, image_flags), dim=0)
+            if final_pixel_values is None:
+                final_pixel_values = pixel_values
+            else:
+                final_pixel_values = torch.cat((final_pixel_values, pixel_values), dim=0)
 
-    
+
+        #print('final_input_ids.shape', final_input_ids[0].shape)
+        final_input_ids, final_attention_mask = generate_attention_mask_batch(final_input_ids, tokenizer.pad_token_id, model.device)
+        final_input_ids = final_input_ids[0].unsqueeze(0)
+        assert len(prompt_markers_list) == len(list_text_prompt)
+        #print('final_input_ids.shape', final_input_ids.shape)
+    else:
+        final_pixel_values = None
+        final_image_flags = None
+        final_input_ids = get_params_for_forward_no_pix(model, tokenizer, list_text_prompt[0], counter)
+        prompt_markers_list.append(True)
 
     with torch.no_grad():
         model(
@@ -514,8 +535,6 @@ def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_valu
             output_hidden_states  = False,
             #attention_mask=final_attention_mask
         )
-    return dict(layer_outputs), prompt_markers_list
-
     return dict(layer_outputs), prompt_markers_list
 
 
@@ -597,7 +616,7 @@ def process_all_files_for_embedding_extraction():
     # Collecting the paths to all the movie stimuli
     stimuli_prefix = utils.get_stimuli_prefix()
     #if stimuli_prefix is None
-    file_in_filter = 'friends_s06e05b'
+    file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/{stimuli_prefix}/*.mkv")
 
@@ -641,17 +660,17 @@ def process_all_files_for_embedding_extraction():
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     custom_layers = [
-                'vision_model.encoder.layers.2',
-                'vision_model.encoder.layers.4',
-                'vision_model.encoder.layers.12',
-                'vision_model.encoder.layers.22',
-                'vision_model.encoder.layers.23',
-                'vision_model',                     # Vision encoder
-                'language_model.model.layers.4',    # First layer
-                'language_model.model.layers.12',    # First layer
-                'language_model.model.layers.20',    # First layer
-                'language_model.model.layers.21',    # Middle layer
-                'language_model.model.layers.22',   # Later layer
+                # 'vision_model.encoder.layers.2',
+                # 'vision_model.encoder.layers.4',
+                # 'vision_model.encoder.layers.12',
+                # 'vision_model.encoder.layers.22',
+                # 'vision_model.encoder.layers.23',
+                # 'vision_model',                     # Vision encoder
+                # 'language_model.model.layers.4',    # First layer
+                # 'language_model.model.layers.12',    # First layer
+                # 'language_model.model.layers.20',    # First layer
+                # 'language_model.model.layers.21',    # Middle layer
+                # 'language_model.model.layers.22',   # Later layer
                 'language_model.model.layers.23',   # Later layer
                 'language_model.model.norm'         # Final normalization
             ]
@@ -744,7 +763,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     # for batch_indices in batch_generator:
     #     print(f"Processing batch {batch_indices}")
         # Process each batch here
-    use_progress_bar = True
+    skip_pix = True
     with tqdm(total=len_trans_dataset, desc="Extracting ..", disable= not use_progress_bar) as pbar:
         for batch_indices in create_batches(len_trans_dataset, batch_size):
             #print(f"Processing batch {batch_indices}")
@@ -753,8 +772,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
             question_for_embeddings_list = []
             embeddings_prefix_list = []
             for counter in batch_indices:
-                if counter > 100:
-                    break
+                # if counter > 100:
+                #     break
                 embeddings_prefix = f"{episode_id}_tr_{counter}"
                 meta_file = os.path.join(embeddings_dir, 'metadata', f"{embeddings_prefix}_metadata.json")
                 if not os.path.exists(meta_file):
@@ -762,16 +781,28 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     #log_to_file(counter,'chunk_path', chunk_path)
                     # Load the frames from the chunked movie clip
                     trans_index = counter
-                    pixel_values, num_patches_list = utils_video.load_video(chunk_path, num_segments=8, max_num=1)
+                    if skip_pix:
+                        pixel_values = torch.randn(8, 3, 448, 448, dtype=torch.bfloat16, device=model.device)
+                    else:
+                        pixel_values, num_patches_list = utils_video.load_video(chunk_path, num_segments=8, max_num=1)
+                        
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
                     textData = text_dataset[trans_index]
 
                     pre_text = textData['fancy_pre']
                     post_text = textData['fancy_post']
-                    if pre_text:
-                        video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+
+                    if skip_pix:
+                        if pre_text:
+                            video_prefix = pre_text
+                        else:
+                            video_prefix = ''
                     else:
-                        video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+                        if pre_text:
+                            video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+                        else:
+                            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
+                    
                     
                     if post_text:
                         question_for_embeddings = video_prefix + "\n" + post_text
@@ -790,7 +821,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     pixel_values_list, 
                     question_for_embeddings_list,
                     layer_outputs,
-                    counter
+                    counter,
+                    skip_pix=skip_pix
                 )
 
                 
