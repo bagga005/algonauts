@@ -540,8 +540,9 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_VISION_V2, i=1)
             else:
                 raise ValueError(f"Invalid strategy: {strategy}")
-            if ten1.dtype == torch.bfloat16:
-                ten1 = ten1.to(torch.float32)
+            assert ten1.dtype == torch.float32, f"ten1.dtype {ten1.dtype} != torch.float32"
+            # if ten1.dtype == torch.bfloat16:
+            #     ten1 = ten1.to(torch.float32)
             visual_features = ten1.cpu().numpy()
             
             with h5py.File(save_file, 'w') as f:
@@ -564,8 +565,12 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
      #print('file_path', file_path)
         with gzip.open(file_path, 'rb') as f:
             loaded_tensor = pickle.load(f)
+        #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
+        if loaded_tensor.dtype == torch.bfloat16:
+            loaded_tensor = loaded_tensor.to(torch.float32)
+        assert loaded_tensor.dtype == torch.float32, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.float32"
         extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
-        #print('extracted_tensor.shape', extracted_tensor.shape)
+        #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
         tensor_list.append(extracted_tensor)
         #print('tensor_list.shape', len(tensor_list))
     combined_tensor = torch.stack(tensor_list)
@@ -594,7 +599,7 @@ if __name__ == "__main__":
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s01", "s02", "s03", "s04"] #["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02"]#["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
@@ -604,8 +609,8 @@ if __name__ == "__main__":
     # exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
     #STRATEGY_V2_LANG_NORM_1
-    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
@@ -645,8 +650,8 @@ if __name__ == "__main__":
     # dir_output_path_i2 = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_I2")
     # exec_emb_and_pca(dir_input_path, dir_output_path_i2, STRATEGY_V2_LANG_NORM_I2, modality, filter_in_name=filter_in_name)
 
-    dir_output_path_pre_last = os.path.join(dir_output_path, "STRATEGY_V2_PRE_LAST")
-    exec_emb_and_pca(dir_input_path, dir_output_path_pre_last, STRATEGY_V2_PRE_LAST, modality, filter_in_name=filter_in_name)
+    # dir_output_path_pre_last = os.path.join(dir_output_path, "STRATEGY_V2_PRE_LAST")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_pre_last, STRATEGY_V2_PRE_LAST, modality, filter_in_name=filter_in_name)
 
     # # # # STRATEGY_LANG_NORM_3
     # dir_output_path = os.path.join(out_dir,  "STRATEGY_LANG_NORM_3")
