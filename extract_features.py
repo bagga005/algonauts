@@ -367,7 +367,8 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
             ten = loaded_tensor[id2:id3,:].flatten()
             #print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_I_J:
-        ten = loaded_tensor[i:j+1,:].flatten()
+        ten = loaded_tensor[i:j+1,:]
+        ten = ten.flatten()
     elif combine_strategy == COMBINE_STRATEGY_INDEXS:
         ten = loaded_tensor[indexes,:].flatten()
     elif combine_strategy == COMBINE_STRATEGY_I_J_AVG:
@@ -403,16 +404,20 @@ STRATEGY_LANG_NORM_10 = 8
 STRATEGY_LANG_NORM_7_AVG = 9
 STRATEGY_V2_LANG_NORM_1 = 100
 STRATEGY_V2_LANG_NORM_3 = 101
-STRATEGY_V2_LANG_NORM_7 = 102
-STRATEGY_V2_LANG_NORM_AVG_PRE = 103
-STRATEGY_V2_LANG_NORM_AVG_POST = 104
-STRATEGY_V2_LANG_NORM_FIRST = 105
-STRATEGY_V2_POST_IMG = 106
-STRATEGY_V2_POST_LAST = 107
-STRATEGY_V2_POST_L4_LAST = 108
-STRATEGY_V2_LANG_NORM_I1 = 109
-STRATEGY_V2_LANG_NORM_I2 = 110
-STRATEGY_V2_PRE_LAST = 111
+STRATEGY_V2_LANG_NORM_5 = 102
+STRATEGY_V2_LANG_NORM_7 = 103
+STRATEGY_V2_LANG_NORM_AVG_PRE = 104
+STRATEGY_V2_LANG_NORM_AVG_POST = 105
+STRATEGY_V2_LANG_NORM_FIRST = 106
+STRATEGY_V2_POST_IMG = 107  
+STRATEGY_V2_POST_LAST = 108
+STRATEGY_V2_POST_L4_LAST = 109
+STRATEGY_V2_LANG_NORM_I1 = 110
+STRATEGY_V2_LANG_NORM_I2 = 111
+STRATEGY_V2_PRE_LAST = 112
+STRATEGY_V2_PRE_LAST5 = 113
+STRATEGY_V2_PRE_LAST5_AVG = 114
+
 #Vision 
 STRATEGY_VISION_NORM = 10
 STRATEGY_VISION_23= 11
@@ -504,15 +509,22 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
             elif strategy == STRATEGY_V2_LANG_NORM_1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=6)
             elif strategy == STRATEGY_V2_LANG_NORM_3:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=2)
+            elif strategy == STRATEGY_V2_LANG_NORM_5:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=4)
             elif strategy == STRATEGY_V2_LANG_NORM_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J, i=0,j=6)
+                #print('ten1.shape', ten1.shape)
             elif strategy == STRATEGY_V2_LANG_NORM_I1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=1)
             elif strategy == STRATEGY_V2_LANG_NORM_I2:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=2)
             elif strategy == STRATEGY_V2_PRE_LAST:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=15)
+            elif strategy == STRATEGY_V2_PRE_LAST5:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J, i=19,j=23)
+            elif strategy == STRATEGY_V2_PRE_LAST5_AVG:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J_AVG, i=19,j=23)
             elif strategy == STRATEGY_V2_LANG_NORM_AVG_PRE:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I, i=8)
             elif strategy == STRATEGY_V2_LANG_NORM_AVG_POST:
@@ -588,18 +600,18 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
         else:
             do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
             do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
-            do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
-            do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
 
 
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
-    embeddings_dir = utils.get_embeddings_dir()
+    embeddings_dir = "embeddings3" #utils.get_embeddings_dir()
     dir_input_path = os.path.join(out_dir, embeddings_dir)
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
-    filter_in_name = ["s01", "s02"]#["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04", "s05"]#["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
@@ -609,12 +621,30 @@ if __name__ == "__main__":
     # exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
     #STRATEGY_V2_LANG_NORM_1
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
+
+    #STRATEGY_V2_LANG_NORM_3
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_3")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_3, modality, filter_in_name=filter_in_name, overwrite=True)
+
+    # #STRATEGY_V2_LANG_NORM_5
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_5")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_5, modality, filter_in_name=filter_in_name)
+
+    #STRATEGY_V2_LANG_NORM_1
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_3")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_3, modality, filter_in_name=filter_in_name, overwrite=True)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_LANG_NORM_7, modality, filter_in_name=filter_in_name)
+
+    # dir_output_path_l5_avg = os.path.join(dir_output_path, "STRATEGY_V2_PRE_LAST5_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_l5_avg, STRATEGY_V2_PRE_LAST5_AVG, modality, filter_in_name=filter_in_name)
+
+    # dir_output_path_l5 = os.path.join(dir_output_path, "STRATEGY_V2_PRE_LAST5")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_l5, STRATEGY_V2_PRE_LAST5, modality, filter_in_name=filter_in_name)
 
     #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_AVG_PRE")
