@@ -322,17 +322,18 @@ class InternVLChatModel(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             **generation_config
         )
-        response = tokenizer.batch_decode(generation_output, skip_special_tokens=True)[0]
-        response = response.split(template.sep.strip())[0].strip()
-        history.append((question, response))
-        if return_history:
-            return response, history
-        else:
-            query_to_print = query.replace(IMG_CONTEXT_TOKEN, '')
-            query_to_print = query_to_print.replace(f'{IMG_START_TOKEN}{IMG_END_TOKEN}', '<image>')
-            if verbose:
-                print(query_to_print, response)
-            return response
+        return generation_output
+        # response = tokenizer.batch_decode(generation_output, skip_special_tokens=True)[0]
+        # response = response.split(template.sep.strip())[0].strip()
+        # history.append((question, response))
+        # if return_history:
+        #     return response, history
+        # else:
+        #     query_to_print = query.replace(IMG_CONTEXT_TOKEN, '')
+        #     query_to_print = query_to_print.replace(f'{IMG_START_TOKEN}{IMG_END_TOKEN}', '<image>')
+        #     if verbose:
+        #         print(query_to_print, response)
+        #     return response
 
     @torch.no_grad()
     def generate(
