@@ -327,7 +327,7 @@ def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
     model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
     input_ids = model_inputs['input_ids'].to(model.device)
     offsets = model_inputs.offset_mapping
-    utils.print_input_tokens_with_offsets(query, offsets, input_ids)
+    #utils.print_input_tokens_with_offsets(query, offsets, input_ids)
 
     img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
 
@@ -828,7 +828,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     else:
                         question_for_embeddings = video_prefix + "\n"
 
-                    utils.log_to_file(counter,':', question_for_embeddings)
+                    #utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
