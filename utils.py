@@ -41,6 +41,12 @@ def get_output_dir():
 def get_mvl_model():
     return os.getenv("MVL_MODEL")
 
+def get_mvl_skip_pix():
+    return str_to_bool(os.getenv("MVL_SKIP_PIX"))
+
+def get_mvl_simple_extraction():
+    return str_to_bool(os.getenv("MVL_SIMPLE_EXTRACTION"))
+
 def get_mvl_batch_size():
     return int(os.getenv("MVL_BATCH_SIZE"))
 

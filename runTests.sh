@@ -17,7 +17,7 @@ EMBEDDINGS_COMBINED_FOLDER="combined_embeddings3"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -v1)
-      EMBEDDINGS_COMBINED_FOLDER="embeddings_combined"
+      EMBEDDINGS_COMBINED_FOLDER="combined_embeddings5"
       echo "Using embeddings folder: $EMBEDDINGS_COMBINED_FOLDER for v1"
       shift
       ;;

@@ -15,13 +15,13 @@ def run_trainings():
     # print(npn)
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
-    hrf_delay = 2  #@param {type:"slider", min:0, max:10, step:1}
-    stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
+    hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
+    stimulus_window = 2  #@param {type:"slider", min:1, max:20, step:1}
     subject = 1
     include_viewing_sessions = False
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
-    #movies_train = ["movie10-wolf"] # @param {allow-input: true}
-    movies_val = ["friends-s05"] # @param {allow-input: true}
+    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s05"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s03", "friends-s06"] # @param {allow-input: true}
+    movies_val = ["friends-s04"] # @param {allow-input: true}
     training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
     specific_modalities = ["visual"]

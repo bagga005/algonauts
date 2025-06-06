@@ -31,7 +31,7 @@ class SentenceDataset(Dataset):
         return text
 
 class SentenceDataset_v2(Dataset):
-    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000):
+    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False):
         self.scenes_and_dialogues = scene_and_dialogues
         self.dialogue_list = get_dialogue_list(scene_and_dialogues)
         self.transcript_data = transcript_data
@@ -39,6 +39,8 @@ class SentenceDataset_v2(Dataset):
         self.tr_start = tr_start
         self.length = length
         self.n_used_words = n_used_words
+        self.always_post_speaker = always_post_speaker
+        self.exclude_post_dialogue_separator = exclude_post_dialogue_separator
 
     def __len__(self):
         return self.length
@@ -163,7 +165,7 @@ class SentenceDataset_v2(Dataset):
         for dialogue in list_of_dialogues:
             if first_dialogue_in_row is None:
                 first_dialogue_in_row = dialogue
-            forcePostSpeaker = normal_post is not None
+            forcePostSpeaker = normal_post is not None or self.always_post_speaker
             resp = self._get_text_from_dialogue_for_row(dialogue, row_idx, forcePostSpeaker = forcePostSpeaker)
             if resp['fancy_post']:
                 if fancy_post is not None:
@@ -194,16 +196,20 @@ class SentenceDataset_v2(Dataset):
             fancy_post = words_tr
 
 
-        #set post headers        
-        if not fancy_post:
-            fancy_post = "|No Dialogue|"
-        else:
-            #print(f"fancy_post: {fancy_post}")
-            fancy_post = "| Dialogue |" + "\n" + fancy_post
-        if not normal_post:
-            normal_post = "|No Dialogue|"
-        else:
-            normal_post = "| Dialogue |" + "\n" + normal_post
+        #set post headers      
+        if not self.exclude_post_dialogue_separator:
+            if not fancy_post:
+                fancy_post = "|No Dialogue|"
+            else:
+                #print(f"fancy_post: {fancy_post}")
+                fancy_post = "| Dialogue |" + "\n" + fancy_post
+            if not normal_post:
+                normal_post = "|No Dialogue|"
+            else:
+                normal_post = "| Dialogue |" + "\n" + normal_post
+        # else:
+        #     if not fancy_post:
+        #         fancy_post = "+"
         
         
 

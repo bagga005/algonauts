@@ -105,41 +105,45 @@ class InternVLChatModel(PreTrainedModel):
         assert self.img_context_token_id is not None
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        image_flags = image_flags.squeeze(-1)
         input_embeds = self.language_model.get_input_embeddings()(input_ids).clone()
-        #print("input_embeds", input_embeds.shape)
-        vit_embeds = self.extract_feature(pixel_values)
-        #print("vit_embeds", vit_embeds.shape)
-        vit_embeds = vit_embeds[image_flags == 1]
-        #rint("vit_embeds", vit_embeds.shape)
-        vit_batch_size = pixel_values.shape[0]
-        #print("vit_batch_size", vit_batch_size)
-        B, N, C = input_embeds.shape
-        #print("B, N, C", B, N, C)   
-        input_embeds = input_embeds.reshape(B * N, C)
-        #print("input_embeds post reshape", input_embeds.shape)
-        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
-            print(f'dynamic ViT batch size: {vit_batch_size}, images per sample: {vit_batch_size / B}, dynamic token length: {N}')
-        #print("input_ids pre reshape", input_ids.shape) 
-        input_ids = input_ids.reshape(B * N)
-        #print("input_ids post reshape", input_ids.shape)
-        selected = (input_ids == self.img_context_token_id)
-        #print("selected", selected)
-        assert selected.sum() == pixel_values.shape[0] * self.num_image_token, "selected.sum() != pixel_values.shape[0] * self.num_image_token"
-        vit_embeds_reshaped = vit_embeds.reshape(-1, C)
-        #print("vit_embeds_reshaped", vit_embeds_reshaped.shape)
-        # try:
-        orig_input_embeds = input_embeds[selected].clone()
-        input_embeds[selected] = input_embeds[selected] * 0.0 + vit_embeds_reshaped
-        #assert utils.compare_tensors(orig_input_embeds, input_embeds[selected]) == selected.sum(), "orig_input_embeds != input_embeds[selected]"
-        # except Exception as e:
-        #     vit_embeds = vit_embeds.reshape(-1, C)
-        #     print(f'warning: {e}, input_embeds[selected].shape={input_embeds[selected].shape}, '
-        #           f'vit_embeds.shape={vit_embeds.shape}')
-        #     n_token = min(selected.sum(), vit_embeds.size(0))
-        #     input_embeds[selected][:n_token] = input_embeds[selected][:n_token] * 0.0 + vit_embeds[:n_token]
+        #print("input_embeds pre pixel stuff", input_embeds.shape)
+        if pixel_values is not None:
+            image_flags = image_flags.squeeze(-1)
+            vit_embeds = self.extract_feature(pixel_values)
+            #print("vit_embeds", vit_embeds.shape)
+            vit_embeds = vit_embeds[image_flags == 1]
+            #rint("vit_embeds", vit_embeds.shape)
+            vit_batch_size = pixel_values.shape[0]
+            #print("vit_batch_size", vit_batch_size)
+            B, N, C = input_embeds.shape
+            #print("B, N, C", B, N, C)   
+            input_embeds = input_embeds.reshape(B * N, C)
+            #print("input_embeds post reshape", input_embeds.shape)
+            if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
+                print(f'dynamic ViT batch size: {vit_batch_size}, images per sample: {vit_batch_size / B}, dynamic token length: {N}')
+            #print("input_ids pre reshape", input_ids.shape) 
+            input_ids = input_ids.reshape(B * N)
+            #print("input_ids post reshape", input_ids.shape)
+            selected = (input_ids == self.img_context_token_id)
+            #print("selected", selected)
+            assert selected.sum() == pixel_values.shape[0] * self.num_image_token, "selected.sum() != pixel_values.shape[0] * self.num_image_token"
+            vit_embeds_reshaped = vit_embeds.reshape(-1, C)
+            #print("vit_embeds_reshaped", vit_embeds_reshaped.shape)
+            # try:
+            orig_input_embeds = input_embeds[selected].clone()
+            input_embeds[selected] = input_embeds[selected] * 0.0 + vit_embeds_reshaped
+            #assert utils.compare_tensors(orig_input_embeds, input_embeds[selected]) == selected.sum(), "orig_input_embeds != input_embeds[selected]"
+            # except Exception as e:
+            #     vit_embeds = vit_embeds.reshape(-1, C)
+            #     print(f'warning: {e}, input_embeds[selected].shape={input_embeds[selected].shape}, '
+            #           f'vit_embeds.shape={vit_embeds.shape}')
+            #     n_token = min(selected.sum(), vit_embeds.size(0))
+            #     input_embeds[selected][:n_token] = input_embeds[selected][:n_token] * 0.0 + vit_embeds[:n_token]
 
-        input_embeds = input_embeds.reshape(B, N, C)
+            input_embeds = input_embeds.reshape(B, N, C)
+            #print("input_embeds post pixel stuff", input_embeds.shape)
+        #else:
+            #print("no pixel values")
 
         outputs = self.language_model(
             inputs_embeds=input_embeds,
