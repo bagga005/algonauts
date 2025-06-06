@@ -315,15 +315,22 @@ IMG_START_TOKEN = '<img>'
 IMG_END_TOKEN = '</img>'
 IMG_CONTEXT_TOKEN = '<IMG_CONTEXT>'
 def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
-    template = get_conv_template(model.template)
-    template.append_message(template.roles[0], text_prompt)
-    template.append_message(template.roles[1], None)
-    query = template.get_prompt()
+    skip_template = True
+    if not skip_template:
+        template = get_conv_template(model.template)
+        template.append_message(template.roles[0], text_prompt)
+        template.append_message(template.roles[1], None)
+        query = template.get_prompt()
+    else:
+        query = text_prompt
 
     model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
     input_ids = model_inputs['input_ids'].to(model.device)
+    offsets = model_inputs.offset_mapping
+    utils.print_input_tokens_with_offsets(query, offsets, input_ids)
 
     img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
+
     if model.img_context_token_id is None:
         model.img_context_token_id = img_context_token_id
 
@@ -814,11 +821,14 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     
                     
                     if post_text:
-                        question_for_embeddings = video_prefix + "\n" + post_text
+                        if video_prefix:
+                            question_for_embeddings = video_prefix + "\n" + post_text
+                        else:
+                            question_for_embeddings = post_text
                     else:
                         question_for_embeddings = video_prefix + "\n"
 
-                    #utils.log_to_file(counter,':', question_for_embeddings)
+                    utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
@@ -852,7 +862,7 @@ def get_transcript_dataSet(stim_id):
 
     dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
-    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=True, exclude_post_dialogue_separator=True)
+    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=False, exclude_post_dialogue_separator=False)
     return trans_dataset
 
 def wrap_text(text, max_length):
