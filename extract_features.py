@@ -341,9 +341,24 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
     if combine_strategy == COMBINE_STRATEGY_LAST:
         ten = loaded_tensor[-1,:]
     elif combine_strategy == COMBINE_STRATEGY_LAST3:
-        ten = torch.cat((loaded_tensor[-1,:], loaded_tensor[-2,:], loaded_tensor[-3,:]), dim=0)
+        if loaded_tensor.shape[0] < 3:
+            gap = 3 - loaded_tensor.shape[0]
+            last_dim = loaded_tensor[0,:]
+            gap_tensor = last_dim.repeat(gap, 1)
+            ten_new = torch.cat((gap_tensor, loaded_tensor), dim=0)
+        else:
+            ten_new = loaded_tensor
+        ten = ten_new[-3:, :].flatten()
     elif combine_strategy == COMBINE_STRATEGY_LAST7:
-        ten = torch.cat((loaded_tensor[-1,:], loaded_tensor[-2,:], loaded_tensor[-3,:], loaded_tensor[-4,:], loaded_tensor[-5,:], loaded_tensor[-6,:], loaded_tensor[-7,:]), dim=0)
+        #if input is short, you may not have 7 tokens. Copy the last token to make up for the missing dimensions
+        if loaded_tensor.shape[0] < 7:
+            gap = 7 - loaded_tensor.shape[0]
+            last_dim = loaded_tensor[0,:]
+            gap_tensor = last_dim.repeat(gap, 1)
+            ten_new = torch.cat((gap_tensor, loaded_tensor), dim=0)
+        else:
+            ten_new = loaded_tensor
+        ten = ten_new[-7:, :].flatten()
     elif combine_strategy == COMBINE_STRATEGY_LAST10:
         ten = torch.cat((loaded_tensor[-1,:], loaded_tensor[-2,:], loaded_tensor[-3,:], loaded_tensor[-4,:], loaded_tensor[-5,:], loaded_tensor[-6,:], loaded_tensor[-7,:], loaded_tensor[-8,:], loaded_tensor[-9,:], loaded_tensor[-10,:]), dim=0)
         # print('ten.shape', ten.shape)
@@ -580,7 +595,6 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
     #print('dir_path', dir_path)
     for tr_i in range(tr_upper):
         file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
-     #print('file_path', file_path)
         with gzip.open(file_path, 'rb') as f:
             loaded_tensor = pickle.load(f)
         #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
@@ -605,7 +619,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
             do_pca(dir_output_path, dir_output_path + "/features_train-750.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=750)
         else:
             do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
-            do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
             # do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
             # do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
 
@@ -618,7 +632,8 @@ if __name__ == "__main__":
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
     # filter_in_name = ["s01", "s02", "s03", "s04", "s05"]#["s01", "s02", "s03", "s04", "s05", "s06"]
-    filter_in_name = ["s04", "s06", "s03"]
+    # filter_in_name = [ "s02","s03", "s04",  "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
 
@@ -627,21 +642,25 @@ if __name__ == "__main__":
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1_v1")
     # exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
-    #STRATEGY_V2_LANG_NORM_1
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_7")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_7, modality, filter_in_name=filter_in_name)
-
-    # #STRATEGY_V2_LANG_NORM_3
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name)
+    # # #STRATEGY_V2_LANG_NORM_3
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMGPLUS1")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMGPLUS1, modality, filter_in_name=filter_in_name)
 
     # # #STRATEGY_V2_LANG_NORM_5
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_3")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_3, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_3")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_3, modality, filter_in_name=filter_in_name)
+
+    # #STRATEGY_V2_LANG_NORM_1
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_7")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_7, modality, filter_in_name=filter_in_name)
+
+    # # #STRATEGY_V2_LANG_NORM_5
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_5")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_5, modality, filter_in_name=filter_in_name)
 
     #STRATEGY_V2_LANG_NORM_1
-    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_3")
-    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_3, modality, filter_in_name=filter_in_name, overwrite=True)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_LANG_NORM_1, modality, filter_in_name=filter_in_name)
 
     # #STRATEGY_V2_LANG_NORM_7
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_7")
@@ -673,8 +692,8 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMG8A")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMG8A, modality, filter_in_name=filter_in_name)
 
-    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_CLS")
-    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_CLS, modality, filter_in_name=filter_in_name)
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_CLS")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_CLS, modality, filter_in_name=filter_in_name)
 
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_AVG")
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_AVG, modality, filter_in_name=filter_in_name)
