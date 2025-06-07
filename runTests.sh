@@ -17,7 +17,7 @@ EMBEDDINGS_COMBINED_FOLDER="combined_embeddings3"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -v1)
-      EMBEDDINGS_COMBINED_FOLDER="combined_embeddings5"
+      EMBEDDINGS_COMBINED_FOLDER="combined_embeddings8"
       echo "Using embeddings folder: $EMBEDDINGS_COMBINED_FOLDER for v1"
       shift
       ;;
@@ -30,7 +30,6 @@ done
 
 EMBEDDINGS_COMBINED_PATH="/workspace/algo_data/$EMBEDDINGS_COMBINED_FOLDER"
 DESTINATION_PATH="/workspace/stimulus_features/pca/friends_movie10/visual/features_train.npy"
-
 
 cp "$EMBEDDINGS_COMBINED_PATH/$STRATEGY_FOLDER/features_train-250.npy" "$DESTINATION_PATH"
 echo "******Doing RUN FOR 250"

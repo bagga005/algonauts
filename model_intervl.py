@@ -187,6 +187,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 else:
                     #print('embedding.shape', embedding.shape)
                     embedding = embedding_last7
+                    #print('embedding.shape', embedding.shape)
                 assert embedding.dtype == torch.bfloat16, f"embedding.dtype {embedding.dtype} != torch.bfloat16"
             if 'vision' in layer_name:
                 img_start = i*8
@@ -324,7 +325,8 @@ def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
     else:
         query = text_prompt
 
-    model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
+    tokenizer.add_bos_token = True
+    model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True, add_special_tokens=True)
     input_ids = model_inputs['input_ids'].to(model.device)
     offsets = model_inputs.offset_mapping
     #utils.print_input_tokens_with_offsets(query, offsets, input_ids)
@@ -862,7 +864,7 @@ def get_transcript_dataSet(stim_id):
 
     dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
-    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=False, exclude_post_dialogue_separator=False)
+    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=500)
     return trans_dataset
 
 def wrap_text(text, max_length):
