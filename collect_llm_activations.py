@@ -7,6 +7,7 @@ import argparse
 from glob import glob
 
 import sys
+import utils
 print(sys.executable)
 
 import numpy as np
@@ -14,11 +15,11 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from torch.utils.data import DataLoader
-from brainannlib.stimuli_data_loading import SentenceDataset
+from SentenceDataset import SentenceDataset
 
 def setup_environment():
     """Set up environment variables and check CUDA availability."""
-    os.environ['HF_HOME'] = "/scratch-scc/users/robert.scholz2/cache/huggingface"
+    #os.environ['HF_HOME'] = "/scratch-scc/users/robert.scholz2/cache/huggingface"
     cuda_available = torch.cuda.is_available()
     import socket
     print("Hostname:", socket.gethostname())
@@ -114,9 +115,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    root_data_dir = os.environ.get("ALGONAUTS_ROOT_DIR", "./data")
+    root_data_dir = utils.get_root_data_dir()
     device=setup_environment()
-
+    print(device)
+    exit()
     model_name = args.checkpoint.split("/")[-1]
     param_dtype = "auto" if args.param_dtype=="auto" else getattr(torch, args.param_dtype);
     hf_token= "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"
