@@ -10,7 +10,7 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text
+from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text, SentenceDataset_v15, get_best_text
 import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
@@ -668,7 +668,7 @@ def process_all_files_for_embedding_extraction():
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
     img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
-    if model.img_context_token_id is None:
+    if model is not None and model.img_context_token_id is None:
         model.img_context_token_id = img_context_token_id
     if not simple_extraction:
         custom_layers = [
@@ -694,7 +694,7 @@ def process_all_files_for_embedding_extraction():
     # Set up hooks once before processing all files
     if utils.isMockMode():
         hooks, layer_outputs, hook_storage = None, None, None
-        use_progress_bar = False
+        use_progress_bar = True
     else:
         hooks, layer_outputs, hook_storage = create_layer_hooks(model, custom_layers)
         use_progress_bar = True
@@ -703,10 +703,10 @@ def process_all_files_for_embedding_extraction():
         # iterate across all the stimuli movie files
         iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)), disable= not use_progress_bar)
         for i, (stim_id, stim_path) in iterator:
-            print(f"Extracting visual features for {stim_id}", stim_path)
+            print(f"Extracting features for {stim_id}")
             if stim_id in exclude_list:
                 continue
-            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=False, n_used_words=1000)
+            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000)
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
@@ -766,6 +766,11 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
 
     len_trans_dataset = len(text_dataset)
     assert num_chunks -1 <= len_trans_dataset <= num_chunks, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
+
+    #experiement exact match
+    dataset15 = SentenceDataset_v15(episode_id, mode="n_used_words", n_used_words=n_used_words)
+    matched_num = 0
+    #end experiement exact match
     # if len_trans_dataset != num_chunks:
     #     print('len(trans_dataset) != num_chunks', len_trans_dataset, num_chunks)
     #assert len(trans_dataset) == len(start_times), f"len(dataset) = {len(trans_dataset)} != len(start_times) = {len(start_times)}"	
@@ -802,11 +807,14 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                         pixel_values, num_patches_list = utils_video.load_video(chunk_path, num_segments=8, max_num=1)
                         
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
-                    textData = text_dataset[trans_index]
+                    #experiement exact match
+                    #textData = text_dataset[trans_index]
+                    #question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix)
+                    question_for_embeddings, matched = get_best_text(dataset15, text_dataset, trans_index, skip_video_tokens=skip_pix, num_videos=8)
+                    matched_num += 1 if matched else 0
+                    #end experiement exact match
 
-                    question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix)
-
-                    #utils.log_to_file(counter,':', question_for_embeddings)
+                    #utils.log_to_file(counter,':', "matched:", matched, question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
