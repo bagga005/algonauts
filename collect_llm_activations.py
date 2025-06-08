@@ -161,7 +161,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             gc.collect()
         
         np.save(output_file, np.concatenate(embd_data, axis=1))
-        utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers, "shape": embd_data.shape})
+        utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers})
         print(f"Saved: {output_file}")
 
 if __name__ == "__main__":
