@@ -99,7 +99,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
         embd_data = []
         for k, (input_ids, attention_mask) in tqdm(enumerate(dataloader), total=len(dataloader)):
 
-            # if k > 10:
+            # if k > 0:
             #     advanced_txt = dataset2[k]
             #     ori_txt = dataset[k]
 
@@ -115,8 +115,11 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             #     if not npst: npst = ""
             #     if npre:
             #         full_advanced_txt = npre + ' '  +npst
+            #         dirty_full_advanced_txt = npre + ' '  +npst
             #     else:
             #         full_advanced_txt = npst
+            #         dirty_full_advanced_txt = npst
+            
             #     full_advanced_txt = re.sub(r'\.{3,}', ' ', full_advanced_txt)
             #     last_2_advanced_words = utils.get_last_x_words(full_advanced_txt, 2)
             #     words_list = last_2_advanced_words.split()
@@ -137,7 +140,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             #         utils.log_to_file(last_2_advanced_words,"orignal:",last_ori_word)
             #         utils.log_to_file(highest_score)
             #         utils.log_to_file(ori_txt)
-            #         utils.log_to_file(full_advanced_txt)
+            #         utils.log_to_file(dirty_full_advanced_txt)
             #         #utils.log_to_file(full_advanced_txt)
             #         #utils.log_to_file(pre + pst)
             #         utils.log_to_file("*"*200)
@@ -164,7 +167,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             torch.cuda.empty_cache()
             gc.collect()
         
-        if not utils.isMockMode():
+        if utils.isMockMode():
             continue
         np.save(output_file, np.concatenate(embd_data, axis=1))
         utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers})
