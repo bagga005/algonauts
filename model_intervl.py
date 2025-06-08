@@ -10,7 +10,7 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from SentenceDataset import SentenceDataset_v2
+from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet
 import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
@@ -850,22 +850,6 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 save_embeddings(extracted_features, prompt_markers_list, embeddings_dir, text=text_dataset[counter], 
                         list_prefix=embeddings_prefix_list, counter=counter)
             pbar.update(len(batch_indices)) if use_progress_bar else None
-def get_transcript_dataSet(stim_id):
-    root_data_dir = utils.get_data_root_dir()
-    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
-    tr_start = 0
-    tr_length =0
-    for tr_info in trans_info_list:
-        if tr_info['trans_id'] == stim_id:
-            tr_length = tr_info['len']
-            break
-        else:
-            tr_start += tr_info['len']
-
-    dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
-    dialogues = get_scene_dialogue(dialogue_file)
-    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=500)
-    return trans_dataset
 
 def wrap_text(text, max_length):
     words = text.split()
