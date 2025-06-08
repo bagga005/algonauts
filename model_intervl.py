@@ -10,7 +10,7 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet
+from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text
 import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
@@ -212,9 +212,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
             }
         
         metadata['text'] = text
-        # Save metadata
-        with open(os.path.join(save_dir, 'metadata',f"{prefix}_metadata.json" if prefix else "metadata.json"), 'w') as f:
-            json.dump(metadata, f, indent=2)
+        utils.save_embedding_metadata(prefix, metadata)
 
 def load_embeddings(save_dir, prefix="", use_numpy=False):
     """
@@ -330,11 +328,6 @@ def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
     input_ids = model_inputs['input_ids'].to(model.device)
     offsets = model_inputs.offset_mapping
     #utils.print_input_tokens_with_offsets(query, offsets, input_ids)
-
-    img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
-
-    if model.img_context_token_id is None:
-        model.img_context_token_id = img_context_token_id
 
     return input_ids
 
@@ -628,6 +621,8 @@ def process_all_files_for_embedding_extraction():
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
     stimuli_prefix = utils.get_stimuli_prefix()
+    if not stimuli_prefix:
+        stimuli_prefix = '*'
     #if stimuli_prefix is None
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
@@ -672,6 +667,9 @@ def process_all_files_for_embedding_extraction():
     # Add this line to set pad_token_id
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
+    img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
+    if model.img_context_token_id is None:
+        model.img_context_token_id = img_context_token_id
     if not simple_extraction:
         custom_layers = [
                     'vision_model.encoder.layers.2',
@@ -708,7 +706,7 @@ def process_all_files_for_embedding_extraction():
             print(f"Extracting visual features for {stim_id}", stim_path)
             if stim_id in exclude_list:
                 continue
-            text_dataset = get_transcript_dataSet(stim_id)
+            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=False, n_used_words=1000)
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
@@ -793,8 +791,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                 # if counter > 100:
                 #     break
                 embeddings_prefix = f"{episode_id}_tr_{counter}"
-                meta_file = os.path.join(embeddings_dir, 'metadata', f"{embeddings_prefix}_metadata.json")
-                if not os.path.exists(meta_file):
+                if not utils.is_transcript_already_processed(embeddings_prefix):
                     chunk_path = os.path.join(season_folder, f'{episode_id}_tr_{counter}.mp4')
                     #log_to_file(counter,'chunk_path', chunk_path)
                     # Load the frames from the chunked movie clip
@@ -807,28 +804,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
                     textData = text_dataset[trans_index]
 
-                    pre_text = textData['fancy_pre']
-                    post_text = textData['fancy_post']
-
-                    if skip_pix:
-                        if pre_text:
-                            video_prefix = pre_text
-                        else:
-                            video_prefix = ''
-                    else:
-                        if pre_text:
-                            video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-                        else:
-                            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_patches_list))])
-                    
-                    
-                    if post_text:
-                        if video_prefix:
-                            question_for_embeddings = video_prefix + "\n" + post_text
-                        else:
-                            question_for_embeddings = post_text
-                    else:
-                        question_for_embeddings = video_prefix + "\n"
+                    question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix)
 
                     #utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
@@ -925,16 +901,17 @@ def test_dataset(stim_id):
     #     data.append([ fancy_pre, fancy_post, words_tr, i])
     # print(tabulate(data, headers=["Fancy Pre", "Fancy Post", "Transcript", "index"], 
     #                tablefmt="grid"))
-
-#process_all_files_for_extraction()
-episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
-save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
-stim_id = "friends_s03e06a"
-tr = 1.49
-#extract_video_chucks()
-#extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
-#extract_video_chucks()
-process_all_files_for_embedding_extraction()
+if __name__ == "__main__":
+    #process_all_files_for_extraction()
+    episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
+    save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
+    stim_id = "friends_s03e06a"
+    tr = 1.49
+    #extract_video_chucks()
+    #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
+    #extract_video_chucks()
+    utils.set_hf_home_path()
+    process_all_files_for_embedding_extraction()
 
 #test_dataset('friends_s03e06a')
 #   exit()

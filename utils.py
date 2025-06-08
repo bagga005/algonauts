@@ -367,7 +367,7 @@ def normalize_and_clean_word(word):
         # if new_word == 'cmon':
             #new_word = 'come'
         return new_word
-def set_hf_path():
+def set_hf_home_path():
     if os.getenv("HF_HOME") is not None:
         os.environ['HF_HOME'] = os.getenv("HF_HOME")
 

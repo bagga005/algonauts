@@ -55,11 +55,34 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
             break
         else:
             tr_start += tr_info['len']
-    print(tr_start, tr_length)
     dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
     trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words)
     return trans_dataset
+
+def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
+    pre_text = textData['fancy_pre']
+    post_text = textData['fancy_post']
+    if skip_video_tokens:
+        if pre_text:
+            video_prefix = pre_text
+        else:
+            video_prefix = ''
+    else:
+        if pre_text:
+            video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_videos))])
+        else:
+            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_videos))])
+                           
+    if post_text:
+        if video_prefix:
+            question_for_embeddings = video_prefix + "\n" + post_text
+        else:
+            question_for_embeddings = post_text
+    else:
+        question_for_embeddings = video_prefix + "\n"
+    
+    return question_for_embeddings
 
 class SentenceDataset_v2(Dataset):
     def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False):
