@@ -615,8 +615,25 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         ending_index_of_dialogue_in_scene = len(scene_dialogues) - 1
     
     if ending_index_of_dialogue_in_scene >= 0:
+        last_dialogue_row_idx = -1
+        insert_silence = False
         for i in range(ending_index_of_dialogue_in_scene, -1, -1):
             dialogue = scene['dialogues'][i]
+            if last_dialogue_row_idx != -1 and last_dialogue_row_idx - dialogue['matched_row_index_end'] > 1:
+                insert_silence = True
+
+            # if insert_silence:
+            #     if response['fancy_scene_text']:
+            #             response['fancy_scene_text'] = "(silence)" + "\n" + response['fancy_scene_text']
+            #     else:
+            #         response['fancy_scene_text'] = "(silence)"
+            #     if response['normal_scene_text']:
+            #         response['normal_scene_text'] = "(silence)" + "\n" + response['normal_scene_text']
+            #     else:
+            #         response['normal_scene_text'] = "(silence)"
+            insert_silence = False
+            last_dialogue_row_idx = dialogue['matched_row_index_start']
+
             #print(f"adding text for dialogue: {dialogue['id']}")
             #print(f"calling from 5")
             display_dialogue_text = get_dialogue_display_text(dialogue, withSpeaker=True)

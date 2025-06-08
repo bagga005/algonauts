@@ -352,6 +352,7 @@ class SentenceDataset_v2(Dataset):
         #     if not fancy_post:
         #         fancy_post = "+"
         
+
         
 
 
@@ -362,8 +363,6 @@ class SentenceDataset_v2(Dataset):
             words_left = self.n_used_words - len(fancy_pre.split())
         closest_dialogue = None
 
-        # if first_dialogue_in_row:   
-            #print(f"dataset frist dialogue id: {first_dialogue_in_row['id']}")
 
         
         #get scene of the dialogue
@@ -376,6 +375,11 @@ class SentenceDataset_v2(Dataset):
                 closest_dialogue = self.get_dialogues_for_row(closest_row_with_dialogue)[-1]
             else:
                 closest_dialogue = None
+
+        # if not fancy_post and not normal_post and closest_row_with_dialogue != -1: #row_idx - closest_row_with_dialogue > 2:
+        #     print(f"closest_row_with_dialogue: {closest_row_with_dialogue}", "row_idx: ", row_idx)
+        #     fancy_post = "(silence)"
+        #     normal_post = "(silence)"
 
         # if closest_dialogue:
             #print(f"dataset closest_dialogue id: {closest_dialogue['id']}")
