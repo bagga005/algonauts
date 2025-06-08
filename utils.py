@@ -65,6 +65,12 @@ def get_accuracy_json_file():
 def get_network_accuracy_json_file():
     return os.path.join(get_output_dir(), 'network_accuracy.json')
 
+def get_embeddings_format():
+    embeddings_format = os.getenv("EMBEDDINGS_FORMAT")
+    if not embeddings_format:
+        return '1'
+    return embeddings_format
+
 def get_roi_network_map():
     """Returns the path to the ROI network mapping file"""
     return os.path.join(os.path.dirname(__file__), 'roi_network_map.json')
