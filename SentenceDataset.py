@@ -9,6 +9,7 @@ import string, re
 import numpy as np
 from transcripts_handler import load_all_tsv_for_one_episode
 import os
+from rapidfuzz import fuzz
 
 def normalize_pauses(text):
     return re.sub(r'\.{3,8}', '\n', re.sub(r'\.{9,}', '\n\n', text))
@@ -43,6 +44,81 @@ class SentenceDataset(Dataset):
 
         if text=="": text= " "
         return text
+
+class SentenceDataset_v15(Dataset):
+    def __init__(self, transcript_id, mode="last_n_trs", last_n_trs=5, n_used_words=510, prep_sentences=None):
+        transcript_data, self.tr_start, self.tr_length = get_full_transcript(transcript_id)
+        self.sentences = [item['text_per_tr'] for item in transcript_data]
+        self.prep_sentences = prep_sentences
+        if self.prep_sentences=="contpretr-friends-v1":
+            self.sentences = [s if not(s is np.nan) else "..." for s in self.sentences]
+
+        self.mode=mode
+        self.last_n_trs = last_n_trs
+        self.n_used_words = n_used_words
+
+    def __len__(self):
+        return self.tr_length
+
+    def __getitem__(self, idx):
+        text = ""
+        if self.mode == "last_n_trs":
+          text= self.sentences[idx-self.last_n_trs: idx+1]
+          text= "".join(text)
+
+        elif self.mode=="n_used_words":
+          effective_idx = idx + self.tr_start
+          #print(f"effective_idx: {effective_idx} {idx}")
+          tr_text = "".join(self.sentences[:effective_idx+1])
+          nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
+          text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
+
+        if self.prep_sentences=="contpretr-friends-v1":
+            text = normalize_pauses(text)
+
+        if text=="": text= " "
+        return text
+    
+def get_best_text(ds15, ds2, idx, skip_video_tokens=False, num_videos=8):
+    text15 = ds15[idx]
+    text2 = ds2[idx]
+
+    npre = text2['normal_pre']
+    npst = text2['normal_post']
+    if not npst: npst = ""
+    if npre:
+        text2_normal = npre + ' '  +npst
+    else:
+        text2_normal = npst
+
+    text2_normal = re.sub(r'\.{3,}', ' ', text2_normal)
+    last_2_text2_normal = utils.get_last_x_words(text2_normal, 2)
+    last_2_text2_normal_words_list = last_2_text2_normal.split()
+    last_text15_word = utils.normalize_and_clean_word(utils.get_last_x_words(text15, 1))
+    matched = False
+    for word in last_2_text2_normal_words_list:
+        score = fuzz.ratio(utils.normalize_and_clean_word(word), last_text15_word)
+        if score > 80:
+            matched = True
+            break
+
+    if matched:
+        return combine_pre_post_text(text2, skip_video_tokens, num_videos), True
+    else:
+        return text15, False
+            
+
+def get_full_transcript(stim_id):
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=False)
+    tr_start = 0
+    tr_length =0
+    for tr_info in trans_info_list:
+        if tr_info['trans_id'] == stim_id:
+            tr_length = tr_info['len']
+            break
+        else:
+            tr_start += tr_info['len']
+    return transcript_data, tr_start, tr_length
 
 def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000):
     root_data_dir = utils.get_data_root_dir()

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import h5py
 import torch
 import numpy as np
-from model_r50_ft import VisionR50FineTuneModel
+#from model_r50_ft import VisionR50FineTuneModel
 USE_LIGHTNING = True
 # try:
 #     from lightning.data import map
@@ -271,26 +271,17 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
     out_data_dir = utils.get_output_dir()
     
     files = glob(f"{inpath}/*.h5")
-    # filter_in_name =''
-    # if filter_in_name != '':
-    #     files = [f for f in files if filter_in_name in f]
-    # filter_out_name = 's07e'
-    # if filter_out_name != '':
-    #     files = [f for f in files if filter_out_name not in f]
-    # filter_out_name2 = 'bourne'
-    # if filter_out_name2 != '':
-    #     files = [f for f in files if filter_out_name2 not in f]
+
     files.sort()
-    print(len(files), files[:3], files[-3:])
+
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
-    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+
     #fileFilter = "movie10_life02"
     boundary = []
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     valdict = {}
     features = []
     for i, (stim_id, stim_path) in iterator:
-        print(f"pca features for {stim_id}", stim_path)
         with h5py.File(stim_path, 'r') as f1:
             #print("Root level keys:", list(f1.keys()))
             #data = f1[stim_id]['language_last_hidden_state'][:]
@@ -395,6 +386,21 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
     
     return ten
 
+def segment_to_extract_v2(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
+    if combine_strategy == COMBINE_STRATEGY_LAST:
+        ten = loaded_tensor[:,-1,:]
+    elif combine_strategy == COMBINE_STRATEGY_LAST3:
+        selected = loaded_tensor[:,-3:,:]
+        ten = selected.reshape(selected.shape[0], -1)
+
+    elif combine_strategy == COMBINE_STRATEGY_LAST7:
+        selected = loaded_tensor[:,-7:,:]
+        ten = selected.reshape(selected.shape[0], -1)
+    else:
+        raise ValueError(f"Invalid strategy: {combine_strategy}")
+    
+    return ten
+
 def get_stim_id_list(dir_path, filter_in_name=None, add_layer_to_path=True):
     if add_layer_to_path:
         dir_path = os.path.join(dir_path, 'metadata')
@@ -441,6 +447,7 @@ STRATEGY_VISION_23= 11
 STRATEGY_VISION_2_5_10_17_NORM = 12
 STRATEGY_V2_VISION_NORM_CLS = 200
 STRATEGY_V2_VISION_NORM_AVG = 201
+#STRATEGY_V2_VISION_
 
 #LLM + Vision
 STRATEGY_LN_1_VN = 20
@@ -470,6 +477,9 @@ COMBINE_STRATEGY_VISION_V2 = 'vision_v2'
 def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name, add_layer_to_path)
     num_skipped = 0
+    e_format = utils.get_embeddings_format()
+    if e_format != '2' and e_format != '1':
+        raise ValueError(f"Invalid embeddings format: {e_format}")
     with tqdm(total=len(stim_id_list), desc="Saving combined VLM features for {}".format(strategy)) as pbar:
         for stim_id in stim_id_list:
             save_file = os.path.join(dir_output_path, f"{stim_id}.h5")
@@ -479,11 +489,22 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 continue
         
             if strategy == STRATEGY_LANG_NORM_1:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST, add_layer_to_path)
+                if e_format == '1':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST, add_layer_to_path)
+                elif e_format == '2':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, -1, COMBINE_STRATEGY_LAST)
+                    print('ten1.shape', ten1.shape)
             elif strategy == STRATEGY_LANG_NORM_3:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3, add_layer_to_path)
+                if e_format == '1':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3, add_layer_to_path)
+                elif e_format == '2':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, -1, COMBINE_STRATEGY_LAST3)
+                    print('ten1.shape', ten1.shape)
             elif strategy == STRATEGY_LANG_NORM_7:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST7, add_layer_to_path)
+                if e_format == '1':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST7, add_layer_to_path)
+                elif e_format == '2':
+                    ten1 = combine_vlm_features(dir_input_path, stim_id, -1, COMBINE_STRATEGY_LAST7)
                 #print('ten1.shape', ten1.shape)
             elif strategy == STRATEGY_LANG_NORM_10:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST10, add_layer_to_path)
@@ -573,10 +594,13 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = torch.cat((ten1, ten2), dim=1)
             else:
                 raise ValueError(f"Invalid strategy: {strategy}")
-            assert ten1.dtype == torch.float32, f"ten1.dtype {ten1.dtype} != torch.float32"
-            # if ten1.dtype == torch.bfloat16:
-            #     ten1 = ten1.to(torch.float32)
-            visual_features = ten1.cpu().numpy()
+
+            if e_format == '2':
+                assert ten1.dtype == np.float16, f"ten1.dtype {ten1.dtype} != torch.float16"
+                visual_features = ten1.astype(np.float32)
+            else:
+                assert ten1.dtype == torch.float32, f"ten1.dtype {ten1.dtype} != torch.float32"
+                visual_features = ten1.cpu().numpy()
             
             with h5py.File(save_file, 'w') as f:
                 group = f.create_group(stim_id)
@@ -586,28 +610,41 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
             print(f"****Skipped {num_skipped} files")
         
 def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_path=True, i=0, j=0, indexes=[]):
-    tensor_list = []
-    if add_layer_to_path:
-        dir_path = os.path.join(dir_path, layer_name)
-    tr_upper = compute_tr_upper(dir_path, stim_id, layer_name)
-    #print('tr_upper', stim_id, tr_upper)
-    
-    #print('dir_path', dir_path)
-    for tr_i in range(tr_upper):
-        file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
-        with gzip.open(file_path, 'rb') as f:
-            loaded_tensor = pickle.load(f)
-        #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
-        if loaded_tensor.dtype == torch.bfloat16:
-            loaded_tensor = loaded_tensor.to(torch.float32)
-        assert loaded_tensor.dtype == torch.float32, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.float32"
-        extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
-        #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
-        tensor_list.append(extracted_tensor)
-        #print('tensor_list.shape', len(tensor_list))
-    combined_tensor = torch.stack(tensor_list)
+    e_format = utils.get_embeddings_format()
+    if e_format == '1':
+        tensor_list = []
+        if add_layer_to_path:
+            dir_path = os.path.join(dir_path, layer_name)
+        tr_upper = compute_tr_upper(dir_path, stim_id, layer_name)
+        #print('tr_upper', stim_id, tr_upper)
+        
+        #print('dir_path', dir_path)
+        for tr_i in range(tr_upper):
+            file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
+            with gzip.open(file_path, 'rb') as f:
+                loaded_tensor = pickle.load(f)
+            #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
+            if loaded_tensor.dtype == torch.bfloat16:
+                loaded_tensor = loaded_tensor.to(torch.float32)
+            assert loaded_tensor.dtype == torch.float32, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.float32"
+            extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
+            #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
+            tensor_list.append(extracted_tensor)
+            #print('tensor_list.shape', len(tensor_list))
+        combined_tensor = torch.stack(tensor_list)
+    elif e_format == '2':
+        file_path = os.path.join(dir_path, f"{stim_id}.npy")
+        if os.path.exists(file_path):
+            activations = np.load(file_path)
+            # print('activations.shape', activations.shape)
+            combined_tensor = segment_to_extract_v2(activations[-1], strategy, i, j, indexes)
+            # print('combined_tensor.shape', combined_tensor.shape)
+        else:
+            raise ValueError(f"File not found: {file_path}")
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
+
+
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
@@ -619,9 +656,10 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
             do_pca(dir_output_path, dir_output_path + "/features_train-750.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=750)
         else:
             do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
-            # do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
-            # do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
-            # do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+            do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
+            do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
+            do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-2000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=2000)
 
 
 if __name__ == "__main__":
@@ -631,32 +669,36 @@ if __name__ == "__main__":
     DIR_INPUT_PATH_OLD = os.path.join(out_dir, "embeddings")
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
+
     # filter_in_name = ["s01", "s02", "s03", "s04", "s05"]#["s01", "s02", "s03", "s04", "s05", "s06"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06"]
     modality = "visual"
     
-
+    # combine_vlm_features(dir_input_path, "friends_s04e20b", -1, COMBINE_STRATEGY_LAST, overwrite=True)
+    # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
 
     # STRATEGY_LANG_NORM_1 v1 - OOOOLLLLDDD
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1_v1")
     # exec_emb_and_pca(DIR_INPUT_PATH_OLD, dir_output_path, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True, add_layer_to_path=False)
 
     # # #STRATEGY_V2_LANG_NORM_3
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMGPLUS1")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMGPLUS1, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMGPLUS1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMGPLUS1, modality, filter_in_name=filter_in_name)
+
+    # #STRATEGY_V2_LANG_NORM_1
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_1")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_1, modality, filter_in_name=filter_in_name, overwrite=True)
+
 
     # # #STRATEGY_V2_LANG_NORM_5
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_3")
-    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_3, modality, filter_in_name=filter_in_name)
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_3, modality, filter_in_name=filter_in_name, overwrite=True)
 
-    # #STRATEGY_V2_LANG_NORM_1
-    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_7")
-    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_7, modality, filter_in_name=filter_in_name)
-
+    
     # # #STRATEGY_V2_LANG_NORM_5
-    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_5")
-    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_5, modality, filter_in_name=filter_in_name)
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_LANG_NORM_7")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_LANG_NORM_7, modality, filter_in_name=filter_in_name, overwrite=True)
 
     #STRATEGY_V2_LANG_NORM_1
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
@@ -692,8 +734,8 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMG8A")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMG8A, modality, filter_in_name=filter_in_name)
 
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_CLS")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_CLS, modality, filter_in_name=filter_in_name)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_CLS")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_CLS, modality, filter_in_name=filter_in_name)
 
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_AVG")
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_AVG, modality, filter_in_name=filter_in_name)
