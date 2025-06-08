@@ -3,7 +3,7 @@ import h5py
 import numpy as np
 from datetime import datetime
 import traceback
-from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir
+from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir, set_hf_path
 import os
 import subprocess
 
@@ -20,8 +20,8 @@ def run_trainings():
     subject = 1
     include_viewing_sessions = False
     #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s05"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
-    movies_train = ["friends-s03", "friends-s06"] # @param {allow-input: true}
-    movies_val = ["friends-s04"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] # @param {allow-input: true}
+    movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
     specific_modalities = ["visual"]
@@ -167,6 +167,7 @@ if __name__ == "__main__":
     #train.plot_encoding_accuracy(3, encoding_accuracy, 'audio')
     
     try:
+        set_hf_path()
         run_trainings()
     except Exception as e:
         traceback.print_exc()
