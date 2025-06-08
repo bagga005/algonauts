@@ -120,7 +120,7 @@ def get_full_transcript(stim_id):
             tr_start += tr_info['len']
     return transcript_data, tr_start, tr_length
 
-def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000):
+def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=False):
     root_data_dir = utils.get_data_root_dir()
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
     tr_start = 0
@@ -133,7 +133,7 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
             tr_start += tr_info['len']
     dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
-    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words)
+    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words, skip_pre_post_split=skip_pre_post_split)
     return trans_dataset
 
 def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
@@ -161,7 +161,7 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
     return question_for_embeddings
 
 class SentenceDataset_v2(Dataset):
-    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False):
+    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False, skip_pre_post_split=False):
         self.scenes_and_dialogues = scene_and_dialogues
         self.dialogue_list = get_dialogue_list(scene_and_dialogues)
         self.transcript_data = transcript_data
@@ -171,6 +171,7 @@ class SentenceDataset_v2(Dataset):
         self.n_used_words = n_used_words
         self.always_post_speaker = always_post_speaker
         self.exclude_post_dialogue_separator = exclude_post_dialogue_separator
+        self.skip_pre_post_split = skip_pre_post_split
 
     def __len__(self):
         return self.length
@@ -214,7 +215,7 @@ class SentenceDataset_v2(Dataset):
         row_word_length = len(self.transcript_data[row_idx]['words_per_tr'])
         #print(f"_get_text_from_dialogue_for_row row_word_length: {row_word_length}")
         #is dialogue starting in this row
-        starting_in_this_row = dialogue['matched_row_index_start'] == row_idx
+        starting_in_this_row = (dialogue['matched_row_index_start'] == row_idx) or self.skip_pre_post_split
         #is dialogue ending in this row
         ending_in_this_row = dialogue['matched_row_index_end'] == row_idx
 
@@ -234,7 +235,7 @@ class SentenceDataset_v2(Dataset):
             overlap_length = 0
             for word_idx in range(row_word_length):
                 text_index = self.position_to_text_map.get((row_idx, word_idx))
-                if dialogue['matched_text_index_start'] <= text_index <= dialogue['matched_text_index_end']:
+                if (dialogue['matched_text_index_start'] <= text_index <= dialogue['matched_text_index_end']):
                     overlap_length += 1
                     if first_overlap_word_index == -1:
                         first_overlap_word_index = text_index
@@ -250,7 +251,12 @@ class SentenceDataset_v2(Dataset):
             
             #determine prefix and suffix for post text
             add_prefix_continuation_for_post = False
-            add_suffix_continuation_for_post = False
+            add_suffix_continuation_for_post = False    
+            
+            #if we skip pre post split, we need to put pre + post part in post
+            if self.skip_pre_post_split:
+                dialogue_length_for_row = dialogue_length_for_row + start_index
+                start_index = 0
 
             if start_index > 0:
                 add_prefix_continuation_for_post = True
@@ -260,6 +266,9 @@ class SentenceDataset_v2(Dataset):
             #prepare response object
             #print(f" calling for post get_dialogue_display_text start_index: {start_index}, length: {dialogue_length_for_row}")
             #print(f"calling from 2")
+
+            
+
             response_post = get_dialogue_display_text(dialogue, withSpeaker=starting_in_this_row or forcePostSpeaker, start_index=start_index, length=dialogue_length_for_row,
                                                       add_prefix_continuation=add_prefix_continuation_for_post, add_suffix_continuation=add_suffix_continuation_for_post)
 
@@ -356,6 +365,7 @@ class SentenceDataset_v2(Dataset):
         # if first_dialogue_in_row:   
             #print(f"dataset frist dialogue id: {first_dialogue_in_row['id']}")
 
+        
         #get scene of the dialogue
         if first_dialogue_in_row:
             closest_dialogue = first_dialogue_in_row

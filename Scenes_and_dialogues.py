@@ -383,7 +383,7 @@ def get_dialogue_display_text(dialogue, withSpeaker=True, start_index=0, length=
         else:
             #print("Case 2: Using fuzzy matching")
             useFuzzy = True
-            # print(f"start_index: {start_index}, end_index: {end_index}, words: {words}")
+            #print(f"start_index: {start_index}, end_index: {end_index}, words: {words}")
             start_word = words[start_index]
             end_word = words[end_index]
             full_text_start_index, full_text_end_index = normalized_to_full_text(start_word, end_word, dialogue['text'], start_index, length)

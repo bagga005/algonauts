@@ -706,7 +706,7 @@ def process_all_files_for_embedding_extraction():
             print(f"Extracting features for {stim_id}")
             if stim_id in exclude_list:
                 continue
-            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000)
+            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=True)
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
@@ -768,8 +768,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     assert num_chunks -1 <= len_trans_dataset <= num_chunks, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
 
     #experiement exact match
-    dataset15 = SentenceDataset_v15(episode_id, mode="n_used_words", n_used_words=n_used_words)
-    matched_num = 0
+    # dataset15 = SentenceDataset_v15(episode_id, mode="n_used_words", n_used_words=n_used_words)
+    # matched_num = 0
     #end experiement exact match
     # if len_trans_dataset != num_chunks:
     #     print('len(trans_dataset) != num_chunks', len_trans_dataset, num_chunks)
@@ -808,13 +808,13 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                         
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
                     #experiement exact match
-                    #textData = text_dataset[trans_index]
-                    #question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix)
-                    question_for_embeddings, matched = get_best_text(dataset15, text_dataset, trans_index, skip_video_tokens=skip_pix, num_videos=8)
-                    matched_num += 1 if matched else 0
+                    textData = text_dataset[trans_index]
+                    question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix)
+                    # question_for_embeddings, matched = get_best_text(dataset15, text_dataset, trans_index, skip_video_tokens=skip_pix, num_videos=8)
+                    # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    #utils.log_to_file(counter,':', "matched:", matched, question_for_embeddings)
+                    utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)

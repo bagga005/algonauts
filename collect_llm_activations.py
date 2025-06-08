@@ -15,14 +15,14 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from torch.utils.data import DataLoader
-from SentenceDataset import SentenceDataset, SentenceDataset_v2, get_transcript_dataSet
+from SentenceDataset import SentenceDataset, SentenceDataset_v2, get_transcript_dataSet, SentenceDataset_v15, get_best_text, combine_pre_post_text
 
 from rapidfuzz import fuzz
 import re
 
 def setup_environment():
     """Set up environment variables and check CUDA availability."""
-    utils.set_hf_path()
+    utils.set_hf_home_path()
     cuda_available = torch.cuda.is_available()
     import socket
     print("Hostname:", socket.gethostname())
@@ -89,63 +89,40 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
         
         # read in the tsv file & replace nans
         df = pd.read_csv(transcript_file, sep='\t').fillna("")
+        dataset15 = SentenceDataset_v15(transcript_id, mode="n_used_words", n_used_words=n_used_words)
         dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=lambda x: collate_fn(x, tokenizer))
-        # dataset2 = get_transcript_dataSet(transcript_id, n_used_words=n_used_words)
-        # total_len  =0
-        # matches =0
-        # assert len(dataset) == len(dataset2), f"len(dataset) != len(dataset2): {len(dataset)} != {len(dataset2)}"
+        dataset2 = get_transcript_dataSet(transcript_id, n_used_words=n_used_words, skip_pre_post_split=True)
+        total_len  =0
+        matches =0
+        assert len(dataset) == len(dataset2), f"len(dataset) != len(dataset2): {len(dataset)} != {len(dataset2)}"
 
         embd_data = []
         for k, (input_ids, attention_mask) in tqdm(enumerate(dataloader), total=len(dataloader)):
 
-            # if k > 0:
-            #     advanced_txt = dataset2[k]
-            #     ori_txt = dataset[k]
+            if True:
+                advanced_txt = dataset2[k]
+                ori_txt = dataset[k]
+                ori_txt15 = dataset15[k]
+                advanced_txt_display = combine_pre_post_text(advanced_txt, skip_video_tokens=True, num_videos=8)
 
-            #     # utils.log_to_file(advanced_txt['fancy_post'])
-            #     # utils.log_to_file(advanced_txt['fancy_post'])
-            #     pre = advanced_txt['fancy_pre']
-            #     pst = advanced_txt['fancy_post']
-            #     npre = advanced_txt['normal_pre']
-            #     npst = advanced_txt['normal_post']
-                
-            #     if not pre: pre = ""
-            #     if not pst: pst = ""
-            #     if not npst: npst = ""
-            #     if npre:
-            #         full_advanced_txt = npre + ' '  +npst
-            #         dirty_full_advanced_txt = npre + ' '  +npst
-            #     else:
-            #         full_advanced_txt = npst
-            #         dirty_full_advanced_txt = npst
+                #assert ori_txt == ori_txt15, f"ori_txt != ori_txt15 for counter: {k} {ori_txt} != {ori_txt15}"
+                utils.log_to_file(ori_txt15)
+                utils.log_to_file(advanced_txt_display)
+
+                # best_text, matched = get_best_text(dataset15, dataset2, k, skip_video_tokens=True, num_videos=8)
+                # total_len += 1
+                # if matched:
+                #     matches += 1
+                #else:
+                    # utils.log_to_file(k, f"matched: {matched}")
+                    # utils.log_to_file(len(ori_txt.split(" ")), ori_txt)
+                    # utils.log_to_file(len(ori_txt15.split(" ")), ori_txt15)
+                    # utils.log_to_file(len(advanced_txt_display.split(" ")), advanced_txt_display)
+                    #utils.log_to_file(full_advanced_txt)
+                    #utils.log_to_file(pre + pst)
+                utils.log_to_file("*"*200)
             
-            #     full_advanced_txt = re.sub(r'\.{3,}', ' ', full_advanced_txt)
-            #     last_2_advanced_words = utils.get_last_x_words(full_advanced_txt, 2)
-            #     words_list = last_2_advanced_words.split()
-            #     last_ori_word = utils.normalize_and_clean_word(utils.get_last_x_words(ori_txt, 1))
-            #     highest_score = 0
-            #     best_word = ""
-            #     highest_score = 0
-            #     for word in words_list:
-            #         score = fuzz.ratio(utils.normalize_and_clean_word(word), last_ori_word)
-            #         if score > highest_score:
-            #             highest_score = score
-            #             best_word = word
-            #     total_len += 1
-            #     if highest_score > 80:
-            #         matches += 1
-            #     #else:
-            #         utils.log_to_file(k)
-            #         utils.log_to_file(last_2_advanced_words,"orignal:",last_ori_word)
-            #         utils.log_to_file(highest_score)
-            #         utils.log_to_file(ori_txt)
-            #         utils.log_to_file(dirty_full_advanced_txt)
-            #         #utils.log_to_file(full_advanced_txt)
-            #         #utils.log_to_file(pre + pst)
-            #         utils.log_to_file("*"*200)
-            
-            # print(f"total_len: {total_len}, matches: {matches}, {matches/total_len}")
 
             if utils.isMockMode():
                 continue
@@ -168,6 +145,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             gc.collect()
         
         if utils.isMockMode():
+            # print(f"total_len: {total_len}, matches: {matches}, {matches/total_len}")
             continue
         np.save(output_file, np.concatenate(embd_data, axis=1))
         utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers})
