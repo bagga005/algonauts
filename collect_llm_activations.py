@@ -82,8 +82,8 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
         print(f"Extracting for {transcript_id}")
         postfix = f"{n_layers}L{kept_tokens}T{n_used_words}W" + ("+untr" if untrained else "")
         output_file = f"{actv_dir}/{transcript_id}.npy"
-        if os.path.exists(output_file):
-            continue
+        # if os.path.exists(output_file):
+        #     continue
         
         # read in the tsv file & replace nans
         df = pd.read_csv(transcript_file, sep='\t').fillna("")
