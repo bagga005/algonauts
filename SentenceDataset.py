@@ -5,10 +5,19 @@ from torch.utils.data import Dataset, DataLoader
 import utils
 from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text, get_closest_dialogue_for_row, get_scene_and_dialogues_display_text
 from tabulate import tabulate
+import string, re
+import numpy as np
+
+def normalize_pauses(text):
+    return re.sub(r'\.{3,8}', '\n', re.sub(r'\.{9,}', '\n\n', text))
 
 class SentenceDataset(Dataset):
-    def __init__(self, sentences, mode="last_n_trs", last_n_trs=5, n_used_words=510):
+    def __init__(self, sentences, mode="last_n_trs", last_n_trs=5, n_used_words=510, prep_sentences=None):
         self.sentences = sentences
+        self.prep_sentences = prep_sentences
+        if self.prep_sentences=="contpretr-friends-v1":
+            self.sentences = [s if not(s is np.nan) else "..." for s in self.sentences]
+
         self.mode=mode
         self.last_n_trs = last_n_trs;
         self.n_used_words = n_used_words;
@@ -27,7 +36,10 @@ class SentenceDataset(Dataset):
           nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
           text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
 
-        if text== "": text= " "
+        if self.prep_sentences=="contpretr-friends-v1":
+            text = normalize_pauses(text)
+
+        if text=="": text= " "
         return text
 
 class SentenceDataset_v2(Dataset):
@@ -46,9 +58,11 @@ class SentenceDataset_v2(Dataset):
         return self.length
 
     def __getitem__(self, idx):
+        
         if idx >= self.length:
             raise IndexError(f"Index {idx} is out of range for length {self.length}")
-        data = self.get_text_for_tr(idx)
+        effective_idx = idx + self.tr_start
+        data = self.get_text_for_tr(effective_idx)
         return data
     
     def get_dialogues_for_row(self, row_idx):
