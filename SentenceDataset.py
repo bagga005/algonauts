@@ -7,6 +7,8 @@ from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_di
 from tabulate import tabulate
 import string, re
 import numpy as np
+from transcripts_handler import load_all_tsv_for_one_episode
+import os
 
 def normalize_pauses(text):
     return re.sub(r'\.{3,8}', '\n', re.sub(r'\.{9,}', '\n\n', text))
@@ -41,6 +43,23 @@ class SentenceDataset(Dataset):
 
         if text=="": text= " "
         return text
+
+def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000):
+    root_data_dir = utils.get_data_root_dir()
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
+    tr_start = 0
+    tr_length =0
+    for tr_info in trans_info_list:
+        if tr_info['trans_id'] == stim_id:
+            tr_length = tr_info['len']
+            break
+        else:
+            tr_start += tr_info['len']
+    print(tr_start, tr_length)
+    dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
+    dialogues = get_scene_dialogue(dialogue_file)
+    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words)
+    return trans_dataset
 
 class SentenceDataset_v2(Dataset):
     def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False):

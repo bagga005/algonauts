@@ -15,11 +15,14 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from torch.utils.data import DataLoader
-from SentenceDataset import SentenceDataset
+from SentenceDataset import SentenceDataset, SentenceDataset_v2, get_transcript_dataSet
+
+from rapidfuzz import fuzz
+import re
 
 def setup_environment():
     """Set up environment variables and check CUDA availability."""
-    #os.environ['HF_HOME'] = "/scratch-scc/users/robert.scholz2/cache/huggingface"
+    utils.set_hf_path()
     cuda_available = torch.cuda.is_available()
     import socket
     print("Hostname:", socket.gethostname())
@@ -47,7 +50,6 @@ def load_model_and_tokenizer(checkpoint, device, hf_token, param_dtype, untraine
     tokenizer.pad_token = tokenizer.eos_token
     return tokenizer, model
 
-
 def collate_fn(batch, tokenizer):
     """Custom collate function for tokenization."""
     encoding = tokenizer.batch_encode_plus(batch, padding=True, truncation=True, 
@@ -55,30 +57,91 @@ def collate_fn(batch, tokenizer):
                                            max_length=tokenizer.model_max_length)
     return encoding['input_ids'], encoding['attention_mask']
 
+
+
+
+
 def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device, \
                             kept_tokens=6, n_used_words=500, stimuli="all", n_layers=4, untrained=False, prep_sentences=None):
     """Process transcript files and extract activations."""
-    actv_dir = os.path.join(root_data_dir, "ann_brain_data/activations")
+    actv_dir = os.path.join(utils.get_output_dir(), utils.get_embeddings_dir())
     all_tsv_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/**/**/*.tsv")
     # Filter files if specific stimuli are requested
     if stimuli != "all":
+        print(stimuli)
         all_tsv_files = [f for f in all_tsv_files if any(s in f for s in stimuli.split(','))]
+    all_tsv_files.sort()
+    print(len(all_tsv_files), list(all_tsv_files)[:3], list(all_tsv_files)[-3:])
     
     for j, transcript_file in tqdm(enumerate(all_tsv_files), total=len(all_tsv_files)):
         #transcript_file e.g. "../../friends_s01e01a.tsv" -> id: friends_s01e01a
         transcript_id = os.path.basename(transcript_file).split(".")[0]
+        if utils.is_transcript_already_processed(transcript_id):
+            print(f"Skipping {transcript_id} because it already exists")
+            continue
+        print(f"Extracting for {transcript_id}")
         postfix = f"{n_layers}L{kept_tokens}T{n_used_words}W" + ("+untr" if untrained else "")
-        output_file = f"{actv_dir}/actv-{model_name}-{transcript_id}-{postfix}.npy"
+        output_file = f"{actv_dir}/{transcript_id}.npy"
         if os.path.exists(output_file):
             continue
         
         # read in the tsv file & replace nans
         df = pd.read_csv(transcript_file, sep='\t').fillna("")
-        dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words, prep_sentences=prep_sentences)
+        dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=lambda x: collate_fn(x, tokenizer))
-        
+        # dataset2 = get_transcript_dataSet(transcript_id, n_used_words=n_used_words)
+        # total_len  =0
+        # matches =0
+        # assert len(dataset) == len(dataset2), f"len(dataset) != len(dataset2): {len(dataset)} != {len(dataset2)}"
+
         embd_data = []
-        for input_ids, attention_mask in tqdm(dataloader, total=len(dataloader)):
+        for k, (input_ids, attention_mask) in tqdm(enumerate(dataloader), total=len(dataloader)):
+
+            # if k > 10:
+            #     advanced_txt = dataset2[k]
+            #     ori_txt = dataset[k]
+
+            #     # utils.log_to_file(advanced_txt['fancy_post'])
+            #     # utils.log_to_file(advanced_txt['fancy_post'])
+            #     pre = advanced_txt['fancy_pre']
+            #     pst = advanced_txt['fancy_post']
+            #     npre = advanced_txt['normal_pre']
+            #     npst = advanced_txt['normal_post']
+                
+            #     if not pre: pre = ""
+            #     if not pst: pst = ""
+            #     if not npst: npst = ""
+            #     if npre:
+            #         full_advanced_txt = npre + ' '  +npst
+            #     else:
+            #         full_advanced_txt = npst
+            #     full_advanced_txt = re.sub(r'\.{3,}', ' ', full_advanced_txt)
+            #     last_2_advanced_words = utils.get_last_x_words(full_advanced_txt, 2)
+            #     words_list = last_2_advanced_words.split()
+            #     last_ori_word = utils.normalize_and_clean_word(utils.get_last_x_words(ori_txt, 1))
+            #     highest_score = 0
+            #     best_word = ""
+            #     highest_score = 0
+            #     for word in words_list:
+            #         score = fuzz.ratio(utils.normalize_and_clean_word(word), last_ori_word)
+            #         if score > highest_score:
+            #             highest_score = score
+            #             best_word = word
+            #     total_len += 1
+            #     if highest_score > 80:
+            #         matches += 1
+            #     #else:
+            #         utils.log_to_file(k)
+            #         utils.log_to_file(last_2_advanced_words,"orignal:",last_ori_word)
+            #         utils.log_to_file(highest_score)
+            #         utils.log_to_file(ori_txt)
+            #         utils.log_to_file(full_advanced_txt)
+            #         #utils.log_to_file(full_advanced_txt)
+            #         #utils.log_to_file(pre + pst)
+            #         utils.log_to_file("*"*200)
+            
+            # print(f"total_len: {total_len}, matches: {matches}, {matches/total_len}")
+
             with torch.no_grad():
                 outputs = model(input_ids.to(device), attention_mask=attention_mask.to(device), output_hidden_states=True)
             
@@ -98,6 +161,7 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             gc.collect()
         
         np.save(output_file, np.concatenate(embd_data, axis=1))
+        utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers, "shape": embds.shape})
         print(f"Saved: {output_file}")
 
 if __name__ == "__main__":
@@ -115,13 +179,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    root_data_dir = utils.get_root_data_dir()
+    root_data_dir = utils.get_data_root_dir()
     device=setup_environment()
-    print(device)
-    exit()
+    
     model_name = args.checkpoint.split("/")[-1]
     param_dtype = "auto" if args.param_dtype=="auto" else getattr(torch, args.param_dtype);
-    hf_token= "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"
+    hf_token= "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"
     
     tokenizer, model = load_model_and_tokenizer(args.checkpoint, device, hf_token, param_dtype, args.untrained)
     kwargs = dict(kept_tokens=args.kept_tokens, n_used_words=args.n_used_words, stimuli=args.stimuli, n_layers=args.n_layers, untrained=args.untrained,

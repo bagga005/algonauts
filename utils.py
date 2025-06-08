@@ -357,6 +357,37 @@ def append_network_accuracies_to_json(json_path, accuracy_tuples):
     
     print(f"Appended {len(accuracy_tuples)} network accuracy entries to {json_path}")
 
+def get_last_x_words(long_text, x):
+    words = long_text.split()
+    return " ".join(words[-x:])
+
+def normalize_and_clean_word(word):
+        """Normalize word by converting to lowercase and keeping only alphanumeric characters"""
+        new_word = ''.join(c.lower() for c in word if c.isalnum())
+        # if new_word == 'cmon':
+            #new_word = 'come'
+        return new_word
+def set_hf_path():
+    if os.getenv("HF_HOME") is not None:
+        os.environ['HF_HOME'] = os.getenv("HF_HOME")
+
+def save_embedding_metadata(transcript_id, metadata):
+    meta_file = get_embeddding_meta_file_name(transcript_id)
+
+    with open(meta_file, 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+def get_embeddding_meta_file_name(transcript_id):
+    embeddings_dir = os.path.join(get_output_dir(), get_embeddings_dir(), 'metadata')
+    os.makedirs(embeddings_dir, exist_ok=True)
+    embeddings_prefix = f"{transcript_id}"
+    meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
+    return meta_file
+
+def is_transcript_already_processed(transcript_id):
+    meta_file = get_embeddding_meta_file_name(transcript_id)
+    return os.path.exists(meta_file)
+
 def get_roi_name(parcel):
     """
     Get the first ROI name that contains the given parcel number.
