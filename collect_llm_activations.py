@@ -51,6 +51,8 @@ def load_model_and_tokenizer(checkpoint, device, hf_token, param_dtype, untraine
     return tokenizer, model
 
 def collate_fn(batch, tokenizer):
+    if utils.isMockMode():
+        return None, None
     """Custom collate function for tokenization."""
     encoding = tokenizer.batch_encode_plus(batch, padding=True, truncation=True, 
                                            return_tensors="pt", return_attention_mask=True, 
@@ -142,6 +144,8 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             
             # print(f"total_len: {total_len}, matches: {matches}, {matches/total_len}")
 
+            if utils.isMockMode():
+                continue
             with torch.no_grad():
                 outputs = model(input_ids.to(device), attention_mask=attention_mask.to(device), output_hidden_states=True)
             
@@ -160,6 +164,8 @@ def collect_llm_activations(root_data_dir, model, tokenizer, batch_size, device,
             torch.cuda.empty_cache()
             gc.collect()
         
+        if not utils.isMockMode():
+            continue
         np.save(output_file, np.concatenate(embd_data, axis=1))
         utils.save_embedding_metadata(transcript_id, {"n_used_words": n_used_words, "kept_tokens": kept_tokens, "n_layers": n_layers})
         print(f"Saved: {output_file}")
@@ -185,8 +191,10 @@ if __name__ == "__main__":
     model_name = args.checkpoint.split("/")[-1]
     param_dtype = "auto" if args.param_dtype=="auto" else getattr(torch, args.param_dtype);
     hf_token= "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"
-    
-    tokenizer, model = load_model_and_tokenizer(args.checkpoint, device, hf_token, param_dtype, args.untrained)
+    if utils.isMockMode():
+        tokenizer, model = None, None
+    else:
+        tokenizer, model = load_model_and_tokenizer(args.checkpoint, device, hf_token, param_dtype, args.untrained)
     kwargs = dict(kept_tokens=args.kept_tokens, n_used_words=args.n_used_words, stimuli=args.stimuli, n_layers=args.n_layers, untrained=args.untrained,
                   prep_sentences=args.prep_sentences)
     collect_llm_activations(root_data_dir, model, tokenizer, args.batch_size, device, **kwargs)
