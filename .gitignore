@@ -20,3 +20,7 @@ runpodctl
 .runpod/ssh/RunPod-Key-Go
 /custom_models/InternVL3-1B-Pretrained/examples
 /custom_models/InternVL3-1B-Pretrained/model.safetensors
+custom_models/InternVL3-8B-Pretrained/model-00001-of-00004.safetensors
+custom_models/InternVL3-8B-Pretrained/model-00002-of-00004.safetensors
+custom_models/InternVL3-8B-Pretrained/model-00003-of-00004.safetensors
+custom_models/InternVL3-8B-Pretrained/model-00004-of-00004.safetensors
