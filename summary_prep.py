@@ -83,7 +83,7 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
     print(f'total_len: {total_l}, more_than_1000_scenes: {more_than_1000}, {more_than_1000/total_l}')
 
 
-def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summary=500):
+def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summary=700):
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
@@ -113,6 +113,18 @@ def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summar
             #     print(f'{episode_name} {scene["id"]} {len_display_text}')
     return total_len, more_than_1000_scenes
     print(f'{episode_name} {more_than_1000_scenes} {total_len}, {more_than_1000_scenes/total_len}')
+    
+def get_summary_from_llm(display_text, pipeline):
+    preMsg = "Summarize below dialogue from a tv show in less than 300 words. Output only the summary, no other text.\n"
+    display_text = preMsg + display_text
+    messages = [
+        {"role": "user", "content": display_text},
+    ]
+    outputs = pipeline(
+        messages,
+        max_new_tokens=500,
+    )
+    print(outputs[0]["generated_text"][-1])
 
 def setup_pipeline():
     model_id = "meta-llama/Llama-3.1-8B-Instruct"
