@@ -8,7 +8,7 @@ pipeline = transformers.pipeline(
     model=model_id,
     model_kwargs={"torch_dtype": torch.bfloat16},
     device_map="auto",
-    token="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"
+    token="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"
 )
 
 messages = [
@@ -21,4 +21,4 @@ outputs = pipeline(
 )
 print(outputs[0]["generated_text"][-1])
 
-#export HUGGINGFACE_HUB_TOKEN="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"
+#export HUGGINGFACE_HUB_TOKEN='"    token="'hf_YMVBuKkOefrCkPOVSCwGrihTdRHvnBBeg"
