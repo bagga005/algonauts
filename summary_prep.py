@@ -87,7 +87,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
-        dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{episode_name}.json')
+        dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{episode_name}.txt')
     out_folder = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'summaries')
     scenes_and_dialogues = get_scene_dialogue(dialogue_file)
     dialogue_list = get_dialogue_list(scenes_and_dialogues)
@@ -108,7 +108,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
         if(len_display_text > min_length_for_summary):
             #get summary
             print(f'|Scene: {scene["desc"]}|')
-            out_file = os.path.join(out_folder, f'{episode_name}.txt')
+            out_file = os.path.join(out_folder, f'{episode_name}.json')
             
             summary = get_summary_from_llm(display_text, pipeline)
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     #     max_new_tokens=256,
     # )
     # print(outputs[0]["generated_text"][-1])
-    stim_id = "friends_s03e06"
+    stim_id = "friends_s05e06"
     summary_gen_for_1_episode(stim_id, pipeline)
 
     # for scene in scenes_and_dialogues['scenes']:
