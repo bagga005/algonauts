@@ -80,7 +80,7 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
         summary_gen_for_1_episode(stim_id, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
 
 def get_query(display_text):
-    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. Output only the summary, no other text.\n"
+    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. This is not the full episode, just a part of it from the start. Output only the summary, no other text.\n"
     display_text = preMsg + display_text
     return display_text
 
