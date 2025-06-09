@@ -9,6 +9,34 @@ import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer 
 
+def scene_entry_done(file_path, scene_id):
+    """
+    Check if an entry with the given scene_id exists in the file.
+    
+    Args:
+        file_path (str): Path to the JSON file
+        scene_id (str/int): Scene identifier to check for
+        
+    Returns:
+        bool: True if scene_id exists in the file, False otherwise
+    """
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return False
+    
+    try:
+        # Read existing data
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Check if scene_id exists in any entry
+        existing_scene_ids = [entry['scene_id'] for entry in data]
+        return scene_id in existing_scene_ids
+        
+    except (json.JSONDecodeError, KeyError):
+        # If file is corrupted or doesn't have expected structure
+        return False
+    
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     """
     Write summary to a file in JSON format.
@@ -106,6 +134,9 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     more_than_1000_scenes = 0
     all_texts = []
     for scene in scenes_and_dialogues['scenes']:
+        if scene_entry_done(out_file, scene['id']):
+            print(f'{episode_name} {scene["id"]} already done')
+            continue
         #get lengths of scenes
         scene_len = get_scene_and_dialogues_display_len(scenes_and_dialogues, dialogue_list, int(scene['id']))
         if scene_len > 1000:
@@ -173,27 +204,6 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                 item['summary'], 
                 item['unsummarized_length']
             )
-
-
-    
-def get_summary_from_llm(display_text, pipeline):
-    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. This is not the full episode, just a part of it from the start. Output only the summary, no other text.\n"
-    display_text = preMsg + display_text
-    #display_text = "What is the capital of Uzbekistan?"
-    messages = [
-        {"role": "user", "content": display_text},
-    ]
-    outputs = pipeline(
-        messages,
-        max_new_tokens=512,
-    )
-    output_text_obj = outputs[0]["generated_text"][-1]
-    if output_text_obj:
-        print('output_text_obj',output_text_obj)
-        output_text = output_text_obj
-    print(output_text)
-    print("-"*100)
-    return output_text
 
 def setup_pipeline():
     hf_token = utils.get_hf_token()
