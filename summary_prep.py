@@ -87,7 +87,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
-        dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{episode_name}.txt')
+        dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{episode_name}.json')
     out_folder = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'summaries')
     scenes_and_dialogues = get_scene_dialogue(dialogue_file)
     dialogue_list = get_dialogue_list(scenes_and_dialogues)
@@ -107,6 +107,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
         len_display_text = len(display_text.split())
         if(len_display_text > min_length_for_summary):
             #get summary
+            print(f'|Scene: {scene["desc"]}|')
             out_file = os.path.join(out_folder, f'{episode_name}.txt')
             
             summary = get_summary_from_llm(display_text, pipeline)
@@ -118,7 +119,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     print(f'{episode_name} {more_than_1000_scenes} {total_len}, {more_than_1000_scenes/total_len}')
     
 def get_summary_from_llm(display_text, pipeline):
-    preMsg = "Summarize below dialogue from a tv show in less than 300 words. Output only the summary, no other text.\n"
+    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. Output only the summary, no other text.\n"
     display_text = preMsg + display_text
     #display_text = "What is the capital of Uzbekistan?"
     messages = [
@@ -132,6 +133,7 @@ def get_summary_from_llm(display_text, pipeline):
     if output_text_obj:
         output_text = output_text_obj['content']
     print(output_text)
+    print("-"*100)
     return output_text
 
 def setup_pipeline():
