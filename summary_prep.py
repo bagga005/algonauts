@@ -84,12 +84,37 @@ def get_query(display_text):
     display_text = preMsg + display_text
     return display_text
 
+def generate_summaries(batch):
+    """Process a batch of texts"""
+    summaries = []
+    for messages in batch['messages']:
+        try:
+            outputs = pipeline(
+                messages,
+                max_new_tokens=512,
+                # do_sample=False,  # For consistent results
+                # temperature=0.7,
+            )
+            output_text_obj = outputs[0]["generated_text"][-1]
+            if output_text_obj and 'content' in output_text_obj:
+                summary = output_text_obj['content']
+            else:
+                raise Exception("Summary generation failed")
+                summary = "Summary generation failed"
+            summaries.append(summary)
+        except Exception as e:
+            print(f"Error generating summary: {e}")
+            summaries.append("Error in summary generation")
+    
+    return {'summary': summaries}
+
 def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
         dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{episode_name}.txt')
     out_folder = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'summaries')
+    out_file = os.path.join(out_folder, f'{episode_name}.json')
     scenes_and_dialogues = get_scene_dialogue(dialogue_file)
     dialogue_list = get_dialogue_list(scenes_and_dialogues)
     total_len = 0
@@ -116,32 +141,11 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                     'unsummarized_length': len_display_text,
                     'messages': [{"role": "user", "content": get_query(display_text)}]
                 })
+            if len(all_texts) > 4:
+                break
+            
     if len(all_texts) > 0:
         dataset = Dataset.from_list(all_texts)
-        
-        def generate_summaries(batch):
-            """Process a batch of texts"""
-            summaries = []
-            for messages in batch['messages']:
-                try:
-                    outputs = pipeline(
-                        messages,
-                        max_new_tokens=512,
-                        # do_sample=False,  # For consistent results
-                        # temperature=0.7,
-                    )
-                    output_text_obj = outputs[0]["generated_text"][-1]
-                    if output_text_obj and 'content' in output_text_obj:
-                        summary = output_text_obj['content']
-                    else:
-                        summary = "Summary generation failed"
-                    summaries.append(summary)
-                except Exception as e:
-                    print(f"Error generating summary: {e}")
-                    summaries.append("Error in summary generation")
-            
-            return {'summary': summaries}
-        
         # Process in batches
         print(f"Processing {len(dataset)} texts in batches of {2}")
         dataset = dataset.map(
@@ -155,10 +159,16 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
             print(f"|Scene: {item['scene_desc']}|")
             print(item['summary'])
             print("-" * 100)
-                
+            write_summary(
+                out_file, 
+                item['scene_id'], 
+                item['stim_id'], 
+                item['summary'], 
+                item['unsummarized_length']
+            )
             #get summary
             # print(f'|Scene: {scene["desc"]}|')
-            # out_file = os.path.join(out_folder, f'{episode_name}.json')
+            # 
             
             # summary = get_summary_from_llm(display_text, pipeline)
 
@@ -169,7 +179,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
 
     
 def get_summary_from_llm(display_text, pipeline):
-    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. Output only the summary, no other text.\n"
+    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. This is not the full episode, just a part of it from the start. Output only the summary, no other text.\n"
     display_text = preMsg + display_text
     #display_text = "What is the capital of Uzbekistan?"
     messages = [
