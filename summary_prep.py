@@ -4,6 +4,8 @@ import utils
 from Scenes_and_dialogues import get_scene_dialogue, get_scene_and_dialogues_display_text, get_dialogue_list, get_scene_and_dialogues_display_text_till_scene, get_scene_and_dialogues_display_len
 from glob import glob
 from tqdm import tqdm
+import transformers
+import torch
 
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     """
@@ -112,12 +114,36 @@ def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summar
     return total_len, more_than_1000_scenes
     print(f'{episode_name} {more_than_1000_scenes} {total_len}, {more_than_1000_scenes/total_len}')
 
+def setup_pipeline():
+    model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
+    pipeline = transformers.pipeline(
+        "text-generation",
+        model=model_id,
+        model_kwargs={"torch_dtype": torch.bfloat16},
+        device_map="auto",
+        token="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"
+    )
+    return pipeline
 
 if __name__ == "__main__":
     # stim_id = "friends_s03e06"
     # summary_gen_for_1_episode(stim_id)
+    utils.set_hf_home_path()
     test_summary_gen_all_episodes(min_length_for_summary=100)
+
+    pipeline = setup_pipeline()
+    messages = [
+        {"role": "user", "content": "What is the capital of France?"},
+    ]
+    print(messages)
+
+    outputs = pipeline(
+        messages,
+        max_new_tokens=256,
+    )
+    print(outputs[0]["generated_text"][-1])
+
 
     # for scene in scenes_and_dialogues['scenes']:
     #     print(f'scene: {scene["desc"]}')
