@@ -1,21 +1,30 @@
 import transformers
+from transformers import AutoModelForCausalLM, AutoTokenizer 
 import torch
 import utils
 
 utils.set_hf_home_path()
 model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
+
+
+# Load tokenizer and set pad_token before making pipeline
+tokenizer = AutoTokenizer.from_pretrained(model_id, token="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")
+tokenizer.pad_token = tokenizer.eos_token
+tokenizer.pad_token_id = tokenizer.eos_token_id
+
+# Load model
+model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto", token="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")
+
+# Now make pipeline
 pipeline = transformers.pipeline(
     "text-generation",
-    model=model_id,
-    model_kwargs={"torch_dtype": torch.bfloat16},
+    model=model,
+    tokenizer=tokenizer,
     device_map="auto",
     token="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"
 )
 
-# Fix for batch processing - set pad token
-pipeline.tokenizer.pad_token = pipeline.tokenizer.eos_token
-pipeline.tokenizer.pad_token_id = pipeline.tokenizer.eos_token_id
 
 # Single conversation example (your original code)
 messages = [
