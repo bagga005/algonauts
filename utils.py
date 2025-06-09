@@ -57,6 +57,9 @@ def get_stimuli_prefix():
 def get_hf_token():
     return os.getenv("HF_TOKEN")
 
+def get_min_length_for_summary():
+    return int(os.getenv("MIN_LENGTH_FOR_SUMMARY"))
+
 def get_wandb_config():
     return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 
