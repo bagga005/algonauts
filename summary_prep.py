@@ -83,7 +83,7 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
     print(f'total_len: {total_l}, more_than_1000_scenes: {more_than_1000}, {more_than_1000/total_l}')
 
 
-def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summary=700):
+def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=700):
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
@@ -108,6 +108,9 @@ def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summar
         if(len_display_text > min_length_for_summary):
             #get summary
             out_file = os.path.join(out_folder, f'{episode_name}.txt')
+            
+            get_summary_from_llm(display_text, pipeline)
+            break
             write_summary(out_file, scene['id'], episode_name, display_text, len_display_text)
             # if len_display_text > 1000:
             #     print(f'{episode_name} {scene["id"]} {len_display_text}')
@@ -117,6 +120,7 @@ def summary_gen_for_1_episode(stim_id, dialogue_file=None, min_length_for_summar
 def get_summary_from_llm(display_text, pipeline):
     preMsg = "Summarize below dialogue from a tv show in less than 300 words. Output only the summary, no other text.\n"
     display_text = preMsg + display_text
+    display_text = "What is the capital of Uzbekistan?"
     messages = [
         {"role": "user", "content": display_text},
     ]
@@ -139,23 +143,23 @@ def setup_pipeline():
     return pipeline
 
 if __name__ == "__main__":
-    # stim_id = "friends_s03e06"
-    # summary_gen_for_1_episode(stim_id)
+    
     utils.set_hf_home_path()
     #test_summary_gen_all_episodes(min_length_for_summary=100)
 
     pipeline = setup_pipeline()
-    messages = [
-        {"role": "user", "content": "What is the capital of France?"},
-    ]
-    print(messages)
+    # messages = [
+    #     {"role": "user", "content": "What is the capital of France?"},
+    # ]
+    # print(messages)
 
-    outputs = pipeline(
-        messages,
-        max_new_tokens=256,
-    )
-    print(outputs[0]["generated_text"][-1])
-
+    # outputs = pipeline(
+    #     messages,
+    #     max_new_tokens=256,
+    # )
+    # print(outputs[0]["generated_text"][-1])
+    stim_id = "friends_s03e06"
+    summary_gen_for_1_episode(stim_id, pipeline)
 
     # for scene in scenes_and_dialogues['scenes']:
     #     print(f'scene: {scene["desc"]}')
