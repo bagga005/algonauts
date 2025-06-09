@@ -4,17 +4,18 @@ import torch
 import utils
 
 utils.set_hf_home_path()
+hf_token = utils.get_hf_token()
 model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
 
 
 # Load tokenizer and set pad_token before making pipeline
-tokenizer = AutoTokenizer.from_pretrained(model_id, token="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")
+tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_token, padding_side='left')
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.pad_token_id = tokenizer.eos_token_id
 
 # Load model
-model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto", token="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")
+model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto", token=hf_token)
 
 # Now make pipeline
 pipeline = transformers.pipeline(
@@ -22,7 +23,7 @@ pipeline = transformers.pipeline(
     model=model,
     tokenizer=tokenizer,
     device_map="auto",
-    token="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"
+    token=hf_token
 )
 
 
