@@ -572,6 +572,26 @@ def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0,
     
     # Return original text indices instead of cleaned text indices
     return (original_indices[start_index], original_indices[end_index])
+def get_scene_and_dialogues_display_text_till_scene(scene_and_dialogues, dialogue_list, scene_id):
+    display_text = None
+    for scene in scene_and_dialogues['scenes']:
+        if scene['id'] == scene_id:
+            break
+        d_t = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
+        if display_text is None:
+            display_text = d_t['fancy_scene_text']
+        else:
+            display_text = display_text + "\n\n" + d_t['fancy_scene_text']
+    return display_text
+
+def get_scene_and_dialogues_display_len(scene_and_dialogues, dialogue_list, scene_id):
+    display_len = 0
+    for scene in scene_and_dialogues['scenes']:
+        if scene['id'] == scene_id:
+            d_t = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
+            display_len = len(d_t['fancy_scene_text'].split())
+            break
+    return display_len
 
 def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, scene_id, starting_diaglogue_id=-1, max_words=1000):
     def get_dialogue_by_id(dialogue_id):
