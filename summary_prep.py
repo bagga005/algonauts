@@ -22,7 +22,6 @@ def scene_entry_done(file_path, scene_id):
     """
     # Check if file exists
     if not os.path.exists(file_path):
-        print(f'{file_path} does not exist')
         return False
     
     try:
@@ -36,8 +35,8 @@ def scene_entry_done(file_path, scene_id):
         
     except (json.JSONDecodeError, KeyError):
         # If file is corrupted or doesn't have expected structure
-        print(f'{file_path} is corrupted')
-        return False
+        raise Exception(f'{file_path} is corrupted')
+
     
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     """
@@ -133,7 +132,6 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     dialogue_list = get_dialogue_list(scenes_and_dialogues)
     batch_size = utils.get_mvl_batch_size()
     total_len = 0
-    more_than_1000_scenes = 0
     all_texts = []
     for scene in scenes_and_dialogues['scenes']:
         if scene_entry_done(out_file, scene['id']):
@@ -142,11 +140,10 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
         else:
             print(f'{episode_name} {scene["id"]} not done')
         #get lengths of scenes
-        scene_len = get_scene_and_dialogues_display_len(scenes_and_dialogues, dialogue_list, int(scene['id']))
-        if scene_len > 1000:
-            print(f'{episode_name} {scene["id"]} {scene_len}')
-            more_than_1000_scenes += 1
-        total_len += 1
+        # scene_len = get_scene_and_dialogues_display_len(scenes_and_dialogues, dialogue_list, int(scene['id']))
+        # if scene_len > 1000:
+        #     print(f'{episode_name} {scene["id"]} {scene_len}')
+        #     more_than_1000_scenes += 1
 
         display_text = get_scene_and_dialogues_display_text_till_scene(scenes_and_dialogues, dialogue_list, int(scene['id']))
         if(display_text is None):
@@ -161,55 +158,55 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                     'unsummarized_length': len_display_text,
                     'messages': [{"role": "user", "content": get_query(display_text)}]
                 })
+    print(f'{episode_name} processing {len(all_texts)} scenes out of {len(scenes_and_dialogues["scenes"])}')
             
-    print(f'{episode_name} {len(all_texts)}')
             
-    # if len(all_texts) > 0:
-    #     dataset = Dataset.from_list(all_texts)
+    if len(all_texts) > 0:
+        dataset = Dataset.from_list(all_texts)
         
-    #     def generate_summaries(batch):
-    #         """Process a batch of texts"""
-    #         summaries = []
-    #         for messages in batch['messages']:
-    #             try:
-    #                 outputs = pipeline(
-    #                     messages,
-    #                     max_new_tokens=512,
-    #                     # do_sample=False,  # For consistent results
-    #                     # temperature=0.7,
-    #                 )
-    #                 output_text_obj = outputs[0]["generated_text"][-1]
-    #                 if output_text_obj and 'content' in output_text_obj:
-    #                     summary = output_text_obj['content']
-    #                 else:
-    #                     raise Exception("Summary generation failed")
-    #                     summary = "Summary generation failed"
-    #                 summaries.append(summary)
-    #             except Exception as e:
-    #                 print(f"Error generating summary: {e}")
-    #                 summaries.append("Error in summary generation")
+        def generate_summaries(batch):
+            """Process a batch of texts"""
+            summaries = []
+            for messages in batch['messages']:
+                try:
+                    outputs = pipeline(
+                        messages,
+                        max_new_tokens=512,
+                        # do_sample=False,  # For consistent results
+                        # temperature=0.7,
+                    )
+                    output_text_obj = outputs[0]["generated_text"][-1]
+                    if output_text_obj and 'content' in output_text_obj:
+                        summary = output_text_obj['content']
+                    else:
+                        raise Exception("Summary generation failed")
+                        summary = "Summary generation failed"
+                    summaries.append(summary)
+                except Exception as e:
+                    print(f"Error generating summary: {e}")
+                    summaries.append("Error in summary generation")
             
-    #         return {'summary': summaries}
-    #     # Process in batches
-    #     print(f"Processing {len(dataset)} texts in batches of {batch_size}")
-    #     dataset = dataset.map(
-    #         generate_summaries,
-    #         batched=True,
-    #         batch_size=batch_size,
-    #         desc="Generating summaries"
-    #     )
+            return {'summary': summaries}
+        # Process in batches
+        print(f"Processing {len(dataset)} texts in batches of {batch_size}")
+        dataset = dataset.map(
+            generate_summaries,
+            batched=True,
+            batch_size=batch_size,
+            desc="Generating summaries"
+        )
         
-    #     for item in dataset:
-    #         print(f"|Scene: {item['scene_desc']}|")
-    #         print(item['summary'])
-    #         print("-" * 100)
-    #         write_summary(
-    #             out_file, 
-    #             item['scene_id'], 
-    #             item['stim_id'], 
-    #             item['summary'], 
-    #             item['unsummarized_length']
-    #         )
+        for item in dataset:
+            print(f"|Scene: {item['scene_desc']}|")
+            print(item['summary'])
+            print("-" * 100)
+            write_summary(
+                out_file, 
+                item['scene_id'], 
+                item['stim_id'], 
+                item['summary'], 
+                item['unsummarized_length']
+            )
 
 def setup_pipeline():
     hf_token = utils.get_hf_token()
