@@ -55,7 +55,7 @@ def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-def summary_gen_all_episodes(min_length_for_summary=500):
+def summary_gen_all_episodes(pipeline, min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
     
     #list of full text transcripts
@@ -83,7 +83,7 @@ def summary_gen_all_episodes(min_length_for_summary=500):
     #trans_iterator = enumerate(stimuli.items())
     for i, (stim_id, stim_path) in trans_iterator:
         trans_iterator.set_description(f"Processing {stim_id}")
-        summary_gen_for_1_episode(stim_id, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
+        summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
 
 def get_query(display_text):
     preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. This is not the full episode, just a part of it from the start. Output only the summary, no other text.\n"
