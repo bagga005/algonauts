@@ -1,6 +1,8 @@
 import transformers
 import torch
+import utils
 
+utils.set_huggingface_token()
 model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
 pipeline = transformers.pipeline(
