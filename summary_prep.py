@@ -137,6 +137,8 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
         if scene_entry_done(out_file, scene['id']):
             print(f'{episode_name} {scene["id"]} already done')
             continue
+        else:
+            print(f'{episode_name} {scene["id"]} not done')
         #get lengths of scenes
         scene_len = get_scene_and_dialogues_display_len(scenes_and_dialogues, dialogue_list, int(scene['id']))
         if scene_len > 1000:
@@ -158,52 +160,54 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                     'messages': [{"role": "user", "content": get_query(display_text)}]
                 })
             
-    if len(all_texts) > 0:
-        dataset = Dataset.from_list(all_texts)
-        
-        def generate_summaries(batch):
-            """Process a batch of texts"""
-            summaries = []
-            for messages in batch['messages']:
-                try:
-                    outputs = pipeline(
-                        messages,
-                        max_new_tokens=512,
-                        # do_sample=False,  # For consistent results
-                        # temperature=0.7,
-                    )
-                    output_text_obj = outputs[0]["generated_text"][-1]
-                    if output_text_obj and 'content' in output_text_obj:
-                        summary = output_text_obj['content']
-                    else:
-                        raise Exception("Summary generation failed")
-                        summary = "Summary generation failed"
-                    summaries.append(summary)
-                except Exception as e:
-                    print(f"Error generating summary: {e}")
-                    summaries.append("Error in summary generation")
+    print(f'{episode_name} {len(all_texts)}')
             
-            return {'summary': summaries}
-        # Process in batches
-        print(f"Processing {len(dataset)} texts in batches of {batch_size}")
-        dataset = dataset.map(
-            generate_summaries,
-            batched=True,
-            batch_size=batch_size,
-            desc="Generating summaries"
-        )
+    # if len(all_texts) > 0:
+    #     dataset = Dataset.from_list(all_texts)
         
-        for item in dataset:
-            print(f"|Scene: {item['scene_desc']}|")
-            print(item['summary'])
-            print("-" * 100)
-            write_summary(
-                out_file, 
-                item['scene_id'], 
-                item['stim_id'], 
-                item['summary'], 
-                item['unsummarized_length']
-            )
+    #     def generate_summaries(batch):
+    #         """Process a batch of texts"""
+    #         summaries = []
+    #         for messages in batch['messages']:
+    #             try:
+    #                 outputs = pipeline(
+    #                     messages,
+    #                     max_new_tokens=512,
+    #                     # do_sample=False,  # For consistent results
+    #                     # temperature=0.7,
+    #                 )
+    #                 output_text_obj = outputs[0]["generated_text"][-1]
+    #                 if output_text_obj and 'content' in output_text_obj:
+    #                     summary = output_text_obj['content']
+    #                 else:
+    #                     raise Exception("Summary generation failed")
+    #                     summary = "Summary generation failed"
+    #                 summaries.append(summary)
+    #             except Exception as e:
+    #                 print(f"Error generating summary: {e}")
+    #                 summaries.append("Error in summary generation")
+            
+    #         return {'summary': summaries}
+    #     # Process in batches
+    #     print(f"Processing {len(dataset)} texts in batches of {batch_size}")
+    #     dataset = dataset.map(
+    #         generate_summaries,
+    #         batched=True,
+    #         batch_size=batch_size,
+    #         desc="Generating summaries"
+    #     )
+        
+    #     for item in dataset:
+    #         print(f"|Scene: {item['scene_desc']}|")
+    #         print(item['summary'])
+    #         print("-" * 100)
+    #         write_summary(
+    #             out_file, 
+    #             item['scene_id'], 
+    #             item['stim_id'], 
+    #             item['summary'], 
+    #             item['unsummarized_length']
+    #         )
 
 def setup_pipeline():
     hf_token = utils.get_hf_token()
