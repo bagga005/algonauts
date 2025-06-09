@@ -20,6 +20,9 @@ def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
         summary (str): Summary text
         unsummarized_length (int): Length of the unsummarized text
     """
+    # Compute summary length as number of words
+    summary_length = len(summary.split())
+    
     # Check if file exists
     if os.path.exists(file_path):
         # Read existing data
@@ -35,6 +38,7 @@ def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
             "scene_id": scene_id,
             "stim_id": stim_id,
             "summary": summary,
+            "summary_length": summary_length,
             "unsummarized_length": unsummarized_length
         })
     else:
@@ -43,6 +47,7 @@ def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
             "scene_id": scene_id,
             "stim_id": stim_id,
             "summary": summary,
+            "summary_length": summary_length,
             "unsummarized_length": unsummarized_length
         }]
     
@@ -50,11 +55,11 @@ def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-def test_summary_gen_all_episodes(min_length_for_summary=100):
+def summary_gen_all_episodes(min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
     
     #list of full text transcripts
-    file_in_filter = ''
+    file_in_filter = utils.get_stimuli_prefix()
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/friends/full/*.txt")
     updated_files = []
@@ -120,8 +125,6 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                     'unsummarized_length': len_display_text,
                     'messages': [{"role": "user", "content": get_query(display_text)}]
                 })
-            if len(all_texts) > 4:
-                break
             
     if len(all_texts) > 0:
         dataset = Dataset.from_list(all_texts)
@@ -221,11 +224,10 @@ def setup_pipeline():
     return pipeline
 
 if __name__ == "__main__":
-    
     utils.set_hf_home_path()
-    #test_summary_gen_all_episodes(min_length_for_summary=100)
 
     pipeline = setup_pipeline()
+    summary_gen_all_episodes(pipeline, min_length_for_summary=500)
     # messages = [
     #     {"role": "user", "content": "What is the capital of France?"},
     # ]
