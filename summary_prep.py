@@ -22,6 +22,7 @@ def scene_entry_done(file_path, scene_id):
     """
     # Check if file exists
     if not os.path.exists(file_path):
+        print(f'{file_path} does not exist')
         return False
     
     try:
@@ -35,6 +36,7 @@ def scene_entry_done(file_path, scene_id):
         
     except (json.JSONDecodeError, KeyError):
         # If file is corrupted or doesn't have expected structure
+        print(f'{file_path} is corrupted')
         return False
     
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
