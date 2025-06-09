@@ -54,6 +54,9 @@ def get_mvl_batch_size():
 def get_stimuli_prefix():
     return os.getenv("STIMULI_PREFIX")
 
+def get_hf_token():
+    return os.getenv("HF_TOKEN")
+
 def get_wandb_config():
     return os.getenv("WANDB_PROJECT"), os.getenv("WANDB_MODEL_NAME"), os.getenv("WANDB_ENABLE")
 
