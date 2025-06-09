@@ -13,6 +13,9 @@ pipeline = transformers.pipeline(
     token="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"
 )
 
+# Fix for batch processing - set pad token
+pipeline.tokenizer.pad_token_id = pipeline.model.config.eos_token_id
+
 # Single conversation example (your original code)
 messages = [
     {"role": "user", "content": "What is the capital of France?"},
