@@ -128,6 +128,7 @@ def get_summary_from_llm(display_text, pipeline):
     outputs = pipeline(
         messages,
         max_new_tokens=512,
+        return_full_text=False
     )
     output_text_obj = outputs[0]["generated_text"][-1]
     if output_text_obj:
