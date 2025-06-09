@@ -109,9 +109,9 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
             #get summary
             out_file = os.path.join(out_folder, f'{episode_name}.txt')
             
-            get_summary_from_llm(display_text, pipeline)
-            break
-            write_summary(out_file, scene['id'], episode_name, display_text, len_display_text)
+            summary = get_summary_from_llm(display_text, pipeline)
+
+            write_summary(out_file, scene['id'], episode_name, summary, len_display_text)
             # if len_display_text > 1000:
             #     print(f'{episode_name} {scene["id"]} {len_display_text}')
     return total_len, more_than_1000_scenes
@@ -128,7 +128,11 @@ def get_summary_from_llm(display_text, pipeline):
         messages,
         max_new_tokens=512,
     )
-    print(outputs[0]["generated_text"][-1])
+    output_text_obj = outputs[0]["generated_text"][-1]
+    if output_text_obj:
+        output_text = output_text_obj['content']
+    print(output_text)
+    return output_text
 
 def setup_pipeline():
     model_id = "meta-llama/Llama-3.1-8B-Instruct"
