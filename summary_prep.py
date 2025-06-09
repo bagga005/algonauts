@@ -79,6 +79,10 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
         trans_iterator.set_description(f"Processing {stim_id}")
         summary_gen_for_1_episode(stim_id, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
 
+def get_query(display_text):
+    preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. Output only the summary, no other text.\n"
+    display_text = preMsg + display_text
+    return display_text
 
 def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
@@ -110,47 +114,47 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
                     'scene_id': scene['id'],
                     'scene_desc': scene['desc'],
                     'unsummarized_length': len_display_text,
-                    'messages': [{"role": "user", "content": display_text}]
+                    'messages': [{"role": "user", "content": get_query(display_text)}]
                 })
-        if len(all_texts) > 0:
-            dataset = Dataset.from_list(all_texts)
+    if len(all_texts) > 0:
+        dataset = Dataset.from_list(all_texts)
+        
+        def generate_summaries(batch):
+            """Process a batch of texts"""
+            summaries = []
+            for messages in batch['messages']:
+                try:
+                    outputs = pipeline(
+                        messages,
+                        max_new_tokens=512,
+                        # do_sample=False,  # For consistent results
+                        # temperature=0.7,
+                    )
+                    output_text_obj = outputs[0]["generated_text"][-1]
+                    if output_text_obj and 'content' in output_text_obj:
+                        summary = output_text_obj['content']
+                    else:
+                        summary = "Summary generation failed"
+                    summaries.append(summary)
+                except Exception as e:
+                    print(f"Error generating summary: {e}")
+                    summaries.append("Error in summary generation")
             
-            def generate_summaries(batch):
-                """Process a batch of texts"""
-                summaries = []
-                for messages in batch['messages']:
-                    try:
-                        outputs = pipeline(
-                            messages,
-                            max_new_tokens=512,
-                            do_sample=False,  # For consistent results
-                            temperature=0.7,
-                        )
-                        output_text_obj = outputs[0]["generated_text"][-1]
-                        if output_text_obj and 'content' in output_text_obj:
-                            summary = output_text_obj['content']
-                        else:
-                            summary = "Summary generation failed"
-                        summaries.append(summary)
-                    except Exception as e:
-                        print(f"Error generating summary: {e}")
-                        summaries.append("Error in summary generation")
-                
-                return {'summary': summaries}
-            
-            # Process in batches
-            print(f"Processing {len(dataset)} texts in batches of {2}")
-            dataset = dataset.map(
-                generate_summaries,
-                batched=True,
-                batch_size=2,
-                desc="Generating summaries"
-            )
-            
-            for item in dataset:
-                print(f"|Scene: {item['scene_desc']}|")
-                print(item['summary'])
-                print("-" * 100)
+            return {'summary': summaries}
+        
+        # Process in batches
+        print(f"Processing {len(dataset)} texts in batches of {2}")
+        dataset = dataset.map(
+            generate_summaries,
+            batched=True,
+            batch_size=2,
+            desc="Generating summaries"
+        )
+        
+        for item in dataset:
+            print(f"|Scene: {item['scene_desc']}|")
+            print(item['summary'])
+            print("-" * 100)
                 
             #get summary
             # print(f'|Scene: {scene["desc"]}|')
@@ -161,7 +165,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
             # write_summary(out_file, scene['id'], episode_name, summary, len_display_text)
             # if len_display_text > 1000:
             #     print(f'{episode_name} {scene["id"]} {len_display_text}')
-    
+
 
     
 def get_summary_from_llm(display_text, pipeline):
