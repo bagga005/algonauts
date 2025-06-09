@@ -2,7 +2,7 @@ import transformers
 import torch
 import utils
 
-utils.set_huggingface_token()
+utils.set_hf_home_path()
 model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
 pipeline = transformers.pipeline(
