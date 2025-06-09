@@ -83,7 +83,7 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
     print(f'total_len: {total_l}, more_than_1000_scenes: {more_than_1000}, {more_than_1000/total_l}')
 
 
-def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=700):
+def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
     episode_name = stim_id
     if dialogue_file is None:
@@ -132,7 +132,8 @@ def get_summary_from_llm(display_text, pipeline):
     )
     output_text_obj = outputs[0]["generated_text"][-1]
     if output_text_obj:
-        output_text = output_text_obj['content']
+        print('output_text_obj',output_text_obj)
+        output_text = output_text_obj
     print(output_text)
     print("-"*100)
     return output_text
