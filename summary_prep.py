@@ -130,7 +130,7 @@ if __name__ == "__main__":
     # stim_id = "friends_s03e06"
     # summary_gen_for_1_episode(stim_id)
     utils.set_hf_home_path()
-    test_summary_gen_all_episodes(min_length_for_summary=100)
+    #test_summary_gen_all_episodes(min_length_for_summary=100)
 
     pipeline = setup_pipeline()
     messages = [
