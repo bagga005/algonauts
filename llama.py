@@ -15,6 +15,7 @@ pipeline = transformers.pipeline(
 
 # Fix for batch processing - set pad token
 pipeline.tokenizer.pad_token = pipeline.tokenizer.eos_token
+pipeline.tokenizer.pad_token_id = pipeline.tokenizer.eos_token_id
 
 # Single conversation example (your original code)
 messages = [
