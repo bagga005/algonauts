@@ -6,6 +6,7 @@ from glob import glob
 from tqdm import tqdm
 import transformers
 import torch
+from datasets import Dataset
 
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     """
@@ -71,16 +72,12 @@ def test_summary_gen_all_episodes(min_length_for_summary=100):
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
-    total_l = 0
-    more_than_1000 = 0
+
     trans_iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     #trans_iterator = enumerate(stimuli.items())
     for i, (stim_id, stim_path) in trans_iterator:
         trans_iterator.set_description(f"Processing {stim_id}")
-        total_len, more_than_1000_scenes = summary_gen_for_1_episode(stim_id, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
-        total_l += total_len
-        more_than_1000 += more_than_1000_scenes
-    print(f'total_len: {total_l}, more_than_1000_scenes: {more_than_1000}, {more_than_1000/total_l}')
+        summary_gen_for_1_episode(stim_id, dialogue_file=stim_path, min_length_for_summary=min_length_for_summary)
 
 
 def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=500):
@@ -93,6 +90,7 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
     dialogue_list = get_dialogue_list(scenes_and_dialogues)
     total_len = 0
     more_than_1000_scenes = 0
+    all_texts = []
     for scene in scenes_and_dialogues['scenes']:
         #get lengths of scenes
         scene_len = get_scene_and_dialogues_display_len(scenes_and_dialogues, dialogue_list, int(scene['id']))
@@ -106,17 +104,65 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
             continue
         len_display_text = len(display_text.split())
         if(len_display_text > min_length_for_summary):
-            #get summary
-            print(f'|Scene: {scene["desc"]}|')
-            out_file = os.path.join(out_folder, f'{episode_name}.json')
+            all_texts.append({
+                    'text': display_text,
+                    'stim_id': stim_id,
+                    'scene_id': scene['id'],
+                    'scene_desc': scene['desc'],
+                    'unsummarized_length': len_display_text,
+                    'messages': [{"role": "user", "content": display_text}]
+                })
+        if len(all_texts) > 0:
+            dataset = Dataset.from_list(all_texts)
             
-            summary = get_summary_from_llm(display_text, pipeline)
+            def generate_summaries(batch):
+                """Process a batch of texts"""
+                summaries = []
+                for messages in batch['messages']:
+                    try:
+                        outputs = pipeline(
+                            messages,
+                            max_new_tokens=512,
+                            do_sample=False,  # For consistent results
+                            temperature=0.7,
+                        )
+                        output_text_obj = outputs[0]["generated_text"][-1]
+                        if output_text_obj and 'content' in output_text_obj:
+                            summary = output_text_obj['content']
+                        else:
+                            summary = "Summary generation failed"
+                        summaries.append(summary)
+                    except Exception as e:
+                        print(f"Error generating summary: {e}")
+                        summaries.append("Error in summary generation")
+                
+                return {'summary': summaries}
+            
+            # Process in batches
+            print(f"Processing {len(dataset)} texts in batches of {2}")
+            dataset = dataset.map(
+                generate_summaries,
+                batched=True,
+                batch_size=2,
+                desc="Generating summaries"
+            )
+            
+            for item in dataset:
+                print(f"|Scene: {item['scene_desc']}|")
+                print(item['summary'])
+                print("-" * 100)
+                
+            #get summary
+            # print(f'|Scene: {scene["desc"]}|')
+            # out_file = os.path.join(out_folder, f'{episode_name}.json')
+            
+            # summary = get_summary_from_llm(display_text, pipeline)
 
-            write_summary(out_file, scene['id'], episode_name, summary, len_display_text)
+            # write_summary(out_file, scene['id'], episode_name, summary, len_display_text)
             # if len_display_text > 1000:
             #     print(f'{episode_name} {scene["id"]} {len_display_text}')
-    return total_len, more_than_1000_scenes
-    print(f'{episode_name} {more_than_1000_scenes} {total_len}, {more_than_1000_scenes/total_len}')
+    
+
     
 def get_summary_from_llm(display_text, pipeline):
     preMsg = "Summarize below dialogue from part of a tv show in less than 300 words. Output only the summary, no other text.\n"
@@ -128,7 +174,6 @@ def get_summary_from_llm(display_text, pipeline):
     outputs = pipeline(
         messages,
         max_new_tokens=512,
-        return_full_text=False
     )
     output_text_obj = outputs[0]["generated_text"][-1]
     if output_text_obj:
