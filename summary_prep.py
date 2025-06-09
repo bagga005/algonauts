@@ -120,13 +120,13 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
 def get_summary_from_llm(display_text, pipeline):
     preMsg = "Summarize below dialogue from a tv show in less than 300 words. Output only the summary, no other text.\n"
     display_text = preMsg + display_text
-    display_text = "What is the capital of Uzbekistan?"
+    #display_text = "What is the capital of Uzbekistan?"
     messages = [
         {"role": "user", "content": display_text},
     ]
     outputs = pipeline(
         messages,
-        max_new_tokens=500,
+        max_new_tokens=512,
     )
     print(outputs[0]["generated_text"][-1])
 
