@@ -7,6 +7,7 @@ from tqdm import tqdm
 import transformers
 import torch
 from datasets import Dataset
+from transformers import AutoModelForCausalLM, AutoTokenizer 
 
 def write_summary(file_path, scene_id, stim_id, summary, unsummarized_length):
     """
@@ -84,29 +85,7 @@ def get_query(display_text):
     display_text = preMsg + display_text
     return display_text
 
-def generate_summaries(batch):
-    """Process a batch of texts"""
-    summaries = []
-    for messages in batch['messages']:
-        try:
-            outputs = pipeline(
-                messages,
-                max_new_tokens=512,
-                # do_sample=False,  # For consistent results
-                # temperature=0.7,
-            )
-            output_text_obj = outputs[0]["generated_text"][-1]
-            if output_text_obj and 'content' in output_text_obj:
-                summary = output_text_obj['content']
-            else:
-                raise Exception("Summary generation failed")
-                summary = "Summary generation failed"
-            summaries.append(summary)
-        except Exception as e:
-            print(f"Error generating summary: {e}")
-            summaries.append("Error in summary generation")
-    
-    return {'summary': summaries}
+
 
 def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_for_summary=500):
     root_data_dir = utils.get_data_root_dir()
@@ -146,6 +125,30 @@ def summary_gen_for_1_episode(stim_id, pipeline, dialogue_file=None, min_length_
             
     if len(all_texts) > 0:
         dataset = Dataset.from_list(all_texts)
+        
+        def generate_summaries(batch):
+            """Process a batch of texts"""
+            summaries = []
+            for messages in batch['messages']:
+                try:
+                    outputs = pipeline(
+                        messages,
+                        max_new_tokens=512,
+                        # do_sample=False,  # For consistent results
+                        # temperature=0.7,
+                    )
+                    output_text_obj = outputs[0]["generated_text"][-1]
+                    if output_text_obj and 'content' in output_text_obj:
+                        summary = output_text_obj['content']
+                    else:
+                        raise Exception("Summary generation failed")
+                        summary = "Summary generation failed"
+                    summaries.append(summary)
+                except Exception as e:
+                    print(f"Error generating summary: {e}")
+                    summaries.append("Error in summary generation")
+            
+            return {'summary': summaries}
         # Process in batches
         print(f"Processing {len(dataset)} texts in batches of {2}")
         dataset = dataset.map(
@@ -198,14 +201,22 @@ def get_summary_from_llm(display_text, pipeline):
     return output_text
 
 def setup_pipeline():
+    hf_token = utils.get_hf_token()
     model_id = "meta-llama/Llama-3.1-8B-Instruct"
+    # Load tokenizer and set pad_token before making pipeline
+    tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_token, padding_side='left')
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+    # Load model
+    model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto", token=hf_token)
 
+    # Now make pipeline
     pipeline = transformers.pipeline(
         "text-generation",
-        model=model_id,
-        model_kwargs={"torch_dtype": torch.bfloat16},
+        model=model,
+        tokenizer=tokenizer,
         device_map="auto",
-        token="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"
+        token=hf_token
     )
     return pipeline
 
