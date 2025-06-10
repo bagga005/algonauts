@@ -147,6 +147,7 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
 def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
     pre_text = textData['fancy_pre']
     post_text = textData['fancy_post']
+    
     if skip_video_tokens:
         if pre_text:
             video_prefix = pre_text
@@ -154,9 +155,10 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
             video_prefix = ''
     else:
         if pre_text:
-            video_prefix = pre_text + "\n" + ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_videos))])
+            video_prefix = pre_text + ''.join([f'\nFrame{i+1}: <image>' for i in range(num_videos)])
         else:
-            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(len(num_videos))])
+            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(num_videos)])
+            video_prefix = video_prefix[:-1]
                            
     if post_text:
         if video_prefix:
@@ -164,8 +166,9 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
         else:
             question_for_embeddings = post_text
     else:
-        question_for_embeddings = video_prefix + "\n"
-    
+        question_for_embeddings = video_prefix 
+
+        
     return question_for_embeddings
 
 class SentenceDataset_v2(Dataset):

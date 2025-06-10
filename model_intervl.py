@@ -521,9 +521,12 @@ def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_valu
                 final_pixel_values = torch.cat((final_pixel_values, pixel_values), dim=0)
 
 
-        #print('final_input_ids.shape', final_input_ids[0].shape)
+        print('final_input_ids.shape 1', final_input_ids[0].shape)
+        #we are not doing batch so this can be skipped
         final_input_ids, final_attention_mask = generate_attention_mask_batch(final_input_ids, tokenizer.pad_token_id, model.device)
+        print('final_input_ids.shape 2', final_input_ids[0].shape)
         final_input_ids = final_input_ids[0].unsqueeze(0)
+        print('final_input_ids.shape 3', final_input_ids[0].shape)
         assert len(prompt_markers_list) == len(list_text_prompt)
         #print('final_input_ids.shape', final_input_ids.shape)
     else:
@@ -706,7 +709,7 @@ def process_all_files_for_embedding_extraction():
             print(f"Extracting features for {stim_id}")
             if stim_id in exclude_list:
                 continue
-            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=True, \
+            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=False, n_used_words=1000, skip_pre_post_split=False, \
                 use_summary=True, use_present_scene=True)
             transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
@@ -802,7 +805,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     #log_to_file(counter,'chunk_path', chunk_path)
                     # Load the frames from the chunked movie clip
                     trans_index = counter
-                    if skip_pix:
+                    if skip_pix or utils.isMockMode():
                         pixel_values = torch.randn(8, 3, 448, 448, dtype=torch.bfloat16)
                     else:
                         pixel_values, num_patches_list = utils_video.load_video(chunk_path, num_segments=8, max_num=1)
@@ -815,7 +818,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    #utils.log_to_file(counter,':', question_for_embeddings)
+                    utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
