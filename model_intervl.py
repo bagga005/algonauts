@@ -63,8 +63,6 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
     extraction_format = utils.get_mvl_extraction_format()
     assert len(prompt_markers_list) == len(list_prefix), f"len(prompt_markers_list) != len(list_prefix) {len(prompt_markers_list)} != {len(list_prefix)}"
     for i, (prompt_markers, prefix) in enumerate(zip(prompt_markers_list, list_prefix)):
-        
-
         for layer_name, embedding_batch in full_embeddings.items():
             
             # Create the save directory if it doesn't exist
@@ -97,7 +95,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                     first_avg = True
                     for (start, end) in prompt_markers['img_index_values']:
                         image_embedding = embedding[start+1:end,:]
-                        #print('image_embedding', image_embedding.shape)
+                        # print('image_embedding', image_embedding.shape)
                         if first_avg:
                             image_embedding_avg = torch.mean(image_embedding, dim=0).unsqueeze(0)
                             first_avg = False
@@ -105,129 +103,90 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                             image_embedding_avg = torch.cat([image_embedding_avg, torch.mean(image_embedding, dim=0).unsqueeze(0)], dim=0)
                     
                     all_img_embeddings = torch.cat([image_embedding_avg, embedding[prompt_markers['img_index_values'][-1][-1],:].unsqueeze(0)], dim=0)
-                        #print('image_embedding_avg', image_embedding_avg.shape)
+                    # print('image_embedding_avg', image_embedding_avg.shape)
                         #exit()
-                    #print('image_embedding_avg', image_embedding_avg.shape)
+                    # print('image_embedding_avg', all_img_embeddings.shape)
+                    
+                    #get last 7 pre
+                    avail_pre = prompt_markers['pre_end_index'] - prompt_markers['pre_start_index'] +1
+                    # print('avail_pre', avail_pre, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
+                    assert avail_pre > 0, f"avail_pre {avail_pre} < 1 pre_end_index {prompt_markers['pre_end_index']} pre_start_index {prompt_markers['pre_start_index']}"
+                    start_idx = max(prompt_markers['pre_end_index'] -6, prompt_markers['pre_start_index'])
+                    # print('start_idx', start_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
+                    embedding_pre = embedding[start_idx:prompt_markers['pre_end_index']+1,:]
+                    if avail_pre < 7:
+                        gap = 7 - avail_pre
+                        # print('end gap', gap)
+                        last_dim = embedding[prompt_markers['pre_start_index'],:]
+                        gap_tensor = last_dim.repeat(gap, 1)                            
+                        embedding_pre_l7 = torch.cat((gap_tensor, embedding_pre), dim=0)
+                    else:
+                        embedding_pre_l7 = embedding_pre
+                    # print('embedding_pre_l7', embedding_pre_l7.shape)
+                    assert embedding_pre_l7.shape[0] == 7, f"embedding_pre_l7.shape[0] {embedding_pre_l7.shape[0]} != 7"
                     
                     if extraction_format == 0: #first pix
-                        #get last 7 pre
-                        avail_pre = prompt_markers['pre_end_index'] - prompt_markers['pre_start_index'] +1
-                        assert avail_pre < 1, f"avail_pre {avail_pre} < 1 pre_end_index {prompt_markers['pre_end_index']} pre_start_index {prompt_markers['pre_start_index']}"
-                        start_idx = max(prompt_markers['pre_end_index'] -6, prompt_markers['pre_start_index'])
-                        embedding_pre = embedding[start_idx:prompt_markers['pre_end_index']+1,:]
-                        if avail_pre < 7:
-                            gap = 7 - avail_pre
-                            last_dim = embedding[prompt_markers['pre_start_index'],:]
-                            gap_tensor = last_dim.repeat(gap, 1)                            
-                            embedding_pre_l7 = torch.cat((gap_tensor, embedding_pre), dim=0)
-                        else:
-                            embedding_pre_l7 = embedding_pre
-                            
                         #get first 7 pre
                         end_idx = min(prompt_markers['pre_end_index'], prompt_markers['pre_start_index'] + 6)
+                        # print('end_idx', end_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
                         embedding_pre = embedding[prompt_markers['pre_start_index']:end_idx+1,:]
                         if avail_pre < 7:
                             gap = 7 - avail_pre
+                            # print('start gap', gap)
                             last_dim = embedding[prompt_markers['pre_end_index'],:]
                             gap_tensor = last_dim.repeat(gap, 1)                            
                             embedding_pre_f7 = torch.cat((embedding_pre, gap_tensor), dim=0)
                         else:
                             embedding_pre_f7 = embedding_pre
-                            
+                        # print('embedding_pre_f7', embedding_pre_f7.shape)
+                        assert embedding_pre_f7.shape[0] == 7, f"embedding_pre_f7.shape[0] {embedding_pre_f7.shape[0]} != 7"
                         embedding = torch.cat([embedding_pre_l7, embedding_pre_f7, all_img_embeddings], dim=0)
-
-                    # #if there is a pre, get it, 1 avg and last 7. TOTAL 8
-                    # #how many pre can we fill
-                    # avail_pre = max(prompt_markers['pre_end_index'] - prompt_markers['pre_start_index'] +1,0)
-                    # #print('avail_pre', avail_pre)
-                    # if(avail_pre > 0):
-                    #     #get average of all tokens
-                    #     embedding_pre = embedding[prompt_markers['pre_start_index']:prompt_markers['pre_end_index']+1,:]
-                    #     embedding_pre_avg = torch.mean(embedding_pre, dim=0).unsqueeze(0)
-                    # else:
-                    #     #put in empty tensors
-                    #     embedding_pre_avg = torch.zeros(1, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)
-                    # #take last 7. TOTAL 7
-                    # num_real = min(7, avail_pre)
-                    # num_0 = 7 - num_real
-                    # embeddings_last7_pre = None
-                    # if(avail_pre > 0):
-                    #     embeddings_last7_pre =embedding[prompt_markers['pre_end_index'] - num_real+1:prompt_markers['pre_end_index']+1,:]
-                    #     #print('real embeddings_last7_pre', embeddings_last7_pre.shape)
-                    # if num_0 > 0:
-                    #     if embeddings_last7_pre is None:
-                    #         embeddings_last7_pre = torch.zeros(num_0, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)
-                    #         #print('empty embeddings_last7_pre', embeddings_last7_pre.shape)
-                    #     else:
-                    #         embeddings_last7_pre = torch.cat([embeddings_last7_pre, torch.zeros(num_0, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)], dim=0)
-                    #         #print('real + empty embeddings_last7_pre', embeddings_last7_pre.shape)
-                    # embedding_pre = torch.cat([embedding_pre_avg, embeddings_last7_pre], dim=0)
-                    # #print('embedding_pre.dtype', layer_name, embedding_pre.dtype)
-                    # #print('embedding_pre', embedding_pre.shape)
-
-                    # #if there is a post, get it, 1 avg and last 7. TOTAL 8
-                    # #how many post can we fill
-                    # #print('post_start_index', prompt_markers['post_start_index'], counter)
-                    # #print('post_end_index', prompt_markers['post_end_index'])
-                    # avail_post = max(prompt_markers['post_end_index'] - prompt_markers['post_start_index'] +1,0)
-                    # #print('avail_post', avail_post)
-                    # if(avail_post > 0):
-                    #     #get average of all tokens
-                    #     embedding_post = embedding[prompt_markers['post_start_index']:prompt_markers['post_end_index']+1,:]
-                    #     embedding_post_avg = torch.mean(embedding_post, dim=0).unsqueeze(0)
-                    # else:
-                    #     #put in empty tensors
-                    #     embedding_post_avg = torch.zeros(1, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)
-                    # #take last 7. TOTAL 7
-                    # num_real = min(7, avail_post)
-                    # #print('num_real', num_real)
-                    # num_0 = 7 - num_real
-                    # #print('num_0', num_0)
-                    # embeddings_last7_post = None
-                    # if(avail_post > 0):
-                    #     embeddings_last7_post =embedding[prompt_markers['post_end_index'] - num_real+1:prompt_markers['post_end_index']+1,:]
-                    #     #print('real embeddings_last7_post', embeddings_last7_post.shape)
-                    # if num_0 > 0:
-                    #     if embeddings_last7_post is None:
-                    #         embeddings_last7_post = torch.zeros(num_0, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)
-                    #         #print('empty embeddings_last7_post', embeddings_last7_post.shape)
-                    #     else:
-                    #         embeddings_last7_post = torch.cat([embeddings_last7_post, torch.zeros(num_0, embedding.shape[1], device=embedding.device, dtype=embedding.dtype)], dim=0)
-                    #         #print('real + empty embeddings_last7_post', embeddings_last7_post.shape)
-                    # embedding_post = torch.cat([embedding_post_avg, embeddings_last7_post], dim=0)
-                    # #print('embedding_post.dtype', layer_name, embedding_post.dtype)
-                    # #print('embedding_post', embedding_post.shape)
-                    
-                    
-                    # #save average of individual image so 8 tensors + last 1 at end of image that is all combine. TOTAL 9 
-                    # first_avg = True
-                    # for (start, end) in prompt_markers['img_index_values']:
-                    #     image_embedding = embedding[start+1:end,:]
-                    #     #print('image_embedding', image_embedding.shape)
-                    #     if first_avg:
-                    #         image_embedding_avg = torch.mean(image_embedding, dim=0).unsqueeze(0)
-                    #         first_avg = False
-                    #     else:
-                    #         image_embedding_avg = torch.cat([image_embedding_avg, torch.mean(image_embedding, dim=0).unsqueeze(0)], dim=0)
-                    #     #print('image_embedding_avg', image_embedding_avg.shape)
-                    #     #exit()
-                    # #print('image_embedding_avg', image_embedding_avg.shape)
-                    # #add last token for end of last chat
-                    # all_img_embeddings = torch.cat([image_embedding_avg, embedding[prompt_markers['img_index_values'][-1][-1],:].unsqueeze(0)], dim=0)
-                    # #print('all_img_embeddings.dtype', layer_name, all_img_embeddings.dtype)
-                    # #print('all_img_embeddings', all_img_embeddings.shape)
-                    # #
-                    # # print('embedding_last7', embedding_last7.shape)
-                    # # print('embedding_first1', embedding_first1.shape)
-                    # # print('embedding_pre', embedding_pre.shape)
-                    # # print('embedding_post', embedding_post.shape)
-                    # # print('all_img_embeddings', all_img_embeddings.shape)
-                    # embedding = torch.cat([embedding_last7, embedding_first1, embedding_pre, embedding_post, all_img_embeddings], dim=0)
+                        assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
+                        # print('embedding', embedding.shape)
+                    else: #first pix
+                        #get last 4 post
+                        avail_post = prompt_markers['post_end_index'] - prompt_markers['post_start_index'] +1
+                        # print('avail_post', avail_post, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        assert avail_post > 0, f"avail_post {avail_post} < 1 post_end_index {prompt_markers['post_end_index']} post_start_index {prompt_markers['post_start_index']}"
+                        start_idx = max(prompt_markers['post_end_index'] -3, prompt_markers['post_start_index'])
+                        # print('start_idx', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        embedding_post = embedding[start_idx:prompt_markers['post_end_index']+1,:]
+                        if avail_post < 4:
+                            gap = 4 - avail_post
+                            # print('end post gap', gap)
+                            last_dim = embedding[prompt_markers['post_start_index'],:]
+                            gap_tensor = last_dim.repeat(gap, 1)                            
+                            embedding_post_l4 = torch.cat((gap_tensor, embedding_post), dim=0)
+                        else:
+                            embedding_post_l4 = embedding_post
+                        # print('embedding_post_l4', embedding_post_l4.shape)
+                        assert embedding_post_l4.shape[0] == 4, f"embedding_post_l4.shape[0] {embedding_post_l4.shape[0]} != 4"
+                        #get first 3 post
+                        end_idx = min(prompt_markers['post_end_index'], prompt_markers['post_start_index'] + 2)
+                        # print('end_idx', end_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        embedding_post = embedding[prompt_markers['post_start_index']:end_idx+1,:]
+                        if avail_post < 3:
+                            gap = 3 - avail_post
+                            # print('start post gap', gap)
+                            last_dim = embedding[prompt_markers['post_end_index'],:]
+                            gap_tensor = last_dim.repeat(gap, 1)                            
+                            embedding_post_f3 = torch.cat((embedding_post, gap_tensor), dim=0)
+                        else:
+                            embedding_post_f3 = embedding_post
+                        # print('embedding_post_f3', embedding_post_f3.shape)
+                        assert embedding_post_f3.shape[0] == 3, f"embedding_post_f3.shape[0] {embedding_post_f3.shape[0]} != 3"
+                        embedding = torch.cat([embedding_pre_l7, embedding_post_f3, embedding_post_l4, all_img_embeddings], dim=0)
+                        assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
+                        # print('embedding', embedding.shape)
                 else:
                     #print('embedding.shape', embedding.shape)
                     embedding = embedding_last7
                     #print('embedding.shape', embedding.shape)
                 assert embedding.dtype == torch.bfloat16, f"embedding.dtype {embedding.dtype} != torch.bfloat16"
+                if simple_extraction:
+                    assert embedding.shape[0] == 7, f"embedding.shape[0] {embedding.shape[0]} != 7"
+                else:
+                    assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
             if 'vision' in layer_name:
                 img_start = i*8
                 img_end = img_start + 8
@@ -243,8 +202,6 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
             with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
                 pickle.dump(embedding.cpu(), f)
 
-            # with h5py.File(os.path.join(save_dir, safe_name + file_ext), 'w') as f:
-            #     f.create_dataset('data', data=embedding.numpy())#, compression="gzip")
             metadata[layer_name] = {
                 'type': 'tensor',
                 'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
@@ -397,11 +354,9 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
     image_tokens = IMG_START_TOKEN + IMG_CONTEXT_TOKEN * num_tokens  + IMG_END_TOKEN
     query = query.replace('<image>', image_tokens, pixel_values.shape[0])
     # # Tokenize the query
-    if utils.isMockMode():
-        model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
-    else:
-        model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True, device=device)
-    input_ids = model_inputs['input_ids']
+
+    model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True)
+    input_ids = model_inputs['input_ids'].to(device)
     offsets = model_inputs.offset_mapping
     #set img_context_token_id
     img_context_token_id = tokenizer.convert_tokens_to_ids(IMG_CONTEXT_TOKEN)
@@ -490,7 +445,7 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
         'img_index_values': img_index_values,
     }
     # utils.log_to_file(f"counter: {counter}")
-    utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
+    #utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
 
     return input_ids, image_flags, prompt_markers
 
@@ -528,7 +483,7 @@ def generate_attention_mask_batch(input_ids_list, pad_token_id, device, max_leng
         
         if current_length < max_length:
             #print('***doing padding***', current_length, max_length)
-            #utils.log_to_file(f"current_length: {current_length}, max_length: {max_length}")
+            # utils.log_to_file(f"current_length: {current_length}, max_length: {max_length}")
             # Pad if shorter than max_length
             padding_length = max_length - current_length
             paddings = torch.full((padding_length,), pad_token_id, dtype=ids.dtype, device=device)
@@ -582,14 +537,14 @@ def get_embeddings_with_existing_hooks_forward(model, tokenizer, list_pixel_valu
                 final_pixel_values = torch.cat((final_pixel_values, pixel_values), dim=0)
 
 
-        utils.log_to_file('final_input_ids.shape 1', final_input_ids[0].shape)
+        #utils.log_to_file('final_input_ids.shape 1', final_input_ids[0].shape)
         #we are not doing batch so this can be skipped
         # device = "cpu"
         # if model is not None:
         #     device = model.device
         # final_input_ids, final_attention_mask = generate_attention_mask_batch(final_input_ids, tokenizer.pad_token_id, device)
         # utils.log_to_file('final_input_ids.shape 2', final_input_ids[0].shape)
-        # final_input_ids = final_input_ids[0].unsqueeze(0)
+        final_input_ids = final_input_ids[0].unsqueeze(0)
         # utils.log_to_file('final_input_ids.shape 3', final_input_ids[0].shape)
         assert len(prompt_markers_list) == len(list_text_prompt)
         #print('final_input_ids.shape', final_input_ids.shape)
@@ -745,18 +700,18 @@ def process_all_files_for_embedding_extraction():
         model.img_context_token_id = img_context_token_id
     if not simple_extraction:
         custom_layers = [
-                    'vision_model.encoder.layers.2',
-                    'vision_model.encoder.layers.4',
-                    'vision_model.encoder.layers.12',
-                    'vision_model.encoder.layers.22',
-                    'vision_model.encoder.layers.23',
-                    'vision_model',                     # Vision encoder
-                    'language_model.model.layers.4',    # First layer
-                    'language_model.model.layers.12',    # First layer
-                    'language_model.model.layers.20',    # First layer
-                    'language_model.model.layers.21',    # Middle layer
-                    'language_model.model.layers.22',   # Later layer
-                    'language_model.model.layers.23',   # Later layer
+                    # 'vision_model.encoder.layers.2',
+                    # 'vision_model.encoder.layers.4',
+                    # 'vision_model.encoder.layers.12',
+                    # 'vision_model.encoder.layers.22',
+                    # 'vision_model.encoder.layers.23',
+                    # 'vision_model',                     # Vision encoder
+                    # 'language_model.model.layers.4',    # First layer
+                    # 'language_model.model.layers.12',    # First layer
+                    # 'language_model.model.layers.20',    # First layer
+                    # 'language_model.model.layers.21',    # Middle layer
+                    # 'language_model.model.layers.22',   # Later layer
+                    # 'language_model.model.layers.23',   # Later layer
                     'language_model.model.norm'         # Final normalization
                 ]
     else:
@@ -894,7 +849,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    utils.log_to_file(counter,':', question_for_embeddings)
+                    #utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)

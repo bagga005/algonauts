@@ -171,15 +171,20 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8, mvl_p
     else:
         video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(num_videos)])
         video_prefix = video_prefix[:-1]
-        total_text = pre_text
+        if pre_text:
+            total_text = pre_text
+        else:
+            total_text = ''
         #combine pre and post text
         if post_text:
-            total_text = pre_text + ("\n" if pre_text else "") + post_text
+            total_text = total_text + ("\n" if total_text else "") + post_text
             
         if total_text:
             question_for_embeddings = video_prefix + "\n" + total_text
         else:
             question_for_embeddings = video_prefix
+        utils.log_to_file('question_for_embeddings', question_for_embeddings)
+
             
 
             
