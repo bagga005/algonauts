@@ -1,5 +1,6 @@
 import nibabel as nib
 import numpy as np
+import utils
 # https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Parcellations/HCP/fslr32k/cifti
 parcel_fn="/home/bagga005/algo/comp_data/brain/Schaefer2018_1000Parcels_7Networks_order.dscalar.nii"
 schaefer_LR64k = nib.load(parcel_fn).get_fdata().squeeze()
@@ -12,8 +13,11 @@ def map_parcel_to_full(input, parcellation_LR64k, fill=0):
     return output
 
 import os
-root_data_dir = '/home/bagga005/algo/comp_data/brain'
-acc_file = os.path.join(root_data_dir, 'predictions_accuracy_internvl_friends06_sub-01.npy')
+inputfile = 'accuracy-s1-trans'
+desc = 'Detailed Transcript'
+root_data_dir = os.path.join(utils.get_data_root_dir(), 'brain')
+acc_file = os.path.join(root_data_dir, f'{inputfile}.npy')
+output_file = os.path.join(root_data_dir,'visualize', f'{inputfile}_brain.png')
 input = np.load(acc_file)
 output = map_parcel_to_full(input, schaefer_LR64k, fill=np.nan)
 print(output.shape)
@@ -66,7 +70,11 @@ def plot_flatmap(data, mask=None, mtype = "fsaverage", height=250, data_style=No
   #cortex.webshow(vertex_data, with_rois=0, height =height)
   return cortex.quickshow(vertex_data, with_rois=0, height =height);
 
-plt = plot_flatmap(output, mtype="HCP_S1200", data_style="None", cmap="plasma");
+plt = plot_flatmap(output, mtype="HCP_S1200", data_style="None", cmap="plasma")
+plt.suptitle(f'{desc}', fontsize=6, y=0.99)
+# plt.text(0.02, 0.02, f'{desc}', transform=plt.gca().transAxes, 
+#          fontsize=6, verticalalignment='bottom')
+plt.savefig(output_file)
 plt.savefig('brain_visualize.png')
 #plt.title('example subsurface data')
 #plt.show()
