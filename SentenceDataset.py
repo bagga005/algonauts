@@ -3,7 +3,8 @@ import pandas as pd
 from glob import glob
 from torch.utils.data import Dataset, DataLoader
 import utils
-from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text, get_closest_dialogue_for_row, get_scene_and_dialogues_display_text
+from Scenes_and_dialogues import get_scene_dialogue, get_dialogue_list, match_dialogues_to_transcript_data, \
+    get_dialogue_display_text, get_scene_for_dialogue, get_scene_display_text, get_closest_dialogue_for_row, get_scene_and_dialogues_display_text, get_scenes_summary
 from tabulate import tabulate
 import string, re
 import numpy as np
@@ -120,7 +121,7 @@ def get_full_transcript(stim_id):
             tr_start += tr_info['len']
     return transcript_data, tr_start, tr_length
 
-def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=False):
+def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=False, use_summary=False, use_present_scene=False):
     root_data_dir = utils.get_data_root_dir()
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
     tr_start = 0
@@ -133,7 +134,14 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
             tr_start += tr_info['len']
     dialogue_file = os.path.join(root_data_dir, 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'full', f'{stim_id[:-1]}.txt')
     dialogues = get_scene_dialogue(dialogue_file)
-    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words, skip_pre_post_split=skip_pre_post_split)
+    scene_summary_data = None
+    if use_summary:
+        scene_summary_data = get_scenes_summary(stim_id)
+        if not scene_summary_data:
+            raise Exception(f'{stim_id} summary not found')
+    trans_dataset = SentenceDataset_v2(transcript_data, dialogues, tr_start, tr_length, always_post_speaker=always_post_speaker, \
+        exclude_post_dialogue_separator=exclude_post_dialogue_separator, n_used_words=n_used_words, skip_pre_post_split=skip_pre_post_split, \
+            use_summary=use_summary, scene_summary=scene_summary_data, use_present_scene=use_present_scene)
     return trans_dataset
 
 def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
@@ -161,7 +169,8 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
     return question_for_embeddings
 
 class SentenceDataset_v2(Dataset):
-    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False, skip_pre_post_split=False):
+    def __init__(self, transcript_data, scene_and_dialogues, tr_start, length, n_used_words=1000, always_post_speaker=False, exclude_post_dialogue_separator=False, \
+        skip_pre_post_split=False, use_summary=False, scene_summary=None, use_present_scene=False):
         self.scenes_and_dialogues = scene_and_dialogues
         self.dialogue_list = get_dialogue_list(scene_and_dialogues)
         self.transcript_data = transcript_data
@@ -172,6 +181,11 @@ class SentenceDataset_v2(Dataset):
         self.always_post_speaker = always_post_speaker
         self.exclude_post_dialogue_separator = exclude_post_dialogue_separator
         self.skip_pre_post_split = skip_pre_post_split
+        self.scene_summary = scene_summary
+        self.use_summary = use_summary
+        self.use_present_scene = use_present_scene
+        if use_summary and self.scene_summary is None:
+            raise Exception(f'summary not found')
 
     def __len__(self):
         return self.length
@@ -348,13 +362,6 @@ class SentenceDataset_v2(Dataset):
                 normal_post = "|No Dialogue|"
             else:
                 normal_post = "| Dialogue |" + "\n" + normal_post
-        # else:
-        #     if not fancy_post:
-        #         fancy_post = "+"
-        
-
-        
-
 
 
         #now build rest of pre
@@ -362,7 +369,6 @@ class SentenceDataset_v2(Dataset):
         if fancy_pre:
             words_left = self.n_used_words - len(fancy_pre.split())
         closest_dialogue = None
-
 
         
         #get scene of the dialogue
@@ -388,8 +394,10 @@ class SentenceDataset_v2(Dataset):
             scene = get_scene_for_dialogue(closest_dialogue, self.scenes_and_dialogues)
             starting_diaglogue_id = closest_dialogue['id']
             scene_id = scene['id']
-            while words_left > 0 and scene_id > 0:   
-                display_text = get_scene_and_dialogues_display_text(self.scenes_and_dialogues, self.dialogue_list, scene_id, starting_diaglogue_id=starting_diaglogue_id, max_words=words_left)
+            used_summary = False
+            while words_left > 0 and scene_id > 0 and not used_summary:   
+                display_text, used_summary = get_scene_and_dialogues_display_text(self.scenes_and_dialogues, self.dialogue_list, scene_id, starting_diaglogue_id=starting_diaglogue_id, \
+                    max_words=words_left, scene_summary=self.scene_summary, use_present_scene=self.use_present_scene)
                 if display_text['fancy_scene_text']:
                     if fancy_pre:
                         fancy_pre = display_text['fancy_scene_text'] + "\n" + fancy_pre

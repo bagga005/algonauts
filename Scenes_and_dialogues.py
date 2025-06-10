@@ -1,5 +1,7 @@
 import re
-
+import os
+import json
+import utils
 
 def get_scene_dialogue(file_path):
     """
@@ -150,6 +152,31 @@ def get_scene_dialogue(file_path):
     
     return {"scenes": scenes}
 
+def get_summary_till_scene(data, scene_id):
+    for scene in data:
+        if scene['scene_id'] == scene_id:
+            return scene['summary']
+    return None
+
+def get_scenes_summary(stimuli_id):
+    episode_name = stimuli_id[:-1]
+    sum_folder = os.path.join(utils.get_data_root_dir(), 'algonauts_2025.competitors','stimuli', 'transcripts', 'friends', 'summaries')
+    sum_file = os.path.join(sum_folder, f'{episode_name}.json')
+    
+    if not os.path.exists(sum_file):
+        return None
+    
+    try:
+        # Read existing data
+        with open(sum_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        return data
+        
+    except (json.JSONDecodeError, KeyError):
+        # If file is corrupted or doesn't have expected structure
+        raise Exception(f'{sum_file} is corrupted')
+    
 def normalize_and_clean_word(word):
         """Normalize word by converting to lowercase and keeping only alphanumeric characters"""
         new_word = ''.join(c.lower() for c in word if c.isalnum())
@@ -435,8 +462,10 @@ def get_scene_for_dialogue(dialogue, scene_and_dialogues):
             return scene
     return None
 
-def get_scene_display_text(scene):
+def get_scene_display_text(scene, is_current_scene=False):
     prefeix ='| Scene'
+    if is_current_scene:
+        prefeix = '| Present Scene'
     middle = scene['desc']
     if middle:
         middle = ': ' + middle + ' '
@@ -444,6 +473,9 @@ def get_scene_display_text(scene):
         middle = ' '
     suffix = '|'
     return prefeix + middle + suffix
+
+def get_summary_display_text(summary):
+    return f"| Summary till Present: {summary} |"
 
 
 def normalized_to_full_text(start_word, end_word, text, preferred_start_index=0, preferred_length=1):
@@ -588,12 +620,14 @@ def get_scene_and_dialogues_display_len(scene_and_dialogues, dialogue_list, scen
     display_len = 0
     for scene in scene_and_dialogues['scenes']:
         if scene['id'] == scene_id:
-            d_t = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
+            d_t, _ = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
             display_len = len(d_t['fancy_scene_text'].split())
             break
     return display_len
 
-def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, scene_id, starting_diaglogue_id=-1, max_words=1000):
+
+
+def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, scene_id, starting_diaglogue_id=-1, max_words=1000, scene_summary=None, use_present_scene=False):
     def get_dialogue_by_id(dialogue_id):
         for dialogue in dialogue_list:
             if dialogue['id'] == dialogue_id:
@@ -608,15 +642,24 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         "fancy_scene_text": "",
         "normal_scene_text": ""
     }
+    
+    #check if summary should be used
+    if starting_diaglogue_id == -1 and scene_summary:
+        scene_summary = get_summary_till_scene(scene_summary, scene_id)
+        if scene_summary:
+            scene_summary = get_summary_display_text(scene_summary)
+            response['fancy_scene_text'] = scene_summary
+            response['normal_scene_text'] = scene_summary
+            return response, True
 
     scene = get_scene_by_id(scene_id)
     if scene is None:
         raise ValueError(f"Scene {scene_id} not found")
     
-    scene_text = get_scene_display_text(scene)
+    scene_text = get_scene_display_text(scene, starting_diaglogue_id != -1 and use_present_scene)
     words_left = max_words - len(scene_text.split())
     if words_left < 0:
-        return response
+        return response, False
     
     ending_index_of_dialogue_in_scene = -1
     need_scene_contituation_suffix = False
@@ -633,6 +676,7 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         scene_dialogues = scene['dialogues']
         scene_dialogues.sort(key=lambda x: x['id'])
         ending_index_of_dialogue_in_scene = len(scene_dialogues) - 1
+        
     
     if ending_index_of_dialogue_in_scene >= 0:
         last_dialogue_row_idx = -1
@@ -685,7 +729,7 @@ def get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, sce
         response['normal_scene_text'] = scene_text
     
     #print(f"words_left: {words_left}")
-    return response
+    return response, False
 
 
 
