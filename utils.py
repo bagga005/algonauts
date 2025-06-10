@@ -42,6 +42,15 @@ def get_output_dir():
 def get_mvl_model():
     return os.getenv("MVL_MODEL")
 
+def get_mvl_extraction_format():
+    if get_mvl_pix_last():
+        return 1
+    else:
+        return 0
+
+def get_mvl_pix_last():
+    return str_to_bool(os.getenv("MVL_PIX_LAST"))
+
 def get_mvl_skip_pix():
     return str_to_bool(os.getenv("MVL_SKIP_PIX"))
 
@@ -432,7 +441,7 @@ def get_roi_name(parcel):
     # If no matching ROI found
     return None
 
-def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, pre_end=None, post_start=None, post_end=None, last_chat_end=None):
+def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, pre_end=None, post_start=None, post_end=None):
     """
     Prints token number, corresponding text span, input ID, and marker for each token.
     Args:
@@ -471,8 +480,7 @@ def print_input_tokens_with_offsets(prompt, offsets, input_ids, pre_start=None, 
         marker_map[post_start].append('post_start')
     if post_end is not None:
         marker_map[post_end].append('post_end')
-    if last_chat_end is not None:
-        marker_map[last_chat_end].append('last_chat_end')
+
 
     log_to_file("Token # | Token Text           | Input ID | Marker")
     log_to_file("--------+----------------------+----------+---------------")

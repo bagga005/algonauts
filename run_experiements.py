@@ -169,8 +169,8 @@ if __name__ == "__main__":
     
     try:
         set_hf_home_path()
-        #run_model_training()
-        run_trainings()
+        run_model_training()
+        #run_trainings()
     except Exception as e:
         traceback.print_exc()
     finally:

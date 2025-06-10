@@ -144,31 +144,45 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
             use_summary=use_summary, scene_summary=scene_summary_data, use_present_scene=use_present_scene)
     return trans_dataset
 
-def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8):
+def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8, mvl_pix_last=True):
     pre_text = textData['fancy_pre']
     post_text = textData['fancy_post']
+    if mvl_pix_last:
+        if skip_video_tokens:
+            if pre_text:
+                video_prefix = pre_text
+            else:
+                video_prefix = ''
+        else:
+            if pre_text:
+                video_prefix = pre_text + ''.join([f'\nFrame{i+1}: <image>' for i in range(num_videos)])
+            else:
+                video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(num_videos)])
+                video_prefix = video_prefix[:-1]
+                            
+        if post_text:
+            if video_prefix:
+                question_for_embeddings = video_prefix + "\n" + post_text
+            else:
+                question_for_embeddings = post_text
+        else:
+            question_for_embeddings = video_prefix 
     
-    if skip_video_tokens:
-        if pre_text:
-            video_prefix = pre_text
-        else:
-            video_prefix = ''
     else:
-        if pre_text:
-            video_prefix = pre_text + ''.join([f'\nFrame{i+1}: <image>' for i in range(num_videos)])
+        video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(num_videos)])
+        video_prefix = video_prefix[:-1]
+        total_text = pre_text
+        #combine pre and post text
+        if post_text:
+            total_text = pre_text + ("\n" if pre_text else "") + post_text
+            
+        if total_text:
+            question_for_embeddings = video_prefix + "\n" + total_text
         else:
-            video_prefix = ''.join([f'Frame{i+1}: <image>\n' for i in range(num_videos)])
-            video_prefix = video_prefix[:-1]
-                           
-    if post_text:
-        if video_prefix:
-            question_for_embeddings = video_prefix + "\n" + post_text
-        else:
-            question_for_embeddings = post_text
-    else:
-        question_for_embeddings = video_prefix 
+            question_for_embeddings = video_prefix
+            
 
-        
+            
     return question_for_embeddings
 
 class SentenceDataset_v2(Dataset):
@@ -357,12 +371,12 @@ class SentenceDataset_v2(Dataset):
         #set post headers      
         if not self.exclude_post_dialogue_separator:
             if not fancy_post:
-                fancy_post = "|No Dialogue|"
+                fancy_post = "| No Dialogue |"
             else:
                 #print(f"fancy_post: {fancy_post}")
                 fancy_post = "| Dialogue |" + "\n" + fancy_post
             if not normal_post:
-                normal_post = "|No Dialogue|"
+                normal_post = "| No Dialogue |"
             else:
                 normal_post = "| Dialogue |" + "\n" + normal_post
 
