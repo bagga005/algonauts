@@ -910,17 +910,21 @@ def test_dataset(stim_id):
     #     data.append([ fancy_pre, fancy_post, words_tr, i])
     # print(tabulate(data, headers=["Fancy Pre", "Fancy Post", "Transcript", "index"], 
     #                tablefmt="grid"))
-if __name__ == "__main__":
-    #process_all_files_for_extraction()
-    episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
-    save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
-    stim_id = "friends_s03e06a"
-    tr = 1.49
-    #extract_video_chucks()
-    #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
-    #extract_video_chucks()
+    
+def run_model_training():
     utils.set_hf_home_path()
     process_all_files_for_embedding_extraction()
+    
+# if __name__ == "__main__":
+#     #process_all_files_for_extraction()
+#     episode_path = "/home/bagga005/algo/comp_data/algonauts_2025.competitors/stimuli/movies/friends/s3/friends_s03e06a.mkv"
+#     save_dir = "/home/bagga005/algo/comp_data/tmp/vid"
+#     stim_id = "friends_s03e06a"
+#     tr = 1.49
+#     #extract_video_chucks()
+#     #extract_save_video_chunks(episode_path, save_dir, stim_id, tr)
+#     #extract_video_chucks()
+    
 
 #test_dataset('friends_s03e06a')
 #   exit()
