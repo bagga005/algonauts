@@ -442,7 +442,8 @@ STRATEGY_V2_IMG8A = 115
 STRATEGY_V2_LN7_IMG8A = 116
 STRATEGY_V3_MP_LANG_NORM_7 = 500
 STRATEGY_V3_FP_LANG_NORM_7 = 501
-STRATEGY_V3_FPMP_LANG_NORM_1 = 502
+STRATEGY_V3_FP_LANG_NORM_1 = 502
+STRATEGY_V3_MP_LANG_NORM_1 = 503
 STRATEGY_V3_IMG8A = 513
 
 #Vision 
@@ -495,8 +496,10 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=7,j=13)
             elif strategy == STRATEGY_V3_FP_LANG_NORM_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=6)
-            elif strategy == STRATEGY_V3_FPMP_LANG_NORM_1:
+            elif strategy == STRATEGY_V3_FP_LANG_NORM_1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=6)
+            elif strategy == STRATEGY_V3_MP_LANG_NORM_1:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=13)
             elif strategy == STRATEGY_V3_IMG8A:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=14,j=21)
             elif strategy == STRATEGY_LANG_NORM_1:
@@ -712,8 +715,8 @@ if __name__ == "__main__":
 
     
     # # # #STRATEGY_V2_LANG_NORM_5
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_FPMP_LANG_NORM_1")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_FPMP_LANG_NORM_1, modality, filter_in_name=filter_in_name)
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_LANG_NORM_1")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_LANG_NORM_1, modality, filter_in_name=filter_in_name)
 
     #STRATEGY_V2_LANG_NORM_1
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_LANG_NORM_1")
