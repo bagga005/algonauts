@@ -705,7 +705,7 @@ if __name__ == "__main__":
 
     # #STRATEGY_V2_LANG_NORM_5
     dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_IMG8A")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_IMG8A, modality, filter_in_name=filter_in_name, overwrite=Tru1)
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_IMG8A, modality, filter_in_name=filter_in_name)
 
     
     # # # #STRATEGY_V2_LANG_NORM_5
