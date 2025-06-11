@@ -609,7 +609,7 @@ def get_scene_and_dialogues_display_text_till_scene(scene_and_dialogues, dialogu
     for scene in scene_and_dialogues['scenes']:
         if scene['id'] == scene_id:
             break
-        d_t = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
+        d_t, _ = get_scene_and_dialogues_display_text(scene_and_dialogues, dialogue_list, int(scene['id']), max_words=100000)
         if display_text is None:
             display_text = d_t['fancy_scene_text']
         else:
