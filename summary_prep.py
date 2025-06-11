@@ -230,12 +230,82 @@ def setup_pipeline():
     )
     return pipeline
 
+def clean_all_json_files():
+    root_data_dir = utils.get_data_root_dir()
+    
+    #list of full text transcripts
+    file_in_filter = utils.get_stimuli_prefix()
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/friends/summaries/*.json")
+    updated_files = []
+    for file in files:
+        exclude_found = False
+        for exclude in exclude_list:
+            if exclude in file:
+                exclude_found = True
+                break
+        if not exclude_found:
+            updated_files.append(file)
+    files = updated_files
+    if file_in_filter:
+        # Support comma-separated patterns
+        filters = file_in_filter.split(',')
+        files = [f for f in files if any(filter_item.strip() in f for filter_item in filters)]
+    files.sort()
+
+    stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
+    print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
+
+    for file in files:
+        clean_json(file)
+        
+def clean_json(file_path):
+    """
+    Remove entries with summary == "Error in summary generation" from JSON file.
+    
+    Args:
+        file_path (str): Path to the JSON file to clean
+    """
+    # Check if file exists
+    if not os.path.exists(file_path):
+        print(f"File {file_path} does not exist")
+        return
+    
+    try:
+        # Read existing data
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Count original entries
+        original_count = len(data)
+        
+        # Filter out entries with error summaries
+        cleaned_data = [entry for entry in data if entry.get('summary') != "Error in summary generation"]
+        
+        # Count cleaned entries
+        cleaned_count = len(cleaned_data)
+        removed_count = original_count - cleaned_count
+        
+        if removed_count > 0:
+            # Write cleaned data back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"Cleaned {file_path}: Removed {removed_count} error entries, {cleaned_count} entries remaining")
+        else:
+            print(f"No error entries found in {file_path}")
+            
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Error reading {file_path}: {e}")
+    except Exception as e:
+        print(f"Unexpected error cleaning {file_path}: {e}")
+
 if __name__ == "__main__":
     utils.set_hf_home_path()
     min_length_for_summary = utils.get_min_length_for_summary()
 
     pipeline = setup_pipeline()
     summary_gen_all_episodes(pipeline, min_length_for_summary=min_length_for_summary)
-
+    #clean_all_json_files()
     # stim_id = "friends_s05e06"
     # summary_gen_for_1_episode(stim_id, pipeline)
