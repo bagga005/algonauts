@@ -143,7 +143,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                         embedding = torch.cat([embedding_pre_l7, embedding_pre_f7, all_img_embeddings], dim=0)
                         assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
                         # print('embedding', embedding.shape)
-                    else: #first pix
+                    else: #middle pix
                         #get last 4 post
                         avail_post = prompt_markers['post_end_index'] - prompt_markers['post_start_index'] +1
                         # print('avail_post', avail_post, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
