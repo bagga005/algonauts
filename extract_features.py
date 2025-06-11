@@ -447,6 +447,8 @@ STRATEGY_V3_MP_LANG_NORM_1 = 503
 STRATEGY_V3_MP_PRE_7 = 504
 STRATEGY_V3_MP_POST_F3 = 505
 STRATEGY_V3_MP_POST_L4 = 506
+STRATEGY_V3_MP_POST_F3_AVG = 507
+STRATEGY_V3_MP_POST_L4_AVG = 508
 STRATEGY_V3_IMG8A = 513
 STRATEGY_V3_IMG_PLUS1 = 514
 
@@ -512,6 +514,10 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=7,j=9)
             elif strategy == STRATEGY_V3_MP_POST_L4:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=10,j=13)
+            elif strategy == STRATEGY_V3_MP_POST_F3_AVG:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J_AVG,i=7,j=9)
+            elif strategy == STRATEGY_V3_MP_POST_L4_AVG:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J_AVG,i=10,j=13)
             elif strategy == STRATEGY_V3_IMG_PLUS1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=22)    
             elif strategy == STRATEGY_LANG_NORM_1:
@@ -733,14 +739,20 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_IMG_PLUS1")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_IMG_PLUS1, modality, filter_in_name=filter_in_name)
     
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_PRE_7")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_PRE_7, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_PRE_7")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_PRE_7, modality, filter_in_name=filter_in_name)
     
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_F3")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_F3, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_F3")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_F3, modality, filter_in_name=filter_in_name)
     
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4, modality, filter_in_name=filter_in_name)
+    
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_F3_AVG")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_F3_AVG, modality, filter_in_name=filter_in_name)
+    
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4_AVG")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4_AVG, modality, filter_in_name=filter_in_name)
     
 
     #STRATEGY_V2_LANG_NORM_1
