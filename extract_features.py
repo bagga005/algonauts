@@ -683,8 +683,8 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
         else:
             do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
             do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
-            do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
-            do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
+            # do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
             # do_pca(dir_output_path, dir_output_path + "/features_train-2000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=2000)
 
 
