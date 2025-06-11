@@ -102,7 +102,9 @@ def summary_gen_all_episodes(pipeline, min_length_for_summary=500):
             updated_files.append(file)
     files = updated_files
     if file_in_filter:
-        files = [f for f in files if file_in_filter in f]
+        # Support comma-separated patterns
+        filters = file_in_filter.split(',')
+        files = [f for f in files if any(filter_item.strip() in f for filter_item in filters)]
     files.sort()
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
