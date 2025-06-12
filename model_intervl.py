@@ -195,7 +195,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
             }
         
-        metadata['text'] = text
+        metadata['prompt_markers'] = prompt_markers
         utils.save_embedding_metadata(prefix, metadata)
 
 def load_embeddings(save_dir, prefix="", use_numpy=False):
