@@ -29,12 +29,13 @@ def run_trainings(experiment_name=None, results_output_directory=None):
         'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
     }
     
-    # features = get_features(modality)
-    # #print('features.keys()', features.keys())
-    if subject == -1:
-        fmri = train.get_fmri_for_all_subjects()
-    else:
-        fmri = train.get_fmri(subject)
+    
+    #loading fmri
+    # if subject == -1:
+    #     fmri = train.get_fmri_for_all_subjects()
+    # else:
+    #     fmri = train.get_fmri(subject)
+        
     # print('fmri', fmri.keys())
     # print('fmri[s01e01a].shape', fmri['s01e01a'].shape)
     # fmri2 = train.get_fmri(2)
