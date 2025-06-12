@@ -20,8 +20,8 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     subject = 1
     include_viewing_sessions = False
     #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s05"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
-    movies_train = ["friends-s01"] # @param {allow-input: true}
-    movies_val = ["friends-s01"] # @param {allow-input: true}
+    movies_train = ["friends-s03", "friends-s04", "friends-s05"	] # @param {allow-input: true}
+    movies_val = ["friends-s06"] # @param {allow-input: true}
     training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
     specific_modalities = ["visual"]
@@ -80,7 +80,8 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
-    train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, save_combined_accuracy=True)
+    train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
+        write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
