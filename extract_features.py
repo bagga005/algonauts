@@ -585,9 +585,9 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = torch.cat((ten1, ten2), dim=1)
             elif strategy == STRATEGY_V4_POST_4Layer_L10_AVG:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=9)
-                ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.23", COMBINE_STRATEGY_I,i=9)
-                ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.22", COMBINE_STRATEGY_I,i=9)
-                ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.21", COMBINE_STRATEGY_I,i=9)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_23", COMBINE_STRATEGY_I,i=9)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_22", COMBINE_STRATEGY_I,i=9)
+                ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_21", COMBINE_STRATEGY_I,i=9)
                 ten1 = torch.cat((ten2, ten3, ten4, ten5), dim=1)
             elif strategy == STRATEGY_LN7_4_12_NORM_VN_NORM:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_LAST7)
