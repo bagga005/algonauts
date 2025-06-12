@@ -676,14 +676,88 @@ def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False):
-    for subject in [1, 2, 3, 5]:
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False):
+    assert len(specific_modalities) == 1
+    modality = specific_modalities[0]
+    features = get_features(modality)
+    
+    # Track results for each subject
+    subject_accuracies = {}
+    subject_accuracies_by_network = {}
+    subjects = [1, 2, 3, 5]
+    
+    for subject in subjects:
         fmri = get_fmri(subject)
-        validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities, write_accuracy, write_accuracy_to_csv, plot_encoding_fig, break_up_by_network)
+        print(f"Validation for Subject {subject}")
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
+        subject_accuracies[subject] = accuracy
+        subject_accuracies_by_network[subject] = accuracy_by_network
+        
         del fmri
+    del features
+    
+    # Compute and print average accuracy
+    average_accuracy = np.mean(list(subject_accuracies.values()))
+    print(f"\n=== SUMMARY RESULTS ===")
+    print(f"Individual subject accuracies:")
+    for subject in subjects:
+        print(f"  Subject {subject}: {subject_accuracies[subject]:.4f}")
+    print(f"Average accuracy across all subjects: {average_accuracy:.4f}")
+    
+    # Compute and print average accuracy by network
+    if break_up_by_network and subject_accuracies_by_network[subjects[0]]:
+        # Get network names from first subject (assuming all subjects have same networks)
+        network_names = [item[0] for item in subject_accuracies_by_network[subjects[0]]]
+        
+        network_averages = {}
+        network_subject_data = {}
+        
+        for i, network_name in enumerate(network_names):
+            network_accuracies = []
+            network_subject_data[network_name] = {}
+            
+            for subject in subjects:
+                # Get accuracy for this network (assuming same order for all subjects)
+                subject_network_acc = subject_accuracies_by_network[subject][i][1]
+                network_accuracies.append(subject_network_acc)
+                network_subject_data[network_name][subject] = subject_network_acc
+            
+            network_averages[network_name] = np.mean(network_accuracies)
+        
+        print(f"\nAverage accuracy by network:")
+        for network, avg_acc in network_averages.items():
+            print(f"  {network}: {avg_acc:.4f}")
+        
+        # Save to CSV if requested
+        if save_combined_accuracy:
+            import pandas as pd
+            import os
+            
+            # Create data for CSV
+            csv_data = []
+            for network_name in network_names:
+                row = {'network': network_name, 'average': network_averages[network_name]}
+                
+                # Add individual subject data
+                for subject in subjects:
+                    column_name = f'subject {subject}'
+                    row[column_name] = network_subject_data[network_name][subject]
+                
+                csv_data.append(row)
+            
+            # Create DataFrame and save
+            df = pd.DataFrame(csv_data)
+            
+            # Create filename
+            filepath = utils.get_subject_network_accuracy_file()
+            
+            df.to_csv(filepath, index=False)
+            print(f"\nCombined network accuracy saved to: {filepath}")
+    
+    print("=== END SUMMARY ===\n")
 
 def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
     viewing_session = None
@@ -782,9 +856,9 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     fmri_val_pred = trainer.predict(features_val)
     print('fmri_val_pred.shape', fmri_val_pred.shape)
 
+    accuracy_by_network = []
     if break_up_by_network:
         prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
-        accuracy_by_network = []
         for prediction in prediction_by_network:
             measure, network_fmri_val, network_fmri_val_pred = prediction
             accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
@@ -807,7 +881,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         acc_json_path = utils.get_accuracy_json_file()
         update_accuracy_json(acc_json_path, float(np.mean(accuracy)), modality, movies_val[0], subject, stimulus_window)
     
-    return accuracy
+    return accuracy, accuracy_by_network
 
 def get_subject_string(subject):
     if subject == 1:

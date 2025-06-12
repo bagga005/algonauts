@@ -81,6 +81,9 @@ def get_accuracy_json_file():
 def get_network_accuracy_json_file():
     return os.path.join(get_output_dir(), 'network_accuracy.json')
 
+def get_subject_network_accuracy_file():
+    return os.path.join(get_output_dir(), 'all_subjects_accuracy.csv')
+
 def get_embeddings_format():
     embeddings_format = os.getenv("EMBEDDINGS_FORMAT")
     if not embeddings_format:
