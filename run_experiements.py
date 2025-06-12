@@ -1,14 +1,13 @@
 import train
-import h5py
-import numpy as np
 from datetime import datetime
 import traceback
 from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir, set_hf_home_path
 import os
 import subprocess
+import sys
 
 
-def run_trainings():
+def run_trainings(experiment_name=None, results_output_directory=None):
 
     # root_data_dir = utils.get_data_root_dir()
     # areas_of_interest_path = os.path.join(root_data_dir, 'sub-01_modality-all_accuracy.npy')
@@ -166,9 +165,15 @@ def cleanup_env():
 if __name__ == "__main__":
     #encoding_accuracy = np.zeros((1000,1), dtype=np.float32)
     #train.plot_encoding_accuracy(3, encoding_accuracy, 'audio')
-    
+    experiment_name = None
+    results_output_directory = None
+    if len(sys.argv) > 1:
+        experiment_name = sys.argv[1]
+    if len(sys.argv) > 2:
+        results_output_directory = sys.argv[2]
+        
     try:
-        run_trainings()
+        run_trainings(experiment_name, results_output_directory)
     except Exception as e:
         traceback.print_exc()
     finally:

@@ -679,7 +679,7 @@ def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_
         accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False, experiment_name=None, results_output_directory=None):
     assert len(specific_modalities) == 1
     modality = specific_modalities[0]
     features = get_features(modality)
@@ -750,9 +750,10 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
             
             # Create DataFrame and save
             df = pd.DataFrame(csv_data)
-            
-            # Create filename
-            filepath = utils.get_subject_network_accuracy_file()
+            if results_output_directory:
+                filepath = os.path.join(results_output_directory, experiment_name + '_all_subjects_accuracy.csv')
+            else:
+                filepath = utils.get_subject_network_accuracy_file()
             
             df.to_csv(filepath, index=False)
             print(f"\nCombined network accuracy saved to: {filepath}")
