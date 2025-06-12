@@ -1,4 +1,5 @@
 import utils
+import sys
 import gzip
 import pickle
 import os
@@ -730,7 +731,11 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
             do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
             # do_pca(dir_output_path, dir_output_path + "/features_train-2000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=2000)
 
-
+def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
+    
+    dir_output_path_strategy = os.path.join(dir_output_path, strategy_folder_name)
+    exec_emb_and_pca(dir_input_path, dir_output_path_strategy, strategy_id, **kwargs)
+    
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
     embeddings_dir = utils.get_embeddings_dir()
@@ -743,6 +748,16 @@ if __name__ == "__main__":
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     filter_in_name = ["s03", "s04", "s05", "s06"]
     modality = "visual"
+    
+    strategy ="STRATEGY_V4_POST_L12_L10_AVG"
+    
+    if len(sys.argv) > 1:
+        strategy = sys.argv[1]
+    
+    strategy_id = globals()[strategy]
+    
+    get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
+        dir_input_path, dir_output_path, modality, filter_in_name, pca_skip=True)
     
     # combine_vlm_features(dir_input_path, "friends_s04e20b", -1, COMBINE_STRATEGY_LAST, overwrite=True)
     # save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
@@ -842,11 +857,11 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMG8A")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMG8A, modality, filter_in_name=filter_in_name)
 
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V4_POST_L12_L10_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V4_POST_L12_L10_AVG, modality, filter_in_name=filter_in_name)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V4_POST_L12_L10_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V4_POST_L12_L10_AVG, modality, filter_in_name=filter_in_name)
     
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V4_POST_5Layer_L10_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V4_POST_5Layer_L10_AVG, modality, filter_in_name=filter_in_name)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V4_POST_5Layer_L10_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V4_POST_5Layer_L10_AVG, modality, filter_in_name=filter_in_name)
 
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_AVG")
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_AVG, modality, filter_in_name=filter_in_name)
