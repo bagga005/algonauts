@@ -151,21 +151,22 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                         assert avail_post > 0, f"avail_post {avail_post} < 1 post_end_index {prompt_markers['post_end_index']} post_start_index {prompt_markers['post_start_index']}"
                         #get L3 Mean of post
                         start_idx = max(prompt_markers['post_end_index'] -2, prompt_markers['post_start_index'])
-                        print('start_idx l3', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
-                        l3_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
-                        print('l3_mean', l3_mean.shape)
+                        #print('start_idx l3', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l3_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0).unsqueeze(0)
+                        #print('l3_mean', l3_mean.shape)
                         #get L7 mean of post
                         start_idx = max(prompt_markers['post_end_index'] -6, prompt_markers['post_start_index'])
-                        print('start_idx l7', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
-                        l7_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
+                        #print('start_idx l7', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l7_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0).unsqueeze(0)
                         #get L10 mean of post
                         start_idx = max(prompt_markers['post_end_index'] -9, prompt_markers['post_start_index'])
-                        print('start_idx l10', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
-                        l10_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
+                        #print('start_idx l10', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l10_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0).unsqueeze(0)
+                        lall_mean = torch.mean(embedding[prompt_markers['post_start_index']:prompt_markers['post_end_index']+1,:], dim=0).unsqueeze(0)
                         
-                        embedding = torch.cat([embedding_last7, l3_mean, l7_mean, l10_mean, all_img_embeddings], dim=0)
-                        assert embedding.shape[0] == 19, f"embedding.shape[0] {embedding.shape[0]} != 23"
-                        # print('embedding', embedding.shape)
+                        embedding = torch.cat([embedding_last7, l3_mean, l7_mean, l10_mean, lall_mean, all_img_embeddings], dim=0)
+                        assert embedding.shape[0] == 20, f"embedding.shape[0] {embedding.shape[0]} != 20"
+                        #print('embedding', embedding.shape)
                 else:
                     #print('embedding.shape', embedding.shape)
                     embedding = embedding_last7
@@ -174,7 +175,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 if simple_extraction:
                     assert embedding.shape[0] == 7, f"embedding.shape[0] {embedding.shape[0]} != 7"
                 else:
-                    assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
+                    assert embedding.shape[0] == 20, f"embedding.shape[0] {embedding.shape[0]} != 20"
             if 'vision' in layer_name:
                 img_start = i*8
                 img_end = img_start + 8
@@ -186,7 +187,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 avg_embedding_non_cls = torch.mean(embedding_non_cls, dim=1)
                 # print('avg_embedding_non_cls', avg_embedding_non_cls.shape)
                 embedding = torch.cat([embedding_cls, avg_embedding_non_cls], dim=0)
-                # print('embedding vision', embedding.shape)
+                #print('embedding vision', embedding.shape)
             with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
                 pickle.dump(embedding.cpu(), f)
 
@@ -433,7 +434,7 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
         'img_index_values': img_index_values,
     }
     # utils.log_to_file(f"counter: {counter}")
-    #utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
+    # utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
 
     return input_ids, image_flags, prompt_markers
 
@@ -688,18 +689,18 @@ def process_all_files_for_embedding_extraction():
         model.img_context_token_id = img_context_token_id
     if not simple_extraction:
         custom_layers = [
-                    # 'vision_model.encoder.layers.2',
-                    # 'vision_model.encoder.layers.4',
-                    # 'vision_model.encoder.layers.12',
-                    # 'vision_model.encoder.layers.22',
-                    # 'vision_model.encoder.layers.23',
-                    # 'vision_model',                     # Vision encoder
-                    # 'language_model.model.layers.4',    # First layer
-                    # 'language_model.model.layers.12',    # First layer
-                    # 'language_model.model.layers.20',    # First layer
-                    # 'language_model.model.layers.21',    # Middle layer
-                    # 'language_model.model.layers.22',   # Later layer
-                    # 'language_model.model.layers.23',   # Later layer
+                    'vision_model.encoder.layers.2',
+                    'vision_model.encoder.layers.4',
+                    'vision_model.encoder.layers.12',
+                    'vision_model.encoder.layers.22',
+                    'vision_model.encoder.layers.23',
+                    'vision_model',                     # Vision encoder
+                    'language_model.model.layers.4',    # First layer
+                    'language_model.model.layers.12',    # First layer
+                    'language_model.model.layers.20',    # First layer
+                    'language_model.model.layers.21',    # Middle layer
+                    'language_model.model.layers.22',   # Later layer
+                    'language_model.model.layers.23',   # Later layer
                     'language_model.model.norm'         # Final normalization
                 ]
     else:
