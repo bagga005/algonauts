@@ -616,19 +616,19 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         print('got lora vision handler')
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     elif training_handler == 'sklearn':
-        print('aligning features and fmri samples')
+        #print('aligning features and fmri samples')
         features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, viewing_session)
-        print('got features and fmri samples')
+        #print('got features and fmri samples')
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
     elif training_handler == 'transformer':
         features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
-    print('training')
+    #print('training')
     
     
-    print('training done')
+    #print('training done')
     del features_train, fmri_train
     return trainer, training_time
 
@@ -691,7 +691,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
     
     for subject in subjects:
         fmri = get_fmri(subject)
-        print(f"Validation for Subject {subject}")
+        print(f"\nValidation for Subject {subject}")
         accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
         subject_accuracies[subject] = accuracy
         subject_accuracies_by_network[subject] = accuracy_by_network
@@ -855,34 +855,34 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer.load_model(model_name)
 
     fmri_val_pred = trainer.predict(features_val)
-    print('fmri_val_pred.shape', fmri_val_pred.shape)
+    #print('fmri_val_pred.shape', fmri_val_pred.shape)
 
     accuracy_by_network = []
     if break_up_by_network:
         prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
         for prediction in prediction_by_network:
             measure, network_fmri_val, network_fmri_val_pred = prediction
-            accuracy, encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
-            print(measure, 'accuracy', accuracy)
-            accuracy_by_network.append((measure, accuracy))
+            network_accuracy, network_encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
+            print(measure, 'accuracy', network_accuracy)
+            accuracy_by_network.append((measure, network_accuracy))
         json_path = utils.get_network_accuracy_json_file()
         utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
-    else:
-        accuracy, encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
-        print('encoding_accuracy.shape', encoding_accuracy.shape)
-        utils.save_predictions_accuracy(fmri_val_pred,encoding_accuracy)
+    # else:
+    full_accuracy, full_encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
+    #print('encoding_accuracy.shape', full_encoding_accuracy.shape)
+    utils.save_predictions_accuracy(fmri_val_pred,full_encoding_accuracy)
     if plot_encoding_fig:
         #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
         # encoding_accuracy[:] = 0
         # encoding_accuracy[173:232] = 1
         # encoding_accuracy[684:744] = 1
-        print('encoding_accuracy.shape', encoding_accuracy.shape)
-        plot_encoding_accuracy(subject, encoding_accuracy, modality)
+        print('encoding_accuracy.shape', full_encoding_accuracy.shape)
+        plot_encoding_accuracy(subject, full_encoding_accuracy, modality)
     if write_accuracy:
         acc_json_path = utils.get_accuracy_json_file()
-        update_accuracy_json(acc_json_path, float(np.mean(accuracy)), modality, movies_val[0], subject, stimulus_window)
+        update_accuracy_json(acc_json_path, float(np.mean(full_accuracy)), modality, movies_val[0], subject, stimulus_window)
     
-    return accuracy, accuracy_by_network
+    return full_accuracy, accuracy_by_network
 
 def get_subject_string(subject):
     if subject == 1:
