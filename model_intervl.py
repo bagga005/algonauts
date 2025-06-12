@@ -107,76 +107,64 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                         #exit()
                     # print('image_embedding_avg', all_img_embeddings.shape)
                     
-                    #get last 7 pre
-                    avail_pre = prompt_markers['pre_end_index'] - prompt_markers['pre_start_index'] +1
-                    # print('avail_pre', avail_pre, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
-                    assert avail_pre > 0, f"avail_pre {avail_pre} < 1 pre_end_index {prompt_markers['pre_end_index']} pre_start_index {prompt_markers['pre_start_index']}"
-                    start_idx = max(prompt_markers['pre_end_index'] -6, prompt_markers['pre_start_index'])
-                    # print('start_idx', start_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
-                    embedding_pre = embedding[start_idx:prompt_markers['pre_end_index']+1,:]
-                    if avail_pre < 7:
-                        gap = 7 - avail_pre
-                        # print('end gap', gap)
-                        last_dim = embedding[prompt_markers['pre_start_index'],:]
-                        gap_tensor = last_dim.repeat(gap, 1)                            
-                        embedding_pre_l7 = torch.cat((gap_tensor, embedding_pre), dim=0)
-                    else:
-                        embedding_pre_l7 = embedding_pre
-                    # print('embedding_pre_l7', embedding_pre_l7.shape)
-                    assert embedding_pre_l7.shape[0] == 7, f"embedding_pre_l7.shape[0] {embedding_pre_l7.shape[0]} != 7"
+                    # #get last 7 pre
+                    # avail_pre = prompt_markers['pre_end_index'] - prompt_markers['pre_start_index'] +1
+                    # # print('avail_pre', avail_pre, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
+                    # assert avail_pre > 0, f"avail_pre {avail_pre} < 1 pre_end_index {prompt_markers['pre_end_index']} pre_start_index {prompt_markers['pre_start_index']}"
+                    # start_idx = max(prompt_markers['pre_end_index'] -6, prompt_markers['pre_start_index'])
+                    # # print('start_idx', start_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
+                    # embedding_pre = embedding[start_idx:prompt_markers['pre_end_index']+1,:]
+                    # if avail_pre < 7:
+                    #     gap = 7 - avail_pre
+                    #     # print('end gap', gap)
+                    #     last_dim = embedding[prompt_markers['pre_start_index'],:]
+                    #     gap_tensor = last_dim.repeat(gap, 1)                            
+                    #     embedding_pre_l7 = torch.cat((gap_tensor, embedding_pre), dim=0)
+                    # else:
+                    #     embedding_pre_l7 = embedding_pre
+                    # # print('embedding_pre_l7', embedding_pre_l7.shape)
+                    # assert embedding_pre_l7.shape[0] == 7, f"embedding_pre_l7.shape[0] {embedding_pre_l7.shape[0]} != 7"
                     
                     if extraction_format == 0: #first pix
+                        pass
                         #get first 7 pre
-                        end_idx = min(prompt_markers['pre_end_index'], prompt_markers['pre_start_index'] + 6)
-                        # print('end_idx', end_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
-                        embedding_pre = embedding[prompt_markers['pre_start_index']:end_idx+1,:]
-                        if avail_pre < 7:
-                            gap = 7 - avail_pre
-                            # print('start gap', gap)
-                            last_dim = embedding[prompt_markers['pre_end_index'],:]
-                            gap_tensor = last_dim.repeat(gap, 1)                            
-                            embedding_pre_f7 = torch.cat((embedding_pre, gap_tensor), dim=0)
-                        else:
-                            embedding_pre_f7 = embedding_pre
-                        # print('embedding_pre_f7', embedding_pre_f7.shape)
-                        assert embedding_pre_f7.shape[0] == 7, f"embedding_pre_f7.shape[0] {embedding_pre_f7.shape[0]} != 7"
-                        embedding = torch.cat([embedding_pre_l7, embedding_pre_f7, all_img_embeddings], dim=0)
-                        assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
+                        # end_idx = min(prompt_markers['pre_end_index'], prompt_markers['pre_start_index'] + 6)
+                        # # print('end_idx', end_idx, prompt_markers['pre_start_index'], prompt_markers['pre_end_index'])
+                        # embedding_pre = embedding[prompt_markers['pre_start_index']:end_idx+1,:]
+                        # if avail_pre < 7:
+                        #     gap = 7 - avail_pre
+                        #     # print('start gap', gap)
+                        #     last_dim = embedding[prompt_markers['pre_end_index'],:]
+                        #     gap_tensor = last_dim.repeat(gap, 1)                            
+                        #     embedding_pre_f7 = torch.cat((embedding_pre, gap_tensor), dim=0)
+                        # else:
+                        #     embedding_pre_f7 = embedding_pre
+                        # # print('embedding_pre_f7', embedding_pre_f7.shape)
+                        # assert embedding_pre_f7.shape[0] == 7, f"embedding_pre_f7.shape[0] {embedding_pre_f7.shape[0]} != 7"
+                        # embedding = torch.cat([embedding_pre_l7, embedding_pre_f7, all_img_embeddings], dim=0)
+                        # assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
                         # print('embedding', embedding.shape)
                     else: #middle pix
                         #get last 4 post
                         avail_post = prompt_markers['post_end_index'] - prompt_markers['post_start_index'] +1
                         # print('avail_post', avail_post, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
                         assert avail_post > 0, f"avail_post {avail_post} < 1 post_end_index {prompt_markers['post_end_index']} post_start_index {prompt_markers['post_start_index']}"
-                        start_idx = max(prompt_markers['post_end_index'] -3, prompt_markers['post_start_index'])
-                        # print('start_idx', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
-                        embedding_post = embedding[start_idx:prompt_markers['post_end_index']+1,:]
-                        if avail_post < 4:
-                            gap = 4 - avail_post
-                            # print('end post gap', gap)
-                            last_dim = embedding[prompt_markers['post_start_index'],:]
-                            gap_tensor = last_dim.repeat(gap, 1)                            
-                            embedding_post_l4 = torch.cat((gap_tensor, embedding_post), dim=0)
-                        else:
-                            embedding_post_l4 = embedding_post
-                        # print('embedding_post_l4', embedding_post_l4.shape)
-                        assert embedding_post_l4.shape[0] == 4, f"embedding_post_l4.shape[0] {embedding_post_l4.shape[0]} != 4"
-                        #get first 3 post
-                        end_idx = min(prompt_markers['post_end_index'], prompt_markers['post_start_index'] + 2)
-                        # print('end_idx', end_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
-                        embedding_post = embedding[prompt_markers['post_start_index']:end_idx+1,:]
-                        if avail_post < 3:
-                            gap = 3 - avail_post
-                            # print('start post gap', gap)
-                            last_dim = embedding[prompt_markers['post_end_index'],:]
-                            gap_tensor = last_dim.repeat(gap, 1)                            
-                            embedding_post_f3 = torch.cat((embedding_post, gap_tensor), dim=0)
-                        else:
-                            embedding_post_f3 = embedding_post
-                        # print('embedding_post_f3', embedding_post_f3.shape)
-                        assert embedding_post_f3.shape[0] == 3, f"embedding_post_f3.shape[0] {embedding_post_f3.shape[0]} != 3"
-                        embedding = torch.cat([embedding_pre_l7, embedding_post_f3, embedding_post_l4, all_img_embeddings], dim=0)
-                        assert embedding.shape[0] == 23, f"embedding.shape[0] {embedding.shape[0]} != 23"
+                        #get L3 Mean of post
+                        start_idx = max(prompt_markers['post_end_index'] -2, prompt_markers['post_start_index'])
+                        print('start_idx l3', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l3_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
+                        print('l3_mean', l3_mean.shape)
+                        #get L7 mean of post
+                        start_idx = max(prompt_markers['post_end_index'] -6, prompt_markers['post_start_index'])
+                        print('start_idx l7', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l7_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
+                        #get L10 mean of post
+                        start_idx = max(prompt_markers['post_end_index'] -9, prompt_markers['post_start_index'])
+                        print('start_idx l10', start_idx, prompt_markers['post_start_index'], prompt_markers['post_end_index'])
+                        l10_mean = torch.mean(embedding[start_idx:prompt_markers['post_end_index']+1,:], dim=0)
+                        
+                        embedding = torch.cat([embedding_last7, l3_mean, l7_mean, l10_mean, all_img_embeddings], dim=0)
+                        assert embedding.shape[0] == 19, f"embedding.shape[0] {embedding.shape[0]} != 23"
                         # print('embedding', embedding.shape)
                 else:
                     #print('embedding.shape', embedding.shape)
