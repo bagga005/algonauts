@@ -689,8 +689,8 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
         else:
             do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
             do_pca(dir_output_path, dir_output_path + "/features_train-250.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=250)
-            # do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
-            # do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
+            do_pca(dir_output_path, dir_output_path + "/features_train-500.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=500)
+            do_pca(dir_output_path, dir_output_path + "/features_train-1000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=1000)
             # do_pca(dir_output_path, dir_output_path + "/features_train-2000.npy", modality, do_zscore=True, skip_pca_just_comgine=False, n_components=2000)
 
 
@@ -748,11 +748,11 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4, modality, filter_in_name=filter_in_name)
     
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_F3_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_F3_AVG, modality, filter_in_name=filter_in_name)
+    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_FP_LANG_NORM_1")
+    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_FP_LANG_NORM_1, modality, filter_in_name=filter_in_name)
     
-    dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4_AVG, modality, filter_in_name=filter_in_name)
+    # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V3_MP_POST_L4_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V3_MP_POST_L4_AVG, modality, filter_in_name=filter_in_name)
     
 
     #STRATEGY_V2_LANG_NORM_1
