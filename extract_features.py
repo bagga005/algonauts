@@ -457,6 +457,7 @@ STRATEGY_V4_POST_L3_AVG = 552
 STRATEGY_V4_POST_L7_AVG = 553
 STRATEGY_V4_POST_L10_AVG = 554
 STRATEGY_V4_POST_LALL_AVG = 555
+STRATEGY_V4_POST_4Layer_L10_AVG = 556
 
 
 #Vision 
@@ -582,6 +583,12 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_LAST3)
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_FIRST)
                 ten1 = torch.cat((ten1, ten2), dim=1)
+            elif strategy == STRATEGY_V4_POST_4Layer_L10_AVG:
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=9)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.23", COMBINE_STRATEGY_I,i=9)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.22", COMBINE_STRATEGY_I,i=9)
+                ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model.model.layers.21", COMBINE_STRATEGY_I,i=9)
+                ten1 = torch.cat((ten2, ten3, ten4, ten5), dim=1)
             elif strategy == STRATEGY_LN7_4_12_NORM_VN_NORM:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_LAST7)
                 ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_LAST7)
@@ -824,11 +831,11 @@ if __name__ == "__main__":
     # dir_output_path_me = os.path.join(dir_output_path, "STRATEGY_V2_IMG8A")
     # exec_emb_and_pca(dir_input_path, dir_output_path_me, STRATEGY_V2_IMG8A, modality, filter_in_name=filter_in_name)
 
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_CLS")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_CLS, modality, filter_in_name=filter_in_name)
+    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V4_POST_4Layer_L10_AVG")
+    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V4_POST_4Layer_L10_AVG, modality, filter_in_name=filter_in_name)
 
-    dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_AVG")
-    exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_AVG, modality, filter_in_name=filter_in_name)
+    # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_VISION_NORM_AVG")
+    # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_VISION_NORM_AVG, modality, filter_in_name=filter_in_name)
 
     # dir_output_path = os.path.join(dir_output_path, "STRATEGY_V2_POST_LAST")
     # exec_emb_and_pca(dir_input_path, dir_output_path, STRATEGY_V2_POST_LAST, modality, filter_in_name=filter_in_name)
