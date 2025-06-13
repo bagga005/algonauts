@@ -756,7 +756,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
     
     dir_output_path_strategy = os.path.join(dir_output_path, strategy_folder_name)
-    exec_emb_and_pca(dir_input_path, dir_output_path_strategy, strategy_folder_name, strategy_id, **kwargs)
+    exec_emb_and_pca(dir_input_path, dir_output_path_strategy, strategy_folderpca_name, strategy_id, **kwargs)
     
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
@@ -774,17 +774,28 @@ if __name__ == "__main__":
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
     
     if len(sys.argv) > 1:
-        for arg in sys.argv[1:]:
-            strategy = arg
-            strategy_id = globals()[strategy]
-            kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                pca_only_250 = True, \
-                overwrite_pca=True, \
-                #overwrite=True, \
-                #pca_skip=True \
-                )
-            get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
-        dir_input_path, dir_output_path, **kwargs)  
+        # Check if first argument is -combine
+        if sys.argv[1] == "-combine":
+            if len(sys.argv) != 4:
+                print("Usage for combine mode: python extract_features.py -combine pca network")
+                sys.exit(1)
+            pca_dim = sys.argv[2]
+            network = sys.argv[3]
+            print(f"Calling utils.consolidate_results({pca_dim}, {network})")
+            utils.consolidate_results(pca_dim, network)
+        else:
+            # Original logic for processing strategies
+            for arg in sys.argv[1:]:
+                strategy = arg
+                strategy_id = globals()[strategy]
+                kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
+                    pca_only_250 = True, \
+                    overwrite_pca=True, \
+                    #overwrite=True, \
+                    #pca_skip=True \
+                    )
+                get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
+            dir_input_path, dir_output_path, **kwargs)  
     
     
     
