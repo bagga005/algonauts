@@ -739,7 +739,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy, modality, filter
         if pca_only_750:
             perform_pca_evaluate_embeddings(strategy, 750, modality, skip_evaluation, dir_output_path, overwrite)
         else:
-            perform_pca_evaluate_embeddings(strategy, 250, skip_evaluation, dir_output_path, overwrite)
+            perform_pca_evaluate_embeddings(strategy, 250, modality, skip_evaluation, dir_output_path, overwrite)
         if not pca_only_250:
             perform_pca_evaluate_embeddings(strategy, 500, modality, skip_evaluation, dir_output_path, overwrite)
             perform_pca_evaluate_embeddings(strategy, 1000, modality, skip_evaluation, dir_output_path, overwrite)
