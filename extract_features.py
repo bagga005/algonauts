@@ -732,7 +732,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         #run evaluation
         run_trainings(experiment_name=strategy_name+'-'+str(pca_dim), results_output_directory=eval_dir)
 
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"**Starting save_combined_vlm_features for {strategy_name}")
@@ -741,12 +741,12 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
         print(f"**Starting pca for {strategy_name}")
         do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
         if pca_only_750:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite_pca)
         else:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 250, modality, skip_evaluation, dir_output_path, overwrite)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 250, modality, skip_evaluation, dir_output_path, overwrite_pca)
         if not pca_only_250:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 500, modality, skip_evaluation, dir_output_path, overwrite)
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 1000, modality, skip_evaluation, dir_output_path, overwrite)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 500, modality, skip_evaluation, dir_output_path, overwrite_pca)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 1000, modality, skip_evaluation, dir_output_path, overwrite_pca)
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
     
@@ -769,18 +769,20 @@ if __name__ == "__main__":
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
     
     if len(sys.argv) > 1:
-        strategy = sys.argv[1]
+        for arg in sys.argv[1:]:
+            strategy = arg
+            strategy_id = globals()[strategy]
+            kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
+                pca_only_250 = True, \
+                overwrite_pca=True, \
+                #overwrite=True, \
+                #pca_skip=True \
+                )
+            get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
+        dir_input_path, dir_output_path, **kwargs)  
     
-    strategy_id = globals()[strategy]
     
-    kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-        pca_only_250 = True, \
-        #overwrite=True, \
-        #pca_skip=True \
-        )
     
-    get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
-        dir_input_path, dir_output_path, **kwargs)
     
     
     
