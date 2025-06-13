@@ -587,7 +587,7 @@ def add_recurrent_features(features,fmri,recurrence):
     return recurrent_features, fmri
 
 def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, viewing_session, config):
-    print('run training')
+    #print('run training')
     
     #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
@@ -654,7 +654,7 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
-        print(f"Starting training for subject {subject}...")
+        print(f"\nStarting training for subject {subject}...")
         if skip_if_accuracy_exists:
             accuracy_json_path = utils.get_accuracy_json_file()
             if does_accuracy_entry_exist(accuracy_json_path, specific_modalities[0], movies_train_val[0], get_subject_string(subject), stimulus_window):

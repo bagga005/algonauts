@@ -721,22 +721,22 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
     if not os.path.exists(pca_file_path) or overwrite:
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
     else:
-        print(f"**Skipping pca for {strategy} {pca_dim} because file already exists")
+        print(f"**Skipping pca for {strategy_name} {pca_dim} because file already exists")
     if not skip_evaluation:
         #move generated file to pca directory
         stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
         shutil.copy(pca_file_path, stim_file_path)
         eval_dir = os.path.join(dir_output_path, 'evals')
         #run evaluation
-        run_trainings(experiment_name=strategy_name, results_output_directory=eval_dir)
+        run_trainings(experiment_name=strategy_name+'-'+str(pca_dim), results_output_directory=eval_dir)
 
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
-        print(f"**Starting save_combined_vlm_features for {strategy}")
+        print(f"**Starting save_combined_vlm_features for {strategy_name}")
         save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite, add_layer_to_path)
     if not pca_skip:
-        print(f"**Starting do_pca for {strategy}")
+        print(f"**Starting pca for {strategy_name}")
         do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
         if pca_only_750:
             perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite)
