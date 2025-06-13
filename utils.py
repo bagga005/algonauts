@@ -536,3 +536,118 @@ def log_to_file(*args):
             f.write(message + '\n')
     except Exception as e:
         print(f"Error writing to log file: {e}")
+
+def consolidate_results(pca_dim, network):
+    """
+    Consolidate evaluation results from different strategies into a single CSV file.
+    
+    Parameters
+    ----------
+    pca_dim : int
+        PCA dimension used for the experiments
+    network : str
+        Network name to extract results for (e.g., "Visual", "Somatomotor", etc.)
+        
+    Returns
+    -------
+    str or None
+        Path to the consolidated CSV file if successful, None if no results found
+    """
+    import pandas as pd
+    import os
+    from datetime import datetime
+    
+    # Get the combined embeddings directory
+    combined_embeddings_dir = get_embeddings_combined_dir()
+    output_dir = get_output_dir()
+    combined_dir_path = os.path.join(output_dir, combined_embeddings_dir)
+    
+    if not os.path.exists(combined_dir_path):
+        print(f"Combined embeddings directory not found: {combined_dir_path}")
+        return None
+    
+    # List to store consolidated data
+    consolidated_data = []
+    
+    # Iterate through strategy directories
+    for strategy_name in os.listdir(combined_dir_path):
+        strategy_path = os.path.join(combined_dir_path, strategy_name)
+        
+        # Skip if not a directory
+        if not os.path.isdir(strategy_path):
+            continue
+            
+        # Check if evaluation results file exists
+        eval_dir = os.path.join(strategy_path, 'evals')
+        results_file_path = get_subject_network_accuracy_file_for_experiement(
+            strategy_name + '-' + str(pca_dim), eval_dir
+        )
+        
+        if os.path.exists(results_file_path):
+            try:
+                # Read the results CSV
+                df = pd.read_csv(results_file_path)
+                
+                # Find the row for the specified network
+                network_row = df[df['network'] == network]
+                
+                if not network_row.empty:
+                    # Extract values
+                    row_data = network_row.iloc[0]
+                    avg = row_data['average']
+                    subject_1 = row_data['subject 1']
+                    subject_2 = row_data['subject 2'] 
+                    subject_3 = row_data['subject 3']
+                    subject_5 = row_data['subject 5']
+                    
+                    # Get file creation/modification time
+                    file_stat = os.stat(results_file_path)
+                    creation_time = datetime.fromtimestamp(file_stat.st_mtime)
+                    date_time = creation_time.strftime("%Y-%m-%d %H:%M")
+                    
+                    # Add to consolidated data
+                    consolidated_data.append({
+                        'strategy': strategy_name,
+                        'avg': avg,
+                        'subject 1': subject_1,
+                        'subject 2': subject_2,
+                        'subject 3': subject_3,
+                        'subject 5': subject_5,
+                        'date_time': date_time
+                    })
+                    
+                    print(f"Added strategy: {strategy_name}")
+                else:
+                    print(f"Network '{network}' not found in {results_file_path}")
+                    
+            except Exception as e:
+                print(f"Error processing {results_file_path}: {e}")
+                continue
+        else:
+            print(f"Results file not found for strategy {strategy_name}: {results_file_path}")
+    
+    # Create consolidated DataFrame and save
+    if consolidated_data:
+        consolidated_df = pd.DataFrame(consolidated_data)
+        
+        # Sort by average accuracy (descending)
+        consolidated_df = consolidated_df.sort_values('avg', ascending=False)
+        
+        # Save consolidated CSV
+        output_filename = f"consolidated-{network}-{pca_dim}.csv"
+        output_path = os.path.join(combined_dir_path, output_filename)
+        consolidated_df.to_csv(output_path, index=False)
+        
+        print(f"\nConsolidated results saved to: {output_path}")
+        print(f"Included {len(consolidated_data)} strategies for network '{network}' with PCA dimension {pca_dim}")
+        
+        # Print summary statistics
+        print(f"\nTop 5 strategies by average accuracy:")
+        top_5 = consolidated_df.head(5)
+        for idx, row in top_5.iterrows():
+            print(f"  {row['strategy']}: {row['avg']:.4f}")
+        
+        return output_path
+    else:
+        print(f"No results found for network '{network}' with pca_dim {pca_dim}")
+        return None
