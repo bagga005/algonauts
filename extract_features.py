@@ -300,11 +300,11 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
             #print('extracted features.shape', features.shape)
             # Preprocess the stimulus features
     features = np.concatenate(features, axis=0)
-    #print('features.shape', features.shape)
+    print('features.shape', features.shape)
     
     if not skip_pca_just_comgine:
         prepr_features = preprocess_features(features, zscore=do_zscore)
-        #print('prepr_features.shape', prepr_features.shape)
+        print('prepr_features.shape', prepr_features.shape)
 
         # Perform PCA
         features_pca = perform_pca_incremental(prepr_features, n_components, modality)
