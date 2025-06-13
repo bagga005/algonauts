@@ -310,10 +310,10 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
     # slice out results
     from_idx =0
     for stim_id, size in boundary:
-        if from_idx < 3000: print(stim_id, size)
+        #if from_idx < 3000: print(stim_id, size)
         slice = features_pca[from_idx:from_idx+size,:]
         valdict[get_shortstim_name(stim_id)] = slice
-        if from_idx < 3000: print(from_idx, from_idx + size)
+        #if from_idx < 3000: print(from_idx, from_idx + size)
         from_idx = from_idx + size
         assert slice.shape[0] == size, "size mismatch while slicing"
 
@@ -720,6 +720,8 @@ def perform_pca_evaluate_embeddings(strategy, pca_dim, modality, skip_evaluation
     pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
     if not os.path.exists(pca_file_path) or overwrite:
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
+    else:
+        print(f"**Skipping pca for {strategy} {pca-dim} because file already exists")
     if not skip_evaluation:
         #move generated file to pca directory
         stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
