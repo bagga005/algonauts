@@ -8,6 +8,8 @@ from tqdm import tqdm
 import h5py
 import torch
 import numpy as np
+from run_experiements import run_trainings
+import shutil
 #from model_r50_ft import VisionR50FineTuneModel
 USE_LIGHTNING = True
 # try:
@@ -714,8 +716,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
 
-from run_experiements import run_trainings
-import shutil
+
 def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False):
     pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
     if not os.path.exists(pca_file_path) or overwrite:
