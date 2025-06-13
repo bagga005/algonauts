@@ -22,6 +22,11 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s05"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     movies_train = ["friends-s03", "friends-s04", "friends-s05"	] # @param {allow-input: true}
     movies_val = ["friends-s06"] # @param {allow-input: true}
+    
+    # movies_train = ["friends-s01"	] # @param {allow-input: true}
+    # movies_val = ["friends-s01"] # @param {allow-input: true}
+    training_handler = 'sklearn'
+    
     training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
     specific_modalities = ["visual"]
@@ -72,7 +77,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     movies_train_val = None
     if isMockMode():
         print('******************* MOCK MODE *******************')
-    print('starting for handler:', training_handler, 'model name:', config['trained_model_name'], 'with comments: ',experiment_comments)
+    print('\nstarting for handler:', training_handler, 'model name:', config['trained_model_name'], 'with comments: ',experiment_comments)
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
