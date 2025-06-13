@@ -683,7 +683,7 @@ def perform_pca(prepr_features, n_components, modality):
         PCA-downsampled stimulus features.
 
     """
-
+    print("\ndoing OLD PCA")
     ### Set the number of principal components to keep ###
     # If number of PCs is larger than the number of features, set the PC number
     # to the number of features
@@ -704,7 +704,7 @@ def perform_pca_incremental(prepr_features, n_components, modality, batch_size=1
     """
     Perform Incremental PCA on the standardized features to handle large datasets.
     """
-    
+    print("\ndoing NEW PCA")
     ### Set the number of principal components to keep ###
     if n_components > prepr_features.shape[1]:
         n_components = prepr_features.shape[1]
@@ -712,13 +712,28 @@ def perform_pca_incremental(prepr_features, n_components, modality, batch_size=1
     ### Perform Incremental PCA ###
     pca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
     
-    # Fit the PCA incrementally
-    for i in range(0, prepr_features.shape[0], batch_size):
-        batch = prepr_features[i:i+batch_size]
-        pca.partial_fit(batch)
+    # Calculate number of batches for progress tracking
+    num_batches = (prepr_features.shape[0] + batch_size - 1) // batch_size
     
-    # Transform all data
-    features_pca = pca.transform(prepr_features)
+    # Fit the PCA incrementally with progress bar
+    with tqdm(total=num_batches, desc=f"Fitting PCA for {modality}") as pbar:
+        for i in range(0, prepr_features.shape[0], batch_size):
+            batch = prepr_features[i:i+batch_size]
+            pca.partial_fit(batch)
+            pbar.update(1)
+    
+    # Transform all data with progress bar
+    print(f"Transforming {modality} features...")
+    with tqdm(total=num_batches, desc=f"Transforming {modality}") as pbar:
+        features_pca_batches = []
+        for i in range(0, prepr_features.shape[0], batch_size):
+            batch = prepr_features[i:i+batch_size]
+            batch_transformed = pca.transform(batch)
+            features_pca_batches.append(batch_transformed)
+            pbar.update(1)
+    
+    # Concatenate all transformed batches
+    features_pca = np.concatenate(features_pca_batches, axis=0)
     
     print("Var expl:", pca.explained_variance_ratio_.sum())
     print(f"\n{modality} features PCA shape: {features_pca.shape}")
