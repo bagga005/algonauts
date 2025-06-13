@@ -728,7 +728,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         shutil.copy(pca_file_path, stim_file_path)
         eval_dir = os.path.join(dir_output_path, 'evals')
         #run evaluation
-        run_trainings(experiment_name=strategy, results_output_directory=eval_dir)
+        run_trainings(experiment_name=strategy_name, results_output_directory=eval_dir)
 
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False):
     os.makedirs(dir_output_path, exist_ok=True)	
@@ -772,7 +772,8 @@ if __name__ == "__main__":
     strategy_id = globals()[strategy]
     
     kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-        pca_only_250 = True, \
+        #pca_only_250 = True, \
+        #overwrite=True, \
         #pca_skip=True \
         )
     
