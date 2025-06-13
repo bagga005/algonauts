@@ -471,6 +471,7 @@ STRATEGY_V4_POST_LALL_AVG = 555
 STRATEGY_V4_POST_4Layer_L10_AVG = 556
 STRATEGY_V4_POST_L12_L10_AVG = 557
 STRATEGY_V4_POST_5Layer_L10_AVG = 558
+STRATEGY_V4_POST_L4_L10_AVG = 559
 
 
 #Vision 
@@ -535,6 +536,8 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=9)
             elif strategy == STRATEGY_V4_POST_L12_L10_AVG:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_I,i=10)
+            elif strategy == STRATEGY_V4_POST_L4_L10_AVG:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_I,i=10)
             elif strategy == STRATEGY_V4_POST_LALL_AVG:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=10)
             elif strategy == STRATEGY_V4_IMG_PLUS1:
@@ -796,7 +799,7 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    #pca_only_250 = True, \
+                    pca_only_250 = True, \
                     #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
