@@ -337,6 +337,9 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         # the fMRI sample using the first N stimulus feature
                         # samples
                         #print('s', s, 'split', split)
+                        effective_split = split
+                        if mod == 'language':
+                            effective_split = full_split
                         effective_stimulus_window = stimulus_window
                         if mod == 'language':
                             effective_stimulus_window = 2
@@ -351,10 +354,10 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         # than fMRI samples minus the hrf_delay, use the last N
                         # visual/audio feature samples available (where N is
                         # defined by the 'stimulus_window' variable)
-                        if idx_end > (len(features[mod][split])):
-                            idx_end = len(features[mod][split])
+                        if idx_end > (len(features[mod][effective_split])):
+                            idx_end = len(features[mod][effective_split])
                             idx_start = idx_end - effective_stimulus_window
-                        f = features[mod][split][idx_start:idx_end]
+                        f = features[mod][effective_split][idx_start:idx_end]
                         range_tupple = (idx_start, idx_end)
                         #print('s', s, 'idx_start', idx_start, 'idx_end', idx_end, mod)
                         f = f.flatten()
