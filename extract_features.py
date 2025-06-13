@@ -766,9 +766,9 @@ if __name__ == "__main__":
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
 
-    # filter_in_name = ["s01", "s02", "s03", "s04", "s05"]#["s01", "s02", "s03", "s04", "s05", "s06"]
+    filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
-    filter_in_name = ["s03", "s04", "s05", "s06"]
+    #filter_in_name = ["s03", "s04", "s05", "s06"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
@@ -779,7 +779,7 @@ if __name__ == "__main__":
             strategy_id = globals()[strategy]
             kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                 pca_only_250 = True, \
-                # overwrite_pca=True, \
+                overwrite_pca=True, \
                 #overwrite=True, \
                 #pca_skip=True \
                 )
