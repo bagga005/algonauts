@@ -620,7 +620,7 @@ def load_features(file_path, modality):
         for episode in data.keys():
             if modality != 'language':
                 features = np.asarray(data[episode][modality])
-                print(f"{episode} features original shape: {features.shape}")
+                #print(f"{episode} features original shape: {features.shape}")
             else:
                 # Vectorize and append pooler_output and last_hidden_state
                 # language features
