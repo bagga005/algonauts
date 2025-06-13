@@ -376,12 +376,9 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
         id1, id2, id3 = 0, 0, 8
         if i == 1:
             id1, id2, id3 = 1, 8, 16
-        if len(loaded_tensor.shape) == 3: #vision of season 1
-            ten = loaded_tensor[id1,:,:].flatten()
-            #print('ten.shape***', ten.shape)
-        else:
-            ten = loaded_tensor[id2:id3,:].flatten()
-            #print('ten.shape', ten.shape)
+
+        ten = loaded_tensor[id2:id3,:].flatten()
+        print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_I_J:
         ten = loaded_tensor[i:j+1,:]
         ten = ten.flatten()
@@ -487,7 +484,10 @@ STRATEGY_LN_1_VN = 20
 STRATEGY_LN_3_VN = 21
 STRATEGY_LN7_4_12_NORM_VN_NORM = 22
 STRATEGY_V2_LN7_VCLS = 300
-
+STRATEGY_V4_L12_CLS = 301
+STRATEGY_V4_L4_CLS = 302
+STRATEGY_V4_L2_CLS = 303
+STRATEGY_V4_LNORM_CLS = 304
 
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
@@ -669,6 +669,14 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J, i=11, j=18)
             elif strategy == STRATEGY_V2_VISION_NORM_CLS:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_VISION_V2, i=0)
+            elif strategy == STRATEGY_V4_LNORM_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_L12_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_12", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_L4_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_4", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_L2_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_2", COMBINE_STRATEGY_I_J, i=0, j=7)
             elif strategy == STRATEGY_V2_VISION_NORM_AVG:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_VISION_V2, i=1)
             elif strategy == STRATEGY_V2_LN7_IMG8A:
@@ -800,7 +808,7 @@ if __name__ == "__main__":
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                     pca_only_250 = True, \
-                    #overwrite_pca=True, \
+                    overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
                     )
