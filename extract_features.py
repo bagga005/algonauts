@@ -727,7 +727,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
     if not skip_evaluation:
         #get results file path to see if it exists
         eval_dir = os.path.join(dir_output_path, 'evals')
-        results_file_path = utils.get_results_file_path(strategy_name+'-'+str(pca_dim), eval_dir)
+        results_file_path = utils.get_subject_network_accuracy_file_for_experiement(strategy_name+'-'+str(pca_dim), eval_dir)
         if not os.path.exists(results_file_path) or overwrite:
         #move generated file to pca directory
             stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
