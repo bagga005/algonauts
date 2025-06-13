@@ -482,6 +482,8 @@ STRATEGY_V4_L4_CLS = 302
 STRATEGY_V4_L2_CLS = 303
 STRATEGY_V4_LNORM_CLS = 304
 STRATEGY_V4_LNORM_12_4_CLS = 305
+STRATEGY_V4_L22_CLS = 306
+STRATEGY_V4_L23_CLS = 307
 #STRATEGY_V2_VISION_
 
 #LLM + Vision
@@ -677,6 +679,10 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_12", COMBINE_STRATEGY_I_J, i=0, j=7)
             elif strategy == STRATEGY_V4_L4_CLS:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_4", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_L22_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_22", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_L23_CLS:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_23", COMBINE_STRATEGY_I_J, i=0, j=7)
             elif strategy == STRATEGY_V4_LNORM_12_4_CLS:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_I_J, i=0, j=7)
                 ten3 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_12", COMBINE_STRATEGY_I_J, i=0, j=7)
@@ -812,12 +818,11 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    #pca_only_250 = True, \
                     #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
                     # force_evaluation=True \
-                    pca_dims=[250, 1000]
+                    pca_dims=[250]
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
