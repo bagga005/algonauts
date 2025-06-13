@@ -725,12 +725,17 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
     else:
         print(f"**Skipping pca for {strategy_name} {pca_dim} because file already exists")
     if not skip_evaluation:
-        #move generated file to pca directory
-        stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
-        shutil.copy(pca_file_path, stim_file_path)
+        #get results file path to see if it exists
         eval_dir = os.path.join(dir_output_path, 'evals')
-        #run evaluation
-        run_trainings(experiment_name=strategy_name+'-'+str(pca_dim), results_output_directory=eval_dir)
+        results_file_path = utils.get_results_file_path(strategy_name+'-'+str(pca_dim), eval_dir)
+        if not os.path.exists(results_file_path) or overwrite:
+        #move generated file to pca directory
+            stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
+            shutil.copy(pca_file_path, stim_file_path)
+            #run evaluation
+            run_trainings(experiment_name=strategy_name+'-'+str(pca_dim), results_output_directory=eval_dir)
+        else:
+            print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False):
     os.makedirs(dir_output_path, exist_ok=True)	
@@ -774,7 +779,7 @@ if __name__ == "__main__":
             strategy_id = globals()[strategy]
             kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                 pca_only_250 = True, \
-                overwrite_pca=True, \
+                # overwrite_pca=True, \
                 #overwrite=True, \
                 #pca_skip=True \
                 )
