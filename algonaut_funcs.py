@@ -17,6 +17,8 @@ import h5py
 import pandas as pd
 import string
 from model_r50_ft import VisionR50FineTuneModel
+from sklearn.decomposition import IncrementalPCA
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def uniform_temporal_subsample(x: torch.Tensor, num_samples: int) -> torch.Tensor:
@@ -692,6 +694,33 @@ def perform_pca(prepr_features, n_components, modality):
     pca = PCA(n_components, random_state=1001, svd_solver="full")
     features_pca = pca.fit_transform(prepr_features)
     print("Var expl:", pca.explained_variance_ratio_.sum() )
+    print(f"\n{modality} features PCA shape: {features_pca.shape}")
+    print('(Movie samples × Principal components)')
+
+    ### Output ###
+    return features_pca
+
+def perform_pca_incremental(prepr_features, n_components, modality, batch_size=4000):
+    """
+    Perform Incremental PCA on the standardized features to handle large datasets.
+    """
+    
+    ### Set the number of principal components to keep ###
+    if n_components > prepr_features.shape[1]:
+        n_components = prepr_features.shape[1]
+
+    ### Perform Incremental PCA ###
+    pca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
+    
+    # Fit the PCA incrementally
+    for i in range(0, prepr_features.shape[0], batch_size):
+        batch = prepr_features[i:i+batch_size]
+        pca.partial_fit(batch)
+    
+    # Transform all data
+    features_pca = pca.transform(prepr_features)
+    
+    print("Var expl:", pca.explained_variance_ratio_.sum())
     print(f"\n{modality} features PCA shape: {features_pca.shape}")
     print('(Movie samples × Principal components)')
 

@@ -18,9 +18,12 @@ USE_LIGHTNING = True
 #     print("lightning.data not found, using multiprocessing")
 #     USE_LIGHTNING = False
 #     from multiprocessing import Pool
-from algonaut_funcs import extract_visual_features_r50_ft, extract_visual_features_from_preprocessed_video, load_features, preprocess_features, extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, define_frames_transform, extract_language_features
+from algonaut_funcs import extract_visual_features_r50_ft, extract_visual_features_from_preprocessed_video, load_features, preprocess_features, \
+    extract_visual_preprocessed_features, perform_pca, extract_visual_features, get_vision_model, extract_audio_features, get_language_model, \
+        define_frames_transform, extract_language_features, perform_pca_incremental
 import logging
 # import json_log_formatter
+
 
 # #init logging
 # logger = logging.getLogger('my_json')
@@ -304,7 +307,7 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
         #print('prepr_features.shape', prepr_features.shape)
 
         # Perform PCA
-        features_pca = perform_pca(prepr_features, n_components, modality)
+        features_pca = perform_pca_incremental(prepr_features, n_components, modality)
         #print('pca features.shape', features_pca.shape)
     else:
         features_pca = features
@@ -1009,3 +1012,6 @@ if __name__ == "__main__":
     #extract_visual_features_r50_ft(filename, device, outfile, "friends_s02e01a")
     #extract_raw_visual_features_r50_ft()
     #extract_raw_visual_features()
+
+
+
