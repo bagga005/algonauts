@@ -481,6 +481,7 @@ STRATEGY_V4_L12_CLS = 301
 STRATEGY_V4_L4_CLS = 302
 STRATEGY_V4_L2_CLS = 303
 STRATEGY_V4_LNORM_CLS = 304
+STRATEGY_V4_LNORM_12_4_CLS = 305
 #STRATEGY_V2_VISION_
 
 #LLM + Vision
@@ -676,6 +677,11 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_12", COMBINE_STRATEGY_I_J, i=0, j=7)
             elif strategy == STRATEGY_V4_L4_CLS:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_4", COMBINE_STRATEGY_I_J, i=0, j=7)
+            elif strategy == STRATEGY_V4_LNORM_12_4_CLS:
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "vision_model", COMBINE_STRATEGY_I_J, i=0, j=7)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_12", COMBINE_STRATEGY_I_J, i=0, j=7)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_4", COMBINE_STRATEGY_I_J, i=0, j=7)
+                ten1 = torch.cat((ten2, ten3, ten4), dim=1)
             elif strategy == STRATEGY_V4_L2_CLS:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "vision_model_encoder_layers_2", COMBINE_STRATEGY_I_J, i=0, j=7)
             elif strategy == STRATEGY_V2_VISION_NORM_AVG:
@@ -756,7 +762,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         else:
             print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False, force_evaluation=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, add_layer_to_path=True,  skip_evaluation=False, overwrite_pca=False, force_evaluation=False, pca_dims=[250,500,1000]):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"\n**Starting save_combined_vlm_features for {strategy_name}")
@@ -766,15 +772,9 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
         if not os.path.exists(pca_file_path) or overwrite_pca:
             print(f"**Starting pca for {strategy_name}")
             do_pca(dir_output_path, pca_file_path, modality, do_zscore=False, skip_pca_just_comgine=True)
-        else:
-            print(f"**Skipping pca for {strategy_name} because file already exists")
-        if pca_only_750:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
-        else:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 250, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
-        if not pca_only_250:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 500, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 1000, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
+        for pca_dim in pca_dims:
+            perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
+
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
     
@@ -812,11 +812,12 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    pca_only_250 = True, \
+                    #pca_only_250 = True, \
                     #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
-                    force_evaluation=True \
+                    # force_evaluation=True \
+                    pca_dims=[250, 1000]
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
