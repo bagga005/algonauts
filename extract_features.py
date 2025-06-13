@@ -756,7 +756,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
     
     dir_output_path_strategy = os.path.join(dir_output_path, strategy_folder_name)
-    exec_emb_and_pca(dir_input_path, dir_output_path_strategy, strategy_folderpca_name, strategy_id, **kwargs)
+    exec_emb_and_pca(dir_input_path, dir_output_path_strategy, strategy_folder_name, strategy_id, **kwargs)
     
 if __name__ == "__main__":
     out_dir = utils.get_output_dir()
