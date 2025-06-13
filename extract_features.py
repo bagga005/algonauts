@@ -306,8 +306,12 @@ def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False,
         prepr_features = preprocess_features(features, zscore=do_zscore)
         print('prepr_features.shape', prepr_features.shape)
 
-        # Perform PCA
-        features_pca = perform_pca_incremental(prepr_features, n_components, modality)
+        if (prepr_features.shape[1] > 17920):
+            # Perform Incremental PCA
+            features_pca = perform_pca_incremental(prepr_features, n_components, modality)
+        else:
+            # Perform Classic PCA
+            features_pca = perform_pca(prepr_features, n_components, modality)
         #print('pca features.shape', features_pca.shape)
     else:
         features_pca = features
@@ -792,8 +796,8 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    pca_only_250 = True, \
-                    overwrite_pca=True, \
+                    #pca_only_250 = True, \
+                    #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
                     )
