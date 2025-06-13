@@ -339,7 +339,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         #print('s', s, 'split', split)
                         effective_split = split
                         if mod == 'language':
-                            effective_split = full_split
+                            effective_split = 'friends_' + split
                         effective_stimulus_window = stimulus_window
                         if mod == 'language':
                             effective_stimulus_window = 2
