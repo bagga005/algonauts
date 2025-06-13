@@ -750,12 +750,8 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
             
             # Create DataFrame and save
             df = pd.DataFrame(csv_data)
-            if results_output_directory:
-                if not os.path.exists(results_output_directory):
-                    os.makedirs(results_output_directory, exist_ok=True)
-                filepath = os.path.join(results_output_directory, experiment_name + '_all_subjects_accuracy.csv')
-            else:
-                filepath = utils.get_subject_network_accuracy_file()
+
+            filepath = utils.get_subject_network_accuracy_file_for_experiement(experiment_name, results_output_directory)
             
             df.to_csv(filepath, index=False)
             print(f"\nCombined network accuracy saved to: {filepath}")

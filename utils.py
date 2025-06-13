@@ -81,8 +81,14 @@ def get_accuracy_json_file():
 def get_network_accuracy_json_file():
     return os.path.join(get_output_dir(), 'network_accuracy.json')
 
-def get_subject_network_accuracy_file():
-    return os.path.join(get_output_dir(), 'all_subjects_accuracy.csv')
+def get_subject_network_accuracy_file_for_experiement(experiment_name, results_output_directory):
+    if results_output_directory:
+        if not os.path.exists(results_output_directory):
+            os.makedirs(results_output_directory, exist_ok=True)
+        filepath = os.path.join(results_output_directory, experiment_name + '_all_subjects_accuracy.csv')
+    else:
+        filepath = os.path.join(get_output_dir(), 'all_subjects_accuracy.csv')
+    return filepath
 
 def get_embeddings_format():
     embeddings_format = os.getenv("EMBEDDINGS_FORMAT")
@@ -93,6 +99,7 @@ def get_embeddings_format():
 def get_roi_network_map():
     """Returns the path to the ROI network mapping file"""
     return os.path.join(os.path.dirname(__file__), 'roi_network_map.json')
+
 
 def save_model_pytorch(model, model_name):
     file_name = f'{model_name}.pth'
