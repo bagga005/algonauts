@@ -722,7 +722,7 @@ def perform_pca_evaluate_embeddings(strategy, pca_dim, modality, skip_evaluation
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
     if not skip_evaluation:
         #move generated file to pca directory
-        stim_file_path = os.path.join(utils.get_stimulus_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
+        stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
         shutil.copy(pca_file_path, stim_file_path)
         eval_dir = os.path.join(dir_output_path, 'evals')
         #run evaluation
