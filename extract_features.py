@@ -740,7 +740,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
-        print(f"**Starting save_combined_vlm_features for {strategy_name}")
+        print(f"\n**Starting save_combined_vlm_features for {strategy_name}")
         save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite, add_layer_to_path)
     if not pca_skip:
         print(f"**Starting pca for {strategy_name}")
