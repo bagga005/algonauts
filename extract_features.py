@@ -739,6 +739,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
 
 def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False):
     pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
+    print('pca_file_path', pca_file_path, overwrite)
     if not os.path.exists(pca_file_path) or overwrite:
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
     else:
