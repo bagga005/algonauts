@@ -330,27 +330,30 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     # the N stimulus feature samples up to the fMRI sample of
                     # interest minus the hrf_delay (where N is defined by the
                     # 'stimulus_window' variable)
-                    if mod == 'visual' or mod == 'audio':
+                    if mod == 'visual' or mod == 'audio' or mod == 'language':
                         # In case there are not N stimulus feature samples up to
                         # the fMRI sample of interest minus the hrf_delay (where
                         # N is defined by the 'stimulus_window' variable), model
                         # the fMRI sample using the first N stimulus feature
                         # samples
                         #print('s', s, 'split', split)
-                        if s < (stimulus_window + hrf_delay):
+                        effective_stimulus_window = stimulus_window
+                        if mod == 'language':
+                            effective_stimulus_window = 2
+                        if s < (effective_stimulus_window + hrf_delay):
                             idx_start = excluded_samples_start
-                            idx_end = idx_start + stimulus_window
+                            idx_end = idx_start + effective_stimulus_window
                         else:
                             idx_start = s + excluded_samples_start - hrf_delay \
-                                - stimulus_window + 1
-                            idx_end = idx_start + stimulus_window
+                                - effective_stimulus_window + 1
+                            idx_end = idx_start + effective_stimulus_window
                         # In case there are less visual/audio feature samples
                         # than fMRI samples minus the hrf_delay, use the last N
                         # visual/audio feature samples available (where N is
                         # defined by the 'stimulus_window' variable)
                         if idx_end > (len(features[mod][split])):
                             idx_end = len(features[mod][split])
-                            idx_start = idx_end - stimulus_window
+                            idx_start = idx_end - effective_stimulus_window
                         f = features[mod][split][idx_start:idx_end]
                         range_tupple = (idx_start, idx_end)
                         #print('s', s, 'idx_start', idx_start, 'idx_end', idx_end, mod)
@@ -370,7 +373,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     # spanning several samples, only model each fMRI sample
                     # using the corresponding stimulus feature sample minus the
                     # hrf_delay
-                    elif mod == 'language':
+                    elif mod == 'language1':
                         # In case there are no language features for the fMRI
                         # sample of interest minus the hrf_delay, model the fMRI
                         # sample using the first language feature sample
