@@ -477,6 +477,10 @@ STRATEGY_VISION_23= 11
 STRATEGY_VISION_2_5_10_17_NORM = 12
 STRATEGY_V2_VISION_NORM_CLS = 200
 STRATEGY_V2_VISION_NORM_AVG = 201
+STRATEGY_V4_L12_CLS = 301
+STRATEGY_V4_L4_CLS = 302
+STRATEGY_V4_L2_CLS = 303
+STRATEGY_V4_LNORM_CLS = 304
 #STRATEGY_V2_VISION_
 
 #LLM + Vision
@@ -484,10 +488,7 @@ STRATEGY_LN_1_VN = 20
 STRATEGY_LN_3_VN = 21
 STRATEGY_LN7_4_12_NORM_VN_NORM = 22
 STRATEGY_V2_LN7_VCLS = 300
-STRATEGY_V4_L12_CLS = 301
-STRATEGY_V4_L4_CLS = 302
-STRATEGY_V4_L2_CLS = 303
-STRATEGY_V4_LNORM_CLS = 304
+
 
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
@@ -808,7 +809,7 @@ if __name__ == "__main__":
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                     pca_only_250 = True, \
-                    overwrite_pca=True, \
+                    #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
                     )
