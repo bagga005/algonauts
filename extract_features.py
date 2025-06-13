@@ -737,9 +737,8 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
     return combined_tensor
 
 
-def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False):
+def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False, force_evaluation=False):
     pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
-    print('pca_file_path', pca_file_path, overwrite)
     if not os.path.exists(pca_file_path) or overwrite:
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
     else:
@@ -748,7 +747,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         #get results file path to see if it exists
         eval_dir = os.path.join(dir_output_path, 'evals')
         results_file_path = utils.get_subject_network_accuracy_file_for_experiement(strategy_name+'-'+str(pca_dim), eval_dir)
-        if not os.path.exists(results_file_path) or overwrite:
+        if not os.path.exists(results_file_path) or overwrite or force_evaluation:
         #move generated file to pca directory
             stim_file_path = os.path.join(utils.get_stimulus_features_dir(), 'pca', 'friends_movie10', 'visual', 'features_train.npy')
             shutil.copy(pca_file_path, stim_file_path)
@@ -757,21 +756,25 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         else:
             print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False):
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, pca_only_750=False, add_layer_to_path=True, pca_only_250=False, skip_evaluation=False, overwrite_pca=False, force_evaluation=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"\n**Starting save_combined_vlm_features for {strategy_name}")
         save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name, overwrite, add_layer_to_path)
     if not pca_skip:
-        print(f"**Starting pca for {strategy_name}")
-        do_pca(dir_output_path, dir_output_path + "/features_train.npy", modality, do_zscore=False, skip_pca_just_comgine=True)
-        if pca_only_750:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite_pca)
+        pca_file_path =os.path.join(dir_output_path, f"features_train.npy")
+        if not os.path.exists(pca_file_path) or overwrite_pca:
+            print(f"**Starting pca for {strategy_name}")
+            do_pca(dir_output_path, pca_file_path, modality, do_zscore=False, skip_pca_just_comgine=True)
         else:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 250, modality, skip_evaluation, dir_output_path, overwrite_pca)
+            print(f"**Skipping pca for {strategy_name} because file already exists")
+        if pca_only_750:
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 750, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
+        else:
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 250, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
         if not pca_only_250:
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 500, modality, skip_evaluation, dir_output_path, overwrite_pca)
-            perform_pca_evaluate_embeddings(strategy, strategy_name, 1000, modality, skip_evaluation, dir_output_path, overwrite_pca)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 500, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
+            perform_pca_evaluate_embeddings(strategy, strategy_name, 1000, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
     
@@ -813,6 +816,7 @@ if __name__ == "__main__":
                     #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True \
+                    force_evaluation=True \
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
