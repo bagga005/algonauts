@@ -773,7 +773,7 @@ if __name__ == "__main__":
     strategy_id = globals()[strategy]
     
     kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-        #pca_only_250 = True, \
+        pca_only_250 = True, \
         #overwrite=True, \
         #pca_skip=True \
         )
