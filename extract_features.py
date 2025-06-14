@@ -271,8 +271,45 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
     data_array = np.array(valdict)
     np.save(outfile, data_array)
     
+def reduce_dims_npy(inpath, outfile,  n_components = 250):
+    data = np.load(inpath, allow_pickle=True)
+    
+    boundary = []
+    #iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    valdict = {}
+    features = []
+    data = data.item()
+    for stim_id in data.keys():
+        #print(f"- {stim_id}")
+        fea = np.asarray(data[stim_id])
+        #print('fea.shape', fea.shape)
+        features.append(fea)
+        boundary.append((stim_id, fea.shape[0]))
+    features = np.concatenate(features, axis=0)
+    print('features.shape', features.shape)
 
-def do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250):
+    features_pca = features[:, :n_components]
+    print('features_pca.shape', features_pca.shape)
+    
+    # slice out results
+    from_idx =0
+    for stim_id, size in boundary:
+        #if from_idx < 3000: print(stim_id, size)
+        slice = features_pca[from_idx:from_idx+size,:]
+        valdict[get_shortstim_name(stim_id)] = slice
+        #if from_idx < 3000: print(from_idx, from_idx + size)
+        from_idx = from_idx + size
+        assert slice.shape[0] == size, "size mismatch while slicing"
+
+    #valdict[get_shortstim_name(stim_id)] = features_pca
+
+    # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
+    data_array = np.array(valdict)
+    # Save to .npy file
+    np.save(outfile, data_array)
+
+
+def do_pca_npy(inpath, outfile, modality, do_zscore=True, n_components = 250):
     data = np.load(inpath, allow_pickle=True)
     
     boundary = []

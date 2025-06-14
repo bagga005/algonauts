@@ -1,4 +1,5 @@
-from algonaut_funcs import load_features_visual, preprocess_features, perform_pca
+#from algonaut_funcs import load_features_visual, preprocess_features, perform_pca
+from extract_features import do_pca_npy, reduce_dims_npy
 import utils
 import os
 def run_pca(modality, n_components):
@@ -19,4 +20,22 @@ def run_pca(modality, n_components):
 
 if __name__ == "__main__":
     n_components = 250
-    run_pca('visual', n_components)
+    # run_pca('visual', n_components)
+    stim_folder = utils.get_stimulus_features_dir()
+    inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-orig.npy')
+    #inpath = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy"
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250-1.npy')
+    reduce_dims_npy(inpath, outfile,   n_components = 250)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-500-1.npy')
+    reduce_dims_npy(inpath, outfile,  n_components = 500)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000-1.npy')
+    reduce_dims_npy(inpath, outfile,  n_components = 1000)
+    
+    modality = 'audio'
+    do_zscore = False
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore, n_components = 250)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-500.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore, n_components = 500)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore, n_components = 1000)
