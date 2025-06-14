@@ -24,7 +24,7 @@ class VisionLinearRegressionModel(nn.Module):
     def __init__(self, input_size, output_size, device, dropout_rate=0.2):
         super(VisionLinearRegressionModel, self).__init__()
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
-        self.eval_subject = 1
+        self.eval_subject = -1
         self.model_layer = 'blocks.5.pool'
         self.device = device
         self.linear41 = nn.Linear(input_size, output_size)
@@ -105,7 +105,7 @@ class VisionLinearRegressionModel(nn.Module):
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
             x = self.visual_model.model.blocks[2](x)
-        if self.training:
+        if self.training or self.eval_subject == -1:
             with torch.enable_grad():
                 # Blocks 3 and 4 contain LoRA parameters and require gradients
                 x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
