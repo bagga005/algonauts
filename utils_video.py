@@ -115,7 +115,7 @@ def extract_video_chucks():
     out_data_dir = os.path.join(utils.get_output_dir(), 'video_chunks')
     os.makedirs(out_data_dir, exist_ok=True)
     tr = 1.49
-    seasons = ['s4']
+    seasons = ['s7']
     for season in seasons:
         file_in_filter = ''
         exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
