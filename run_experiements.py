@@ -29,7 +29,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     
     training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
-    specific_modalities = ["visual"]
+    specific_modalities = ["audio"]
     config = {
         'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
     }
