@@ -31,8 +31,9 @@ aligned_features_friends_s7 =align_features_and_fmri_samples_friends_s7(features
 for sub, features in aligned_features_friends_s7.items():
     print(sub)
     for epi, feat_epi in features.items():
-        print(epi, feat_epi.shape)
-        print(get_num_chunks(epi))
+        num_chunks, season_folder = get_num_chunks(epi)
+        if num_chunks != feat_epi.shape[0]:
+            print(epi, feat_epi.shape, num_chunks)
     break
 
 # Empty submission predictions dictionary
