@@ -859,6 +859,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer.load_model(model_name)
 
     fmri_val_pred = trainer.predict(features_val)
+    #save it first
+    utils.save_predictions_accuracy(fmri_val_pred, None, title=model_name)
     #print('fmri_val_pred.shape', fmri_val_pred.shape)
 
     accuracy_by_network = []
@@ -874,7 +876,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     # else:
     full_accuracy, full_encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
     #print('encoding_accuracy.shape', full_encoding_accuracy.shape)
-    utils.save_predictions_accuracy(fmri_val_pred,full_encoding_accuracy)
+    utils.save_predictions_accuracy(None,full_encoding_accuracy, title=model_name)
     if plot_encoding_fig:
         #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
         # encoding_accuracy[:] = 0

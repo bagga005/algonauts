@@ -158,11 +158,15 @@ def get_shortstim_name(stimuli):
     else:
         return stimuli
 
-def save_predictions_accuracy(fmri_val_pred, accuracy):
-    ts_path = os.path.join(get_output_dir(), 'predictions', 'timeseries.npy')
-    np.save(ts_path, fmri_val_pred)
-    acc_path = os.path.join(get_output_dir(), 'predictions', 'accuracy.npy')
-    np.save(acc_path, accuracy)
+def save_predictions_accuracy(fmri_val_pred, accuracy, title=None):
+    if title is None:
+        title = 'predictions'
+    if fmri_val_pred is not None:
+        ts_path = os.path.join(get_output_dir(), 'predictions', f'{title}_timeseries.npy')
+        np.save(ts_path, fmri_val_pred)
+    if accuracy is not None:
+        acc_path = os.path.join(get_output_dir(), 'predictions', f'{title}_accuracy.npy')
+        np.save(acc_path, accuracy)
 
 def save_npy(encoding_accuracy, subject, modality):
     """

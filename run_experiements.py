@@ -27,7 +27,6 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     # movies_val = ["friends-s01"] # @param {allow-input: true}
     training_handler = 'sklearn'
     
-    training_handler = 'sklearn'
     experiment_comments = 'train with vlm'
     specific_modalities = ["audio"]
     config = {
