@@ -119,7 +119,7 @@ def extract_preprocessed_video_content():
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    file_in_filter = file_in_filter = utils.get_stimuli_prefix()
+    file_in_filter = utils.get_stimuli_prefix()
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/movie10/**/*.mkv")
     if file_in_filter:
