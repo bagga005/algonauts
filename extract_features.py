@@ -469,7 +469,7 @@ STRATEGY_V4_POST_4Layer_L10_AVG = 556
 STRATEGY_V4_POST_L12_L10_AVG = 557
 STRATEGY_V4_POST_5Layer_L10_AVG = 558
 STRATEGY_V4_POST_L4_L10_AVG = 559
-
+STRATEGY_V4_POST_5Layer_L10_AVG_IMG8A = 560
 
 #Vision 
 STRATEGY_VISION_NORM = 10
@@ -618,6 +618,14 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_21", COMBINE_STRATEGY_I,i=9)
                 ten6 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_I,i=9)
                 ten1 = torch.cat((ten2, ten3, ten4, ten5, ten6), dim=1)
+            elif strategy == STRATEGY_V4_POST_5Layer_L10_AVG_IMG8A:
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=9)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_23", COMBINE_STRATEGY_I,i=9)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_22", COMBINE_STRATEGY_I,i=9)
+                ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_21", COMBINE_STRATEGY_I,i=9)
+                ten6 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_I,i=9)
+                ten7 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J, i=11, j=18)
+                ten1 = torch.cat((ten2, ten3, ten4, ten5, ten6, ten7), dim=1)
             elif strategy == STRATEGY_LN7_4_12_NORM_VN_NORM:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_4", COMBINE_STRATEGY_LAST7)
                 ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_LAST7)
@@ -822,7 +830,7 @@ if __name__ == "__main__":
                     #overwrite=True, \
                     #pca_skip=True \
                     # force_evaluation=True \
-                    pca_dims=[250]
+                    pca_dims=[250, 500]
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
