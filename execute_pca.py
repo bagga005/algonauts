@@ -1,6 +1,7 @@
 #from algonaut_funcs import load_features_visual, preprocess_features, perform_pca
 #from extract_features import do_pca_npy, reduce_dims_npy
-from utils_video import extract_video_chucks
+#from utils_video import extract_video_chucks
+from extract_features import extract_preprocessed_video_content
 #import utils
 import os
 def run_pca(modality, n_components):
@@ -40,4 +41,4 @@ if __name__ == "__main__":
     # do_pca_npy(inpath, outfile, modality, do_zscore, n_components = 500)
     # outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000.npy')
     # do_pca_npy(inpath, outfile, modality, do_zscore, n_components = 1000)
-    extract_video_chucks()
+    extract_preprocessed_video_content()
