@@ -281,9 +281,9 @@ def do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=F
     features = []
     data = data.item()
     for stim_id in data.keys():
-        print(f"- {stim_id}")
+        #print(f"- {stim_id}")
         fea = np.asarray(data[stim_id])
-        print('fea.shape', fea.shape)
+        #print('fea.shape', fea.shape)
         features.append(fea)
         boundary.append((stim_id, fea.shape[0]))
     features = np.concatenate(features, axis=0)
