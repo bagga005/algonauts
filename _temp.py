@@ -18,7 +18,7 @@ def get_num_chunks(episode_id):
     elif 's07' in episode_id:
         season = 's7'
     season_folder = os.path.join(utils.get_output_dir(), 'video_chunks', season)
-    files = glob(f"{season_folder}/{episode_id}_*.mp4")
+    files = glob(f"{season_folder}/friends_{episode_id}_*.mp4")
     return len(files), season_folder
 
 root_data_dir = utils.get_data_root_dir()
