@@ -705,6 +705,7 @@ class RegressionHander_Vision():
         print('Initializing RegressionHander_Vision')
         self.input_size = input_size
         self.output_size = output_size
+        utils.set_hf_home_path()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
         if pretrain_params_name is not None:
