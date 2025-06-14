@@ -22,7 +22,7 @@ if __name__ == "__main__":
     n_components = 250
     # run_pca('visual', n_components)
     stim_folder = utils.get_stimulus_features_dir()
-    inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-orig.npy')
+    inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-whisper2000.npy')
     #inpath = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy"
     outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250-1.npy')
     reduce_dims_npy(inpath, outfile,   n_components = 250)
