@@ -142,7 +142,7 @@ def extract_preprocessed_video_content():
     iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
     for i, (stim_id, stim_path) in iterator:
         print(f"Extracting visual features for {stim_id}", stim_path)
-        fn = os.path.join(out_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
+        fn = os.path.join(root_data_dir, "stimulus_features", "pre", "visual", f"{stim_id}.h5")
         if os.path.exists(fn) or stim_id in exclude_list: continue; 
         # Execute visual feature extraction
         visual_features = extract_visual_preprocessed_features(stim_path, tr,
