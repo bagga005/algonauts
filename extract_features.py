@@ -853,40 +853,40 @@ if __name__ == "__main__":
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
     
-    # if len(sys.argv) > 1:
-    #     # Check if first argument is -combine
-    #     if sys.argv[1] == "-combine":
-    #         if len(sys.argv) != 4:
-    #             print("Usage for combine mode: python extract_features.py -combine pca network")
-    #             sys.exit(1)
-    #         pca_dim = sys.argv[2]
-    #         network = sys.argv[3]
-    #         print(f"Calling utils.consolidate_results({pca_dim}, {network})")
-    #         utils.consolidate_results(pca_dim, network)
-    #     else:
-    #         # Original logic for processing strategies
-    #         for arg in sys.argv[1:]:
-    #             strategy = arg
-    #             strategy_id = globals()[strategy]
-    #             kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-    #                 #overwrite_pca=True, \
-    #                 #overwrite=True, \
-    #                 #pca_skip=True \
-    #                 # force_evaluation=True \
-    #                 pca_dims=[250, 500]
-    #                 )
-    #             get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
-    #         dir_input_path, dir_output_path, **kwargs)  
+    if len(sys.argv) > 1:
+        # Check if first argument is -combine
+        if sys.argv[1] == "-combine":
+            if len(sys.argv) != 4:
+                print("Usage for combine mode: python extract_features.py -combine pca network")
+                sys.exit(1)
+            pca_dim = sys.argv[2]
+            network = sys.argv[3]
+            print(f"Calling utils.consolidate_results({pca_dim}, {network})")
+            utils.consolidate_results(pca_dim, network)
+        else:
+            # Original logic for processing strategies
+            for arg in sys.argv[1:]:
+                strategy = arg
+                strategy_id = globals()[strategy]
+                kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
+                    #overwrite_pca=True, \
+                    #overwrite=True, \
+                    #pca_skip=True \
+                    # force_evaluation=True \
+                    pca_dims=[250, 500]
+                    )
+                get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
+            dir_input_path, dir_output_path, **kwargs)  
     #inpath = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
-    stim_folder = utils.get_stimulus_features_dir()
-    inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train.npy')
-    #inpath = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy"
-    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250.npy')
-    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250)
-    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-500.npy')
-    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 500)
-    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000.npy')
-    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 1000)
+    # stim_folder = utils.get_stimulus_features_dir()
+    # inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train.npy')
+    # #inpath = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy"
+    # outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250.npy')
+    # do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250)
+    # outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-500.npy')
+    # do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 500)
+    # outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000.npy')
+    # do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 1000)
     
     
     
