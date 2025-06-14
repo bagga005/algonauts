@@ -126,7 +126,7 @@ def extract_preprocessed_video_content():
         # Support comma-separated patterns
         filters = file_in_filter.split(',')
         files = [f for f in files if any(filter_item.strip() in f for filter_item in filters)]
-    files.sort()
+    files.sort(reverse=True)
 
     stimuli = {f.split("/")[-1].split(".")[0]: f for f in files}
     print(len(stimuli), list(stimuli)[:3], list(stimuli)[-3:])
