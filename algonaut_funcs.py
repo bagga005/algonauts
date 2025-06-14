@@ -700,7 +700,7 @@ def perform_pca(prepr_features, n_components, modality):
     ### Output ###
     return features_pca
 
-def perform_pca_incremental(prepr_features, n_components, modality, batch_size=64000):
+def perform_pca_incremental(prepr_features, n_components, modality, batch_size=32000):
     """
     Perform Incremental PCA on the standardized features to handle large datasets.
     """
