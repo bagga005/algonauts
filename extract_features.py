@@ -272,6 +272,49 @@ def features_combined_npy(infolder, outfile, modality, preProcess=False, zscore=
     np.save(outfile, data_array)
     
 
+def do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250):
+    data = np.load(inpath, allow_pickle=True)
+    
+    boundary = []
+    #iterator = tqdm(enumerate(stimuli.items()), total=len(list(stimuli)))
+    valdict = {}
+    features = []
+    data = data.item()
+    for stim_id in data.keys():
+        print(f"- {stim_id}")
+        fea = np.asarray(data[stim_id])
+        print('fea.shape', fea.shape)
+        features.append(fea)
+        boundary.append((stim_id, fea.shape[0]))
+    features = np.concatenate(features, axis=0)
+    print('features.shape', features.shape)
+    
+    prepr_features = preprocess_features(features, zscore=do_zscore)
+    print('prepr_features.shape', prepr_features.shape)
+
+
+    features_pca = perform_pca(prepr_features, n_components, modality)
+    
+    # slice out results
+    from_idx =0
+    for stim_id, size in boundary:
+        #if from_idx < 3000: print(stim_id, size)
+        slice = features_pca[from_idx:from_idx+size,:]
+        valdict[get_shortstim_name(stim_id)] = slice
+        #if from_idx < 3000: print(from_idx, from_idx + size)
+        from_idx = from_idx + size
+        assert slice.shape[0] == size, "size mismatch while slicing"
+
+    #valdict[get_shortstim_name(stim_id)] = features_pca
+
+    # Convert dictionary to a numpy array (creates a 0-dimensional array containing the dict)
+    data_array = np.array(valdict)
+    # Save to .npy file
+    np.save(outfile, data_array)
+    
+    
+    
+
 def do_pca(inpath, outfile,modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250):
     root_data_dir = utils.get_data_root_dir()
     out_data_dir = utils.get_output_dir()
@@ -810,33 +853,40 @@ if __name__ == "__main__":
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
     
-    if len(sys.argv) > 1:
-        # Check if first argument is -combine
-        if sys.argv[1] == "-combine":
-            if len(sys.argv) != 4:
-                print("Usage for combine mode: python extract_features.py -combine pca network")
-                sys.exit(1)
-            pca_dim = sys.argv[2]
-            network = sys.argv[3]
-            print(f"Calling utils.consolidate_results({pca_dim}, {network})")
-            utils.consolidate_results(pca_dim, network)
-        else:
-            # Original logic for processing strategies
-            for arg in sys.argv[1:]:
-                strategy = arg
-                strategy_id = globals()[strategy]
-                kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    #overwrite_pca=True, \
-                    #overwrite=True, \
-                    #pca_skip=True \
-                    # force_evaluation=True \
-                    pca_dims=[250, 500]
-                    )
-                get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
-            dir_input_path, dir_output_path, **kwargs)  
-    
-    
-    
+    # if len(sys.argv) > 1:
+    #     # Check if first argument is -combine
+    #     if sys.argv[1] == "-combine":
+    #         if len(sys.argv) != 4:
+    #             print("Usage for combine mode: python extract_features.py -combine pca network")
+    #             sys.exit(1)
+    #         pca_dim = sys.argv[2]
+    #         network = sys.argv[3]
+    #         print(f"Calling utils.consolidate_results({pca_dim}, {network})")
+    #         utils.consolidate_results(pca_dim, network)
+    #     else:
+    #         # Original logic for processing strategies
+    #         for arg in sys.argv[1:]:
+    #             strategy = arg
+    #             strategy_id = globals()[strategy]
+    #             kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
+    #                 #overwrite_pca=True, \
+    #                 #overwrite=True, \
+    #                 #pca_skip=True \
+    #                 # force_evaluation=True \
+    #                 pca_dims=[250, 500]
+    #                 )
+    #             get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
+    #         dir_input_path, dir_output_path, **kwargs)  
+    #inpath = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
+    stim_folder = utils.get_stimulus_features_dir()
+    inpath = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train.npy')
+    #inpath = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy"
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-250.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 250)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-500.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 500)
+    outfile = os.path.join(stim_folder, 'pca', 'friends_movie10', 'audio', 'features_train-1000.npy')
+    do_pca_npy(inpath, outfile, modality, do_zscore=True,skip_pca_just_comgine=False, n_components = 1000)
     
     
     
