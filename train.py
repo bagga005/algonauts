@@ -294,7 +294,7 @@ def align_features_and_fmri_samples_friends_s7(features_friends_s7,
         ### Loop over Friends season 7 episodes ###
         for epi, samples in fmri_samples.items():
             features_epi = []
-
+            print(epi, samples)
             ### Loop over fMRI samples ###
             for s in range(samples):
                 # Empty variable containing the stimulus features of all
@@ -1038,6 +1038,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             model_name = config['trained_model_name']
         print('model_name', model_name)
         trainer.load_model(model_name)
+    else:
+        model_name = f'lora_vision_all_sub-{subject}'
 
     fmri_val_pred = trainer.predict(features_val)
     #save it first
