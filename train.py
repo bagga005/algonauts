@@ -510,7 +510,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     # the N stimulus feature samples up to the fMRI sample of
                     # interest minus the hrf_delay (where N is defined by the
                     # 'stimulus_window' variable)
-                    if mod == 'visual' or mod == 'audio' or mod == 'language1':
+                    if mod == 'visual' or mod == 'audio' or mod == 'language':
                         # In case there are not N stimulus feature samples up to
                         # the fMRI sample of interest minus the hrf_delay (where
                         # N is defined by the 'stimulus_window' variable), model
@@ -556,7 +556,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                     # spanning several samples, only model each fMRI sample
                     # using the corresponding stimulus feature sample minus the
                     # hrf_delay
-                    elif mod == 'language':
+                    elif mod == 'language1':
                         # In case there are no language features for the fMRI
                         # sample of interest minus the hrf_delay, model the fMRI
                         # sample using the first language feature sample
