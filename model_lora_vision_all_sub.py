@@ -152,8 +152,9 @@ class VisionLinearRegressionModel(nn.Module):
 
         return prediction1, prediction2, prediction3, prediction4
     
-def set_eval_subject(subject):
-    self.eval_subject = subject
+    def set_eval_subject(self, subject):
+        self.eval_subject = subject
+
 # Define setup and cleanup functions for distributed training at module level
 def setup_distributed(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
