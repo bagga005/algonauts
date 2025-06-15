@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import json
 import datetime
 from roi_network_map import get_breakup_by_network
+from algonaut_funcs import prepare_s7_fmri_for_alignment
 def load_stimulus_features(root_data_dir, modality):
     """
     Load the stimulus features.
@@ -154,6 +155,7 @@ def get_fmri_for_all_subjects():
 
     return fmri
 
+
 def normalize_to_radians(value, original_min=0, original_max=49, target_min=-math.pi/2, target_max=math.pi/2):
     """
     Normalize a value from the original range to the target range.
@@ -224,7 +226,7 @@ def load_stimulus_features_friends_s7(root_data_dir):
     ### Output ###
     return features_friends_s7
 
-def align_features_and_fmri_samples_friends_s7(features_friends_s7,
+def align_features_and_fmri_samples_friends_s7(subject, features_friends_s7,
     root_data_dir):
     """
     Align the stimulus feature with the fMRI response samples for Friends season
@@ -282,83 +284,83 @@ def align_features_and_fmri_samples_friends_s7(features_friends_s7,
     ### Loop over subjects ###
     subjects = [1, 2, 3, 5]
     desc = "Aligning stimulus and fMRI features of the four subjects"
-    for sub in tqdm(subjects, desc=desc):
-        aligned_features_friends_s7[f'sub-0{sub}'] = {}
+    sub = subject
+    aligned_features_friends_s7 = {}
 
-        ### Load the Friends season 7 fMRI samples ###
-        samples_dir = os.path.join(root_data_dir, 'algonauts_2025.competitors',
-            'fmri', f'sub-0{sub}', 'target_sample_number',
-            f'sub-0{sub}_friends-s7_fmri_samples.npy')
-        fmri_samples = np.load(samples_dir, allow_pickle=True).item()
+    ### Load the Friends season 7 fMRI samples ###
+    samples_dir = os.path.join(root_data_dir, 'algonauts_2025.competitors',
+        'fmri', f'sub-0{sub}', 'target_sample_number',
+        f'sub-0{sub}_friends-s7_fmri_samples.npy')
+    fmri_samples = np.load(samples_dir, allow_pickle=True).item()
+    total_dim = 0
+    ### Loop over Friends season 7 episodes ###
+    for epi, samples in fmri_samples.items():
+        features_epi = []
+        ### Loop over fMRI samples ###
+        for s in range(samples):
+            # Empty variable containing the stimulus features of all
+            # modalities for each sample
+            f_all = np.empty(0)
 
-        ### Loop over Friends season 7 episodes ###
-        for epi, samples in fmri_samples.items():
-            features_epi = []
-            print(epi, samples)
-            ### Loop over fMRI samples ###
-            for s in range(samples):
-                # Empty variable containing the stimulus features of all
-                # modalities for each sample
-                f_all = np.empty(0)
+            ### Loop across modalities ###
+            for mod in features_friends_s7.keys():
 
-                ### Loop across modalities ###
-                for mod in features_friends_s7.keys():
-
-                    ### Visual and audio features ###
-                    # If visual or audio modality, model each fMRI sample using
-                    # the N stimulus feature samples up to the fMRI sample of
-                    # interest minus the hrf_delay (where N is defined by the
-                    # 'stimulus_window' variable)
-                    if mod == 'visual' or mod == 'audio':
-                        # In case there are not N stimulus feature samples up to
-                        # the fMRI sample of interest minus the hrf_delay (where
-                        # N is defined by the 'stimulus_window' variable), model
-                        # the fMRI sample using the first N stimulus feature
-                        # samples
-                        if s < (stimulus_window + hrf_delay):
-                            idx_start = 0
-                            idx_end = idx_start + stimulus_window
-                        else:
-                            idx_start = s - hrf_delay - stimulus_window + 1
-                            idx_end = idx_start + stimulus_window
-                        # In case there are less visual/audio feature samples
-                        # than fMRI samples minus the hrf_delay, use the last N
-                        # visual/audio feature samples available (where N is
-                        # defined by the 'stimulus_window' variable)
-                        if idx_end > len(features_friends_s7[mod][epi]):
-                            idx_end = len(features_friends_s7[mod][epi])
-                            idx_start = idx_end - stimulus_window
-                        f = features_friends_s7[mod][epi][idx_start:idx_end]
-                        f_all = np.append(f_all, f.flatten())
-
-                    ### Language features ###
-                    # Since language features already consist of embeddings
-                    # spanning several samples, only model each fMRI sample
-                    # using the corresponding stimulus feature sample minus the
-                    # hrf_delay
-                    elif mod == 'language':
-                        # In case there are no language features for the fMRI
-                        # sample of interest minus the hrf_delay, model the fMRI
-                        # sample using the first language feature sample
-                        if s < hrf_delay:
-                            idx = 0
-                        else:
-                            idx = s - hrf_delay
-                        # In case there are fewer language feature samples than
-                        # fMRI samples minus the hrf_delay, use the last
-                        # language feature sample available
-                        if idx >= (len(features_friends_s7[mod][epi]) - hrf_delay):
-                            f = features_friends_s7[mod][epi][-1,:]
-                        else:
-                            f = features_friends_s7[mod][epi][idx]
-                        f_all = np.append(f_all, f.flatten())
-
-                ### Append the stimulus features of all modalities for this sample ###
-                features_epi.append(f_all)
-
-            ### Add the episode stimulus features to the features dictionary ###
-            aligned_features_friends_s7[f'sub-0{sub}'][epi] = np.asarray(
-                features_epi, dtype=np.float32)
+                ### Visual and audio features ###
+                # If visual or audio modality, model each fMRI sample using
+                # the N stimulus feature samples up to the fMRI sample of
+                # interest minus the hrf_delay (where N is defined by the
+                # 'stimulus_window' variable)
+                if mod == 'visual' or mod == 'audio':
+                    # In case there are not N stimulus feature samples up to
+                    # the fMRI sample of interest minus the hrf_delay (where
+                    # N is defined by the 'stimulus_window' variable), model
+                    # the fMRI sample using the first N stimulus feature
+                    # samples
+                    if s < (stimulus_window + hrf_delay):
+                        idx_start = 0
+                        idx_end = idx_start + stimulus_window
+                    else:
+                        idx_start = s - hrf_delay - stimulus_window + 1
+                        idx_end = idx_start + stimulus_window
+                    # In case there are less visual/audio feature samples
+                    # than fMRI samples minus the hrf_delay, use the last N
+                    # visual/audio feature samples available (where N is
+                    # defined by the 'stimulus_window' variable)
+                    if idx_end > len(features_friends_s7[mod][epi]):
+                        idx_end = len(features_friends_s7[mod][epi])
+                        idx_start = idx_end - stimulus_window
+                    f = features_friends_s7[mod][epi][idx_start:idx_end]
+                    f_all = np.append(f_all, f.flatten())
+                   # total_dim += f.shape[0]
+                ### Language features ###
+                # Since language features already consist of embeddings
+                # spanning several samples, only model each fMRI sample
+                # using the corresponding stimulus feature sample minus the
+                # hrf_delay
+                elif mod == 'language':
+                    # In case there are no language features for the fMRI
+                    # sample of interest minus the hrf_delay, model the fMRI
+                    # sample using the first language feature sample
+                    if s < hrf_delay:
+                        idx = 0
+                    else:
+                        idx = s - hrf_delay
+                    # In case there are fewer language feature samples than
+                    # fMRI samples minus the hrf_delay, use the last
+                    # language feature sample available
+                    if idx >= (len(features_friends_s7[mod][epi]) - hrf_delay):
+                        f = features_friends_s7[mod][epi][-1,:]
+                    else:
+                        f = features_friends_s7[mod][epi][idx]
+                    f_all = np.append(f_all, f.flatten())
+                    #total_dim += f.shape[0]
+            ### Append the stimulus features of all modalities for this sample ###
+            features_epi.append(f_all)
+        total_dim += len(features_epi)
+        ### Add the episode stimulus features to the features dictionary ###
+        aligned_features_friends_s7[epi] = np.asarray(
+            features_epi, dtype=np.float32)
+    print(f"Total dimension for subject {sub}: {total_dim}")
 
     return aligned_features_friends_s7
 
@@ -432,7 +434,6 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     aligned_features = []
     aligned_features_summary = []
     aligned_fmri = np.empty((0,1000), dtype=np.float32)
-
     if all_subject_fmri:
         aligned_fmri = np.empty((0,4,1000), dtype=np.float32)
     ### Loop across movies ###
@@ -629,6 +630,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                 #print('f_all.shape', f_all.shape, 'vsession:', str(v_session-1))
                 #print('f_all.shape', f_all.shape)
                 aligned_features.append(f_all)
+                #print(f_all.shape, movie_len)
                 aligned_features_summary.append((full_split, range_tupple))
     ### Convert the aligned features to a numpy array ###
     aligned_features = np.asarray(aligned_features, dtype=np.float32)
@@ -855,16 +857,17 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False):
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, \
+                                specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, skip_accuracy_check=False):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False, experiment_name=None, results_output_directory=None):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False, experiment_name=None, results_output_directory=None, skip_accuracy_check=False):
     assert len(specific_modalities) == 1
     modality = specific_modalities[0]
     features = get_features(modality)
@@ -877,7 +880,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
     for subject in subjects:
         fmri = get_fmri(subject)
         print(f"\nValidation for Subject {subject}")
-        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network)
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
         subject_accuracies[subject] = accuracy
         subject_accuracies_by_network[subject] = accuracy_by_network
         
@@ -989,7 +992,8 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
     return accuracy
 
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, config, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val,training_handler, include_viewing_sessions, config, \
+    write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, skip_accuracy_check=False):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
@@ -1006,6 +1010,9 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
          # Align the stimulus features with the fMRI responses for the validation movies
+        if movies_val[0] == 'friends-s07':
+            fmri, boundary = prepare_s7_fmri_for_alignment(subject)
+            skip_accuracy_check = True
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
         movies_val, viewing_session)
@@ -1043,33 +1050,35 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
 
     fmri_val_pred = trainer.predict(features_val)
     #save it first
-    utils.save_predictions_accuracy(fmri_val_pred, None, title=model_name)
+    utils.save_predictions_accuracy(subject, fmri_val_pred, None)
     #print('fmri_val_pred.shape', fmri_val_pred.shape)
-
+    full_accuracy = 0
+    full_encoding_accuracy = None
     accuracy_by_network = []
-    if break_up_by_network:
-        prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
-        for prediction in prediction_by_network:
-            measure, network_fmri_val, network_fmri_val_pred = prediction
-            network_accuracy, network_encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
-            print(measure, 'accuracy', network_accuracy)
-            accuracy_by_network.append((measure, network_accuracy))
-        json_path = utils.get_network_accuracy_json_file()
-        utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
-    # else:
-    full_accuracy, full_encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
-    #print('encoding_accuracy.shape', full_encoding_accuracy.shape)
-    utils.save_predictions_accuracy(None,full_encoding_accuracy, title=model_name)
-    if plot_encoding_fig:
-        #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
-        # encoding_accuracy[:] = 0
-        # encoding_accuracy[173:232] = 1
-        # encoding_accuracy[684:744] = 1
-        print('encoding_accuracy.shape', full_encoding_accuracy.shape)
-        plot_encoding_accuracy(subject, full_encoding_accuracy, modality)
-    if write_accuracy:
-        acc_json_path = utils.get_accuracy_json_file()
-        update_accuracy_json(acc_json_path, float(np.mean(full_accuracy)), modality, movies_val[0], subject, stimulus_window)
+    if not skip_accuracy_check:       
+        if break_up_by_network:
+            prediction_by_network = get_breakup_by_network(fmri_val, fmri_val_pred)
+            for prediction in prediction_by_network:
+                measure, network_fmri_val, network_fmri_val_pred = prediction
+                network_accuracy, network_encoding_accuracy = utils.compute_encoding_accuracy(network_fmri_val, network_fmri_val_pred, subject, measure, print_output=False, write_to_csv=write_accuracy_to_csv)
+                print(measure, 'accuracy', network_accuracy)
+                accuracy_by_network.append((measure, network_accuracy))
+            json_path = utils.get_network_accuracy_json_file()
+            utils.append_network_accuracies_to_json(json_path, accuracy_by_network)
+        # else:
+        full_accuracy, full_encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
+        #print('encoding_accuracy.shape', full_encoding_accuracy.shape)
+        utils.save_predictions_accuracy(subject, None, full_encoding_accuracy)
+        if plot_encoding_fig:
+            #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
+            # encoding_accuracy[:] = 0
+            # encoding_accuracy[173:232] = 1
+            # encoding_accuracy[684:744] = 1
+            print('encoding_accuracy.shape', full_encoding_accuracy.shape)
+            plot_encoding_accuracy(subject, full_encoding_accuracy, modality)
+        if write_accuracy:
+            acc_json_path = utils.get_accuracy_json_file()
+            update_accuracy_json(acc_json_path, float(np.mean(full_accuracy)), modality, movies_val[0], subject, stimulus_window)
     
     return full_accuracy, accuracy_by_network
 

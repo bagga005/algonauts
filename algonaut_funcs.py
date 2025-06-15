@@ -20,6 +20,18 @@ from model_r50_ft import VisionR50FineTuneModel
 from sklearn.decomposition import IncrementalPCA
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def prepare_s7_fmri_for_alignment(sub):
+    root_data_dir = utils.get_data_root_dir()
+    samples_dir = os.path.join(root_data_dir, 'algonauts_2025.competitors',
+            'fmri', f'sub-0{sub}', 'target_sample_number',
+            f'sub-0{sub}_friends-s7_fmri_samples.npy')
+    fmri_samples = np.load(samples_dir, allow_pickle=True).item()
+    fmri_samples_aligned = {}
+    boundary = []
+    for epi, samples in fmri_samples.items():
+        fmri_samples_aligned[epi] = np.zeros((samples, 1000))
+        boundary.append((epi, samples))
+    return fmri_samples_aligned, boundary
 
 def uniform_temporal_subsample(x: torch.Tensor, num_samples: int) -> torch.Tensor:
     """Uniformly samples num_samples frames from a video.

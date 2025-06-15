@@ -13,8 +13,8 @@ def map_parcel_to_full(input, parcellation_LR64k, fill=0):
     return output
 
 import os
-inputfile = 'accuracy-s1-trans'
-desc = 'Detailed Transcript'
+inputfile = 'accuracy-s1-raw_words'
+desc = 'raw words'
 root_data_dir = os.path.join(utils.get_data_root_dir(), 'brain')
 acc_file = os.path.join(root_data_dir, f'{inputfile}.npy')
 output_file = os.path.join(root_data_dir,'visualize', f'{inputfile}_brain.png')

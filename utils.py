@@ -96,6 +96,12 @@ def get_embeddings_format():
         return '1'
     return embeddings_format
 
+def get_experiment_name():
+    exp_name = os.getenv("EXPERIMENT_NAME")
+    if not exp_name:
+        return 'EXPERIMENT_NAME'
+    return exp_name
+
 def get_roi_network_map():
     """Returns the path to the ROI network mapping file"""
     return os.path.join(os.path.dirname(__file__), 'roi_network_map.json')
@@ -161,14 +167,28 @@ def get_shortstim_name(stimuli):
     else:
         return stimuli
 
-def save_predictions_accuracy(fmri_val_pred, accuracy, title=None):
-    if title is None:
-        title = 'predictions'
+def get_predictions_file_path(subject):
+    exp_name = get_experiment_name()
+    predictions_dir = os.path.join(get_output_dir(), 'predictions', exp_name)
+    predictions_file = os.path.join(predictions_dir, f'sub-{subject}_predictions.npy')
+    return predictions_file
+
+def get_accuracy_file_path(subject):
+    exp_name = get_experiment_name()
+    accuracy_dir = os.path.join(get_output_dir(), 'predictions', exp_name)
+    accuracy_file = os.path.join(accuracy_dir, f'sub-{subject}_accuracy.npy')
+    return accuracy_file
+
+def save_predictions_accuracy(subject,fmri_val_pred, accuracy):
     if fmri_val_pred is not None:
-        ts_path = os.path.join(get_output_dir(), 'predictions', f'{title}_timeseries.npy')
+        ts_path = get_predictions_file_path(subject)
+        ts_dir = os.path.dirname(ts_path)
+        os.makedirs(ts_dir, exist_ok=True)
         np.save(ts_path, fmri_val_pred)
     if accuracy is not None:
-        acc_path = os.path.join(get_output_dir(), 'predictions', f'{title}_accuracy.npy')
+        acc_path = get_accuracy_file_path(subject)
+        acc_dir = os.path.dirname(acc_path)
+        os.makedirs(acc_dir, exist_ok=True)
         np.save(acc_path, accuracy)
 
 def save_npy(encoding_accuracy, subject, modality):
