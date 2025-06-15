@@ -117,6 +117,9 @@ def isMockMode():
 def get_lora_config():
     return int(os.getenv("LORA_BATCH_SIZE")), int(os.getenv("LORA_EPOCH")), int(os.getenv("LORA_START_EPOCH"))
 
+def get_lora_prediction_subject():
+    return int(os.getenv("LORA_PRED_SUBJECT"))
+
 def get_model_checkpoint():
     return os.getenv("MODEL_CHECKPOINT")
 

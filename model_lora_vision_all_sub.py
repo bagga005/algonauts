@@ -256,6 +256,8 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         # Create model and move it to the correct device
         device = torch.device(f"cuda:{rank}")
         model = VisionLinearRegressionModel(input_size, output_size, device)
+        #reset eval subject
+        model.set_eval_subject(-1)
         if config['params_path'] is not None:
             print('distributed: loading params from', config['params_path'])
             params = torch.load(config['params_path'], weights_only=False)
@@ -707,13 +709,14 @@ class RegressionHander_Vision():
         self.output_size = output_size
         utils.set_hf_home_path()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
+        
         if pretrain_params_name is not None:
+            self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
             self.load_model(pretrain_params_name)
             print(f'loaded params from model {pretrain_params_name}')
+            self.model.to(self.device)
         else:
             print('not loading existing model')
-        self.model.to(self.device)
         self.enable_wandb = enable_wandb
         
 
@@ -1149,6 +1152,11 @@ class RegressionHander_Vision():
 
     def predict(self, features_val):
         print('prediction called')
+        subj = utils.get_lora_prediction_subject()
+        if not subj or subj < 1:
+            raise ValueError('LORA_PREDICTION_SUBJECT is not set or is less than 1')
+        print(f'setting eval subject to {subj}')
+        self.model.set_eval_subject(subj)
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
         pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=16, is_for_training=False)
         self.model.eval()
