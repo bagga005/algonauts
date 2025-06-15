@@ -300,18 +300,18 @@ if __name__ == "__main__":
     # are_equal, r_score = compare_h5_datasets(file1, file2, group1, group2, dataset)
     # print('r_score', r_score)
     # print(f"Are datasets equal? {are_equal}, R-score: {r_score:.6f}")
-    file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_new.npy"
-    file2 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy"
-    #compare_npy_values(file1, file2)
+    file1 = "/workspace/temp/compare_dims/features_train-250.npy"
+    file2 = "/workspace/temp/compare_dims/features_train-250-1.npy"
+    compare_npy_values(file1, file2)
     # file1_path = "/mnt/c/temp/friends_s01e01a.npy"
     # file2_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s01e01a.npy"
     #compare_npy_shapes(file1, file2)
-    folder1 = "embeddings3"
-    folder2 = "embeddings4"
-    layer = "language_model_model_norm"
-    out_dir = utils.get_output_dir()
-    file_name1 = "friends_s06e01b_tr_108_language_model_model_norm.pt.gz"
-    file_name2 = "friends_s05e01a_tr_11_language_model_model_norm.pt.gz"
-    file1 = os.path.join(out_dir, folder1, layer,  file_name2)
-    file2 = os.path.join(out_dir, folder2, layer, file_name2)
-    compare_two_tensor_files(file1, file2, verbose=True)
+    # folder1 = "embeddings3"
+    # folder2 = "embeddings4"
+    # layer = "language_model_model_norm"
+    # out_dir = utils.get_output_dir()
+    # file_name1 = "friends_s06e01b_tr_108_language_model_model_norm.pt.gz"
+    # file_name2 = "friends_s05e01a_tr_11_language_model_model_norm.pt.gz"
+    # file1 = os.path.join(out_dir, folder1, layer,  file_name2)
+    # file2 = os.path.join(out_dir, folder2, layer, file_name2)
+    # compare_two_tensor_files(file1, file2, verbose=True)
