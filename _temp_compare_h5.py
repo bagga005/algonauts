@@ -228,15 +228,15 @@ def compare_npy_values(file1_path, file2_path):
                 continue
                 
             r_score = np.corrcoef(flat1, flat2)[0, 1]
-            print(f"Key '{key}' - R-score: {r_score:.6f}")
+            #print(f"Key '{key}' - R-score: {r_score:.6f}")
             
             # Optional: check if arrays are exactly equal
             is_equal = np.array_equal(
                 array1[~np.isnan(array1)],
                 array2[~np.isnan(array2)]
             )
-            if is_equal:
-                print(f"  Arrays for key '{key}' are identical!")
+            if not is_equal:
+                print(f"  Arrays for key '{key}' are not identical!")
                 
     except Exception as e:
         print(f"Error comparing files: {str(e)}")
