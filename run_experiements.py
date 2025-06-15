@@ -19,9 +19,9 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = -1
     include_viewing_sessions = False
-    #movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s05"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
-    movies_train = ["friends-s01", "friends-s02","friends-s03", "friends-s04", "friends-s05", "friends-s06"	] # @param {allow-input: true}
-    movies_val = ["movie10-bourne"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06"]#["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    #movies_train = ["friends-s01"] # @param {allow-input: true}
+    movies_val = ["friends-s02"] # @param {allow-input: true}
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
