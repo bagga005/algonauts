@@ -22,7 +22,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     skip_accuracy_check = False
     movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["friends-s01"] # @param {allow-input: true}
-    movies_val = ["friends-s06"] # @param {allow-input: true}
+    movies_val = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #["friends-s06"] # @param {allow-input: true}
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
@@ -82,7 +82,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     # train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
@@ -92,8 +92,9 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     #     write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
-    train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, \
-         include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, skip_accuracy_check=skip_accuracy_check)
+    for movie in movies_val:
+        train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, [movie], training_handler, \
+            include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, skip_accuracy_check=skip_accuracy_check)
     
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
