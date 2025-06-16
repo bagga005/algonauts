@@ -71,6 +71,7 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
     file_name = f"{subj_prefix}fmri_predictions_{movie_name}"
     file_name_w_ext = f"{file_name}.npy"
     output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     np.save(output_file, submission_predictions)
     print(f"Formatted predictions saved to: {output_file}")
 
