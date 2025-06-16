@@ -24,8 +24,16 @@ def get_fmri_for_subject_movie(subject, movie_name):
         fmri, boundary = prepare_s7_fmri_for_alignment(subject)
         return fmri, boundary
     else:
+        if movie_name[:7] == 'friends':
+            id = movie_name[8:]
+        elif movie_name[:7] == 'movie10':
+            id = movie_name[8:]
         fmri = get_fmri(subject)
+        movie_splits = [key for key in fmri if id in key[:len(id)]]
         print('fmri', fmri.keys())
+        print('movie_splits', movie_splits)
+        fmri = fmri[movie_splits[0]]
+        print('fmri', fmri.shape)
         return fmri, None
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
