@@ -30,14 +30,9 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
             id = movie_name[8:]
         fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
-        movie_splits.sort()
         boundary = []
         for split in movie_splits:
             boundary.append((split, fmri[split].shape[0]))
-        print('fmri', fmri.keys())
-        print('movie_splits', movie_splits)
-        fmri = fmri[movie_splits[0]]
-        print('fmri', fmri.shape)
         return boundary
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
@@ -113,10 +108,19 @@ def get_output_file_name(subjects, exp_name, format):
     file_name = f"{subj_prefix}{main}_{exp_name}"
     return file_name
 
-if __name__ == "__main__":
+def run_for_coda():
     exp_name = utils.get_experiment_name()
     subjects = [1,2,3,5]
-    movie_name = "friends-s02"
+    movie_name = "friends-s07"
     format = FORMAT_CODA
     file_name = get_output_file_name(subjects, exp_name, format)
     prepare_output_files(subjects, exp_name, file_name, format, movie_name=movie_name)
+
+def run_for_flat_output():
+    pass
+
+def run_for_predictions_as_features():
+    pass
+
+if __name__ == "__main__":
+    run_for_coda()
