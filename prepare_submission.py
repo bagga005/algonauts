@@ -94,7 +94,7 @@ def get_output_file_name(subjects, exp_name, format):
 if __name__ == "__main__":
     exp_name = utils.get_experiment_name()
     subjects = [1,2,3,5]
-    movie_name = "friends-s07"
+    movie_name = "friends-s02"
     format = FORMAT_CODA
     file_name = get_output_file_name(subjects, exp_name, format)
     prepare_output_files(subjects, exp_name, file_name, format, movie_name=movie_name)
