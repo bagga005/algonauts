@@ -44,7 +44,7 @@ def prepare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='langu
 
     for sub in subjects:
         fmri, boundary = prepare_s7_fmri_for_alignment(sub)
-        predictions_file = utils.get_predictions_file_path(sub, "friends-s07")
+        predictions_file = utils.get_predictions_file_path(sub, movie_name)
         sub_predictions = np.load(predictions_file, allow_pickle=True)
         predictions_dict = {}
         from_idx = 0
