@@ -134,7 +134,7 @@ def run_for_coda():
 def run_for_flat_output(modality=None):
     
     subjects = [1] # [1,2,3,5]
-    movies = ["friends-s02", "friends-s07"]
+    movies = ["friends-s01","friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
     if modality is not None:
@@ -150,8 +150,6 @@ def run_for_flat_output(modality=None):
         for movie in movies:
             prepare_output_files([sub], exp_name, file_name, format, modality=modality, movie_name=movie)
 
-def run_for_predictions_as_features():
-    pass
 
 if __name__ == "__main__":
     #run_for_coda()
