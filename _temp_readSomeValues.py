@@ -127,7 +127,7 @@ if __name__ == "__main__":
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
     file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
-    file1 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy'
+    file1 = '/workspace/stimulus_features/pca/friends_movie10/language/features_train.npy'
     file2 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy'
     file3 = '/workspace/stimulus_features/pca/friends_movie10/visual/features_train-merged.npy'
     #merge_npy_files(file1, file2, file3)
