@@ -31,7 +31,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     experiment_comments = 's7 baseline'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
+        'trained_model_name': 'lora-0-checkpoint-params',#'lora-best-distributed',
     }
     
     
