@@ -59,7 +59,7 @@ def init_dict(dict, subjects, format, modality, file_name, exp_name):
         output_file = get_output_file_path(file_name, 'npy', exp_name)
         if os.path.exists(output_file):
             dict = np.load(output_file, allow_pickle=True)
-            print(dict.keys())
+            print(dict.item().keys())
         else:
             dict = {}
         
