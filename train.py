@@ -522,7 +522,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         #     effective_split = 'friends_' + split
                         effective_stimulus_window = stimulus_window
                         if mod == 'language':
-                            effective_stimulus_window = 1
+                            effective_stimulus_window = 2
                         if s < (effective_stimulus_window + hrf_delay):
                             idx_start = excluded_samples_start
                             idx_end = idx_start + effective_stimulus_window
