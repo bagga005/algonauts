@@ -153,4 +153,4 @@ def run_for_flat_output(modality=None):
 
 if __name__ == "__main__":
     #run_for_coda()
-    run_for_flat_output(modality='language')
+    run_for_flat_output()
