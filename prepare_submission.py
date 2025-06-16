@@ -63,10 +63,15 @@ def init_dict(dict, subjects, format, modality, file_name, exp_name):
             dict = {}
         
     elif format == FORMAT_WITH_MODALITY:
-        dict[modality] = {}
+        #if file exists, load dict from file and return it
+        output_file = get_output_file_path(file_name, 'npy', exp_name)
+        if os.path.exists(output_file):
+            dict = np.load(output_file, allow_pickle=True).item()
+        else:
+            dict[modality] = {}    
     return dict
 
-def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, modality='language', \
+def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, modality=None, \
     movie_name='friends-s07', zip_file=False):
     submission_predictions = init_dict({}, subjects, format, modality, file_name, exp_name)
     pads = np.zeros((5,1000))
@@ -126,12 +131,14 @@ def run_for_coda():
     file_name = get_output_file_name(subjects, exp_name, format)
     prepare_output_files(subjects, exp_name, file_name, format, movie_name=movie_name)
 
-def run_for_flat_output():
+def run_for_flat_output(modality=None):
     
-    subjects = [1,2,3,5]
+    subjects = [1] # [1,2,3,5]
     movies = ["friends-s02", "friends-s07"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
+    if modality is not None:
+        format = FORMAT_WITH_MODALITY
     
     for sub in subjects:
         file_name = get_output_file_name([sub], exp_name, format)
@@ -141,11 +148,11 @@ def run_for_flat_output():
             os.remove(output_file)
             print(f"##### Deleted {output_file}")
         for movie in movies:
-            prepare_output_files([sub], exp_name, file_name, format, movie_name=movie)
+            prepare_output_files([sub], exp_name, file_name, format, modality=modality, movie_name=movie)
 
 def run_for_predictions_as_features():
     pass
 
 if __name__ == "__main__":
     #run_for_coda()
-    run_for_flat_output()
+    run_for_flat_output(modality='language')
