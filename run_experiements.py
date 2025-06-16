@@ -17,29 +17,29 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
-    subject = 1
+    subject = -1
     include_viewing_sessions = False
     skip_accuracy_check = False
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["friends-s01"] # @param {allow-input: true}
     movies_val = ["friends-s06"] # @param {allow-input: true}
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
-    training_handler = 'sklearn'
+    training_handler = 'loravision'
     
     experiment_comments = 's7 baseline'
-    specific_modalities = ["all"]
+    specific_modalities = ["visual"]
     config = {
         'trained_model_name': None, #'lora-0-checkpoint-params',#'lora-best-distributed',
     }
     
     
     #loading fmri
-    # if subject == -1:
-    #     fmri = train.get_fmri_for_all_subjects()
-    # else:
-    #     fmri = train.get_fmri(subject)
+    if subject == -1:
+        fmri = train.get_fmri_for_all_subjects()
+    else:
+        fmri = train.get_fmri(subject)
         
     # print('fmri', fmri.keys())
     # print('fmri[s01e01a].shape', fmri['s01e01a'].shape)
@@ -82,14 +82,14 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
-    train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
-                                 config, specific_modalities)
-    train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, \
-        config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
-        write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
+    # train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
+    #                              config, specific_modalities)
+    # train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, \
+    #     config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
+    #     write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
     #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
     # train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, \
