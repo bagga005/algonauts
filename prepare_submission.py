@@ -22,17 +22,26 @@ def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     if format == FORMAT_CODA:
         dict[get_dict_key_for_subject(subject)][stimuli_id] = data
     elif format == FORMAT_FLAT:
-        dict[key] = value
+        dict[stimuli_id] = data
     elif format == FORMAT_WITH_MODALITY:
-        dict[key][modality] = value
+        dict[modality][stimuli_id] = data
 
+def init_dict(dict, subject, format, modality):
+    if format == FORMAT_CODA:
+        dict = {}
+        for sub in subjects:
+            dict[get_dict_key_for_subject(sub)] = {}
+    elif format == FORMAT_FLAT:
+        dict = {}
+    elif format == FORMAT_WITH_MODALITY:
+        dict[modality] = {}
+    return dict
 
 def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language'):
-    submission_predictions = {}
+    submission_predictions = init_dict({}, subjects, format, modality)
     pads = np.zeros((5,1000))
 
     for sub in subjects:
-        submission_predictions[get_dict_key_for_subject(sub)] = {}
         fmri, boundary = prepare_s7_fmri_for_alignment(sub)
         predictions_file = utils.get_predictions_file_path(sub, "friends-s07")
         sub_predictions = np.load(predictions_file, allow_pickle=True)
