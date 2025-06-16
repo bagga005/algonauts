@@ -23,7 +23,7 @@ pads = np.zeros((5,1000))
 for sub in subjects:
     submission_predictions[get_dict_key_for_subject(sub)] = {}
     fmri, boundary = prepare_s7_fmri_for_alignment(sub)
-    predictions_file = utils.get_predictions_file_path(sub)
+    predictions_file = utils.get_predictions_file_path(sub, "friends-s07")
     sub_predictions = np.load(predictions_file, allow_pickle=True)
     predictions_dict = {}
     from_idx = 0

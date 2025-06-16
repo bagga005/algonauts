@@ -1050,7 +1050,10 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
 
     fmri_val_pred = trainer.predict(features_val)
     #save it first
-    utils.save_predictions_accuracy(subject, fmri_val_pred, None)
+    movie_name = None
+    if len(movies_val) == 1:
+        movie_name = movies_val[0]
+    utils.save_predictions_accuracy(subject, movie_name, fmri_val_pred, None)
     #print('fmri_val_pred.shape', fmri_val_pred.shape)
     full_accuracy = 0
     full_encoding_accuracy = None
@@ -1068,7 +1071,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         # else:
         full_accuracy, full_encoding_accuracy = utils.compute_encoding_accuracy(fmri_val, fmri_val_pred, subject, modality, write_to_csv=write_accuracy_to_csv)
         #print('encoding_accuracy.shape', full_encoding_accuracy.shape)
-        utils.save_predictions_accuracy(subject, None, full_encoding_accuracy)
+        utils.save_predictions_accuracy(subject, movie_name, None, full_encoding_accuracy)
         if plot_encoding_fig:
             #encoding_accuracy = np.zeros((1000,), dtype=np.float32)
             # encoding_accuracy[:] = 0

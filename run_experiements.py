@@ -20,18 +20,18 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     subject = 1
     include_viewing_sessions = False
     skip_accuracy_check = False
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
+    movies_train = ["friends-s01"] #, "friends-s03", "friends-s04", "friends-s05"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
     #movies_train = ["friends-s01"] # @param {allow-input: true}
-    movies_val = ["movie10-figures"] # @param {allow-input: true}
+    movies_val = ["friends-s07"] # @param {allow-input: true}
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
-    training_handler = 'loravision'
+    training_handler = 'sklearn'
     
     experiment_comments = 's7 baseline'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name': 'lora-0-checkpoint-params',#'lora-best-distributed',
+        'trained_model_name': None,#'lora-0-checkpoint-params',#'lora-best-distributed',
     }
     
     
@@ -82,7 +82,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     
-    # train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     # train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
