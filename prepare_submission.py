@@ -65,7 +65,10 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
     # print(submission_predictions['sub-01']['s07e01a'].shape)
 
     predictions_dir = os.path.join(utils.get_output_dir(), 'predictions', exp_name)
-    file_name = f"fmri_predictions_{movie_name}"
+    subj_prefix = "sub-all-"
+    if len(subjects) == 1:
+        subj_prefix = f"sub-{subjects[0]}-"
+    file_name = f"{subj_prefix}fmri_predictions_{movie_name}"
     file_name_w_ext = f"{file_name}.npy"
     output_file = os.path.join(predictions_dir, file_name_w_ext)
     np.save(output_file, submission_predictions)
