@@ -125,7 +125,7 @@ def run_for_flat_output():
     for sub in subjects:
         file_name = get_output_file_name(sub, exp_name, format)
         for movie in movies:
-            prepare_output_files(sub, exp_name, file_name, format, movie_name=movie)
+            prepare_output_files([sub], exp_name, file_name, format, movie_name=movie)
 
 def run_for_predictions_as_features():
     pass
