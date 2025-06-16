@@ -60,5 +60,5 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA):
 
 if __name__ == "__main__":
     exp_name = utils.get_experiment_name()
-    subjects = [1, 2, 3, 5]
+    subjects = [1]
     preppare_output_files(subjects, exp_name, FORMAT_CODA)
