@@ -18,7 +18,16 @@ FORMAT_WITH_MODALITY =3
 def get_dict_key_for_subject(sub):
     return f'sub-0{sub}'
 
-def preppare_output_files(subjects, exp_name, format=FORMAT_CODA):
+def append_to_dict(dict, subject, stimuli_id, data, format, modality):
+    if format == FORMAT_CODA:
+        dict[get_dict_key_for_subject(subject)][stimuli_id] = data
+    elif format == FORMAT_FLAT:
+        dict[key] = value
+    elif format == FORMAT_WITH_MODALITY:
+        dict[key][modality] = value
+
+
+def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language'):
     submission_predictions = {}
     pads = np.zeros((5,1000))
 
@@ -37,7 +46,7 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA):
             effective_size = size-10
             slice = sub_predictions[from_idx:from_idx+effective_size,:]
             slice = np.concatenate((pads, slice, pads), axis=0)
-            submission_predictions[get_dict_key_for_subject(sub)][stim_id] = slice.astype(np.float32)
+            append_to_dict(submission_predictions, sub, stim_id, slice.astype(np.float32), format, modality)
             #if from_idx < 3000: print(from_idx, from_idx + size)
             from_idx = from_idx + effective_size
             assert slice.shape[0] == size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
