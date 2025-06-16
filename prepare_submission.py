@@ -33,7 +33,6 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
         boundary = []
         for split in movie_splits:
             boundary.append((split, fmri[split].shape[0]))
-        print(boundary)
         return boundary
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
@@ -44,12 +43,20 @@ def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     elif format == FORMAT_WITH_MODALITY:
         dict[modality][stimuli_id] = data
 
+def get_output_file_path(file_name, extension, exp_name):
+    predictions_dir = os.path.join(utils.get_output_dir(), 'predictions', exp_name)
+    file_name_w_ext = f"{file_name}.{extension}"
+    output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
+    return output_file
+
 def init_dict(dict, subjects, format, modality):
     if format == FORMAT_CODA:
         dict = {}
         for sub in subjects:
             dict[get_dict_key_for_subject(sub)] = {}
     elif format == FORMAT_FLAT:
+        #if file exists, load dict from file and return it
+        
         dict = {}
     elif format == FORMAT_WITH_MODALITY:
         dict[modality] = {}
@@ -57,7 +64,7 @@ def init_dict(dict, subjects, format, modality):
 
 def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, modality='language', \
     movie_name='friends-s07', zip_file=False):
-    submission_predictions = init_dict({}, subjects, format, modality)
+    submission_predictions = init_dict({}, subjects, format, modality, file_name)
     pads = np.zeros((5,1000))
 
     for sub in subjects:
@@ -83,16 +90,14 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     # print(submission_predictions['sub-01'].keys())
     # print(submission_predictions['sub-01']['s07e01a'].shape)
 
-    predictions_dir = os.path.join(utils.get_output_dir(), 'predictions', exp_name)
-    file_name_w_ext = f"{file_name}.npy"
-    output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
+    output_file = get_output_file_path(file_name, 'npy', exp_name)
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     np.save(output_file, submission_predictions)
     print(f"Formatted predictions saved to: {output_file}")
 
     # Zip the saved file for submission
     if zip_file or format == FORMAT_CODA:
-        zip_file = os.path.join(predictions_dir, 'output', f"{file_name}.zip")
+        zip_file = get_output_file_path(file_name, 'zip', exp_name)
         with zipfile.ZipFile(zip_file, 'w') as zipf:
             zipf.write(output_file, os.path.basename(output_file))
         print(f"Submission file successfully zipped as: {zip_file}")
