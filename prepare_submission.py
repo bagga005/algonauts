@@ -19,10 +19,10 @@ FORMAT_WITH_MODALITY =3
 def get_dict_key_for_subject(sub):
     return f'sub-0{sub}'
 
-def get_fmri_for_subject_movie(subject, movie_name):
+def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
     if movie_name == "friends-s07":
-        fmri, boundary = prepare_s7_fmri_for_alignment(subject)
-        return fmri, boundary
+        boundary = prepare_s7_fmri_for_alignment(subject)
+        return boundary
     else:
         if movie_name[:7] == 'friends':
             id = movie_name[8:]
@@ -30,11 +30,15 @@ def get_fmri_for_subject_movie(subject, movie_name):
             id = movie_name[8:]
         fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
+        movie_splits.sort()
+        boundary = []
+        for split in movie_splits:
+            boundary.append((split, fmri[split].shape[0]))
         print('fmri', fmri.keys())
         print('movie_splits', movie_splits)
         fmri = fmri[movie_splits[0]]
         print('fmri', fmri.shape)
-        return fmri, None
+        return boundary
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     if format == FORMAT_CODA:
@@ -61,7 +65,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     pads = np.zeros((5,1000))
 
     for sub in subjects:
-        fmri, boundary = get_fmri_for_subject_movie(sub, movie_name)
+        boundary = get_boundary_from_fmri_for_movie_for_subject(sub, movie_name)
         predictions_file = utils.get_predictions_file_path(sub, movie_name)
         sub_predictions = np.load(predictions_file, allow_pickle=True)
         predictions_dict = {}
