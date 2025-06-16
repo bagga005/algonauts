@@ -21,7 +21,7 @@ def get_dict_key_for_subject(sub):
 
 def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
     if movie_name == "friends-s07":
-        boundary = prepare_s7_fmri_for_alignment(subject)
+        _, boundary = prepare_s7_fmri_for_alignment(subject)
         return boundary
     else:
         if movie_name[:7] == 'friends':
