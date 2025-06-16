@@ -562,18 +562,19 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
 
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
-        print('Initializing RegressionHander_Vision')
+        print('Initializing RegressionHander_Vision for single subject')
         self.input_size = input_size
         self.output_size = output_size
         utils.set_hf_home_path()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")       
+        
         if pretrain_params_name is not None:
+            self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
             self.load_model(pretrain_params_name)
+            self.model.to(self.device)
             print(f'loaded params from model {pretrain_params_name}')
         else:
-            print('not loading existing model')
-        self.model.to(self.device)
+            print('not loading existing model') 
         self.enable_wandb = enable_wandb
         
 

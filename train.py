@@ -10,7 +10,7 @@ from tqdm import tqdm
 from model_sklearn import LinearHandler_Sklearn
 from model_torchregression import RegressionHander_Pytorch
 from model_transformer import RegressionHander_Transformer
-from model_lora_vision_all_sub import RegressionHander_Vision
+from model_lora_vision import RegressionHander_Vision
 #from model_lora_vision import RegressionHander_Vision
 import nibabel as nib
 from nilearn import plotting

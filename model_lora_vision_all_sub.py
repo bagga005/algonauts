@@ -705,7 +705,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
 
 class RegressionHander_Vision():
     def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
-        print('Initializing RegressionHander_Vision')
+        print('Initializing RegressionHander_Vision for all subjects')
         self.input_size = input_size
         self.output_size = output_size
         utils.set_hf_home_path()
