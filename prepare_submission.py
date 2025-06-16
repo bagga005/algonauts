@@ -1,4 +1,5 @@
-from train import load_stimulus_features_friends_s7, align_features_and_fmri_samples_friends_s7, get_features, align_features_and_fmri_samples
+from train import load_stimulus_features_friends_s7, align_features_and_fmri_samples_friends_s7, \
+    get_features, align_features_and_fmri_samples, get_fmri
 import utils
 import zipfile
 import os
@@ -17,6 +18,15 @@ FORMAT_WITH_MODALITY =3
 
 def get_dict_key_for_subject(sub):
     return f'sub-0{sub}'
+
+def get_fmri_for_subject_movie(subject, movie_name):
+    if movie_name == "friends-s07":
+        fmri, boundary = prepare_s7_fmri_for_alignment(subject)
+        return fmri, boundary
+    else:
+        fmri = get_fmri(subject)
+        print('fmri', fmri.keys())
+        return fmri, None
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     if format == FORMAT_CODA:
@@ -43,7 +53,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     pads = np.zeros((5,1000))
 
     for sub in subjects:
-        fmri, boundary = prepare_s7_fmri_for_alignment(sub)
+        fmri, boundary = get_fmri_for_subject_movie(sub, movie_name)
         predictions_file = utils.get_predictions_file_path(sub, movie_name)
         sub_predictions = np.load(predictions_file, allow_pickle=True)
         predictions_dict = {}
