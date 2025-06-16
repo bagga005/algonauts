@@ -33,6 +33,7 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
         boundary = []
         for split in movie_splits:
             boundary.append((split, fmri[split].shape[0]))
+        print(boundary)
         return boundary
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
@@ -43,7 +44,7 @@ def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     elif format == FORMAT_WITH_MODALITY:
         dict[modality][stimuli_id] = data
 
-def init_dict(dict, subject, format, modality):
+def init_dict(dict, subjects, format, modality):
     if format == FORMAT_CODA:
         dict = {}
         for sub in subjects:
