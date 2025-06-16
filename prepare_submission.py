@@ -90,7 +90,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
             from_idx = from_idx + effective_size
             assert slice.shape[0] == size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
         assert total_size == (sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]), f"total_size {total_size} != sub_predictions.shape[0] {sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]}"
-    #print(submission_predictions.keys())
+    print(submission_predictions.keys())
     # print(submission_predictions['sub-01'].keys())
     # print(submission_predictions['sub-01']['s07e01a'].shape)
 
