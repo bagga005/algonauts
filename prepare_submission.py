@@ -37,7 +37,7 @@ def init_dict(dict, subject, format, modality):
         dict[modality] = {}
     return dict
 
-def prepare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language', \
+def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, modality='language', \
     movie_name='friends-s07', zip_file=False):
     submission_predictions = init_dict({}, subjects, format, modality)
     pads = np.zeros((5,1000))
