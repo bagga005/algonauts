@@ -135,10 +135,11 @@ def run_for_flat_output():
     
     for sub in subjects:
         file_name = get_output_file_name([sub], exp_name, format)
+        output_file = get_output_file_path(file_name, 'npy', exp_name)
         #if file exists, delete it
-        if os.path.exists(file_name):
-            os.remove(file_name)
-            print(f"##### Deleted {file_name}")
+        if os.path.exists(output_file):
+            os.remove(output_file)
+            print(f"##### Deleted {output_file}")
         for movie in movies:
             prepare_output_files([sub], exp_name, file_name, format, movie_name=movie)
 
