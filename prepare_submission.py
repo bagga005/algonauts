@@ -37,7 +37,7 @@ def init_dict(dict, subject, format, modality):
         dict[modality] = {}
     return dict
 
-def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language'):
+def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language', movie_name='friends-s07'):
     submission_predictions = init_dict({}, subjects, format, modality)
     pads = np.zeros((5,1000))
 
@@ -61,16 +61,18 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
             assert slice.shape[0] == size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
         assert total_size == (sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]), f"total_size {total_size} != sub_predictions.shape[0] {sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]}"
     print(submission_predictions.keys())
-    print(submission_predictions['sub-01'].keys())
-    print(submission_predictions['sub-01']['s07e01a'].shape)
+    # print(submission_predictions['sub-01'].keys())
+    # print(submission_predictions['sub-01']['s07e01a'].shape)
 
     predictions_dir = os.path.join(utils.get_output_dir(), 'predictions', exp_name)
-    output_file = os.path.join(predictions_dir, "fmri_predictions_friends_s7.npy")
+    file_name = f"fmri_predictions_{movie_name}"
+    file_name_w_ext = f"{file_name}.npy"
+    output_file = os.path.join(predictions_dir, file_name_w_ext)
     np.save(output_file, submission_predictions)
     print(f"Formatted predictions saved to: {output_file}")
 
     # Zip the saved file for submission
-    zip_file = os.path.join(predictions_dir, "fmri_predictions_friends_s7.zip")
+    zip_file = os.path.join(predictions_dir, f"{file_name}.zip")
     with zipfile.ZipFile(zip_file, 'w') as zipf:
         zipf.write(output_file, os.path.basename(output_file))
     print(f"Submission file successfully zipped as: {zip_file}")
@@ -79,4 +81,5 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
 if __name__ == "__main__":
     exp_name = utils.get_experiment_name()
     subjects = [1]
-    preppare_output_files(subjects, exp_name, FORMAT_CODA)
+    movie_name = "friends-s07"
+    preppare_output_files(subjects, exp_name, FORMAT_CODA, movie_name=movie_name)
