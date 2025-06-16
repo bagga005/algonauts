@@ -59,7 +59,6 @@ def init_dict(dict, subjects, format, modality, file_name, exp_name):
         output_file = get_output_file_path(file_name, 'npy', exp_name)
         if os.path.exists(output_file):
             dict = np.load(output_file, allow_pickle=True).item()
-            print(dict.keys())
         else:
             dict = {}
         
@@ -133,8 +132,13 @@ def run_for_flat_output():
     movies = ["friends-s02", "friends-s07"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
+    
     for sub in subjects:
         file_name = get_output_file_name([sub], exp_name, format)
+        #if file exists, delete it
+        if os.path.exists(file_name):
+            os.remove(file_name)
+            print(f"##### Deleted {file_name}")
         for movie in movies:
             prepare_output_files([sub], exp_name, file_name, format, movie_name=movie)
 
