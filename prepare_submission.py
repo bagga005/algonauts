@@ -37,7 +37,8 @@ def init_dict(dict, subject, format, modality):
         dict[modality] = {}
     return dict
 
-def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language', movie_name='friends-s07'):
+def prepare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='language', \
+    movie_name='friends-s07', zip_file=False):
     submission_predictions = init_dict({}, subjects, format, modality)
     pads = np.zeros((5,1000))
 
@@ -65,10 +66,6 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
     # print(submission_predictions['sub-01']['s07e01a'].shape)
 
     predictions_dir = os.path.join(utils.get_output_dir(), 'predictions', exp_name)
-    subj_prefix = "sub-all-"
-    if len(subjects) == 1:
-        subj_prefix = f"sub-{subjects[0]}-"
-    file_name = f"{subj_prefix}fmri_predictions_{movie_name}"
     file_name_w_ext = f"{file_name}.npy"
     output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -76,14 +73,28 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
     print(f"Formatted predictions saved to: {output_file}")
 
     # Zip the saved file for submission
-    zip_file = os.path.join(predictions_dir, 'output', f"{file_name}.zip")
-    with zipfile.ZipFile(zip_file, 'w') as zipf:
-        zipf.write(output_file, os.path.basename(output_file))
-    print(f"Submission file successfully zipped as: {zip_file}")
+    if zip_file or format == FORMAT_CODA:
+        zip_file = os.path.join(predictions_dir, 'output', f"{file_name}.zip")
+        with zipfile.ZipFile(zip_file, 'w') as zipf:
+            zipf.write(output_file, os.path.basename(output_file))
+        print(f"Submission file successfully zipped as: {zip_file}")
 
+def get_output_file_name(subjects, exp_name, format):
+    subj_prefix = "sub-all_"
+    if len(subjects) == 1:
+        subj_prefix = f"sub-{subjects[0]}_"
+    main = "predictions"
+    if format == FORMAT_FLAT:
+        main = "prediction_as_features"
+    elif format == FORMAT_WITH_MODALITY:
+        main = "features"
+    file_name = f"{subj_prefix}{main}_{exp_name}"
+    return file_name
 
 if __name__ == "__main__":
     exp_name = utils.get_experiment_name()
     subjects = [1,2,3,5]
     movie_name = "friends-s07"
-    preppare_output_files(subjects, exp_name, FORMAT_CODA, movie_name=movie_name)
+    format = FORMAT_CODA
+    file_name = get_output_file_name(subjects, exp_name, format)
+    prepare_output_files(subjects, exp_name, file_name, format, movie_name=movie_name)
