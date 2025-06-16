@@ -129,8 +129,8 @@ if __name__ == "__main__":
     file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
     file1 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train.npy'
     file2 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy'
-    file3 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_train-merged.npy'
-    merge_npy_files(file1, file2, file3)
+    file3 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train-merged.npy'
+    #merge_npy_files(file1, file2, file3)
     read_npy_keys_for_audio(file3)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
     #read_h5_file(file, 'friends_s02e01a', 'visual')
