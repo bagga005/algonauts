@@ -49,7 +49,7 @@ def get_output_file_path(file_name, extension, exp_name):
     output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
     return output_file
 
-def init_dict(dict, subjects, format, modality):
+def init_dict(dict, subjects, format, modality, file_name):
     if format == FORMAT_CODA:
         dict = {}
         for sub in subjects:
