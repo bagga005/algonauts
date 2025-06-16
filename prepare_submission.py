@@ -49,22 +49,26 @@ def get_output_file_path(file_name, extension, exp_name):
     output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
     return output_file
 
-def init_dict(dict, subjects, format, modality, file_name):
+def init_dict(dict, subjects, format, modality, file_name, exp_name):
     if format == FORMAT_CODA:
         dict = {}
         for sub in subjects:
             dict[get_dict_key_for_subject(sub)] = {}
     elif format == FORMAT_FLAT:
         #if file exists, load dict from file and return it
+        output_file = get_output_file_path(file_name, 'npy', exp_name)
+        if os.path.exists(output_file):
+            dict = np.load(output_file, allow_pickle=True)
+        else:
+            dict = {}
         
-        dict = {}
     elif format == FORMAT_WITH_MODALITY:
         dict[modality] = {}
     return dict
 
 def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, modality='language', \
     movie_name='friends-s07', zip_file=False):
-    submission_predictions = init_dict({}, subjects, format, modality, file_name)
+    submission_predictions = init_dict({}, subjects, format, modality, file_name, exp_name)
     pads = np.zeros((5,1000))
 
     for sub in subjects:
