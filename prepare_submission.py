@@ -70,12 +70,12 @@ def preppare_output_files(subjects, exp_name, format=FORMAT_CODA, modality='lang
         subj_prefix = f"sub-{subjects[0]}-"
     file_name = f"{subj_prefix}fmri_predictions_{movie_name}"
     file_name_w_ext = f"{file_name}.npy"
-    output_file = os.path.join(predictions_dir, file_name_w_ext)
+    output_file = os.path.join(predictions_dir, 'output', file_name_w_ext)
     np.save(output_file, submission_predictions)
     print(f"Formatted predictions saved to: {output_file}")
 
     # Zip the saved file for submission
-    zip_file = os.path.join(predictions_dir, f"{file_name}.zip")
+    zip_file = os.path.join(predictions_dir, 'output', f"{file_name}.zip")
     with zipfile.ZipFile(zip_file, 'w') as zipf:
         zipf.write(output_file, os.path.basename(output_file))
     print(f"Submission file successfully zipped as: {zip_file}")
