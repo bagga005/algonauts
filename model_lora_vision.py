@@ -1033,19 +1033,15 @@ class RegressionHander_Vision():
                         full_embeddings = layer_output.cpu().numpy()
                     else:
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
-                    print('full_embeddings.shape', full_embeddings.shape)
                 else:
                     output = self.model(batch_X)
                 #
                 output = output.cpu().numpy()
-                print('output.shape', output.shape)
                 fmri_val_pred.append(output)
-                print('fmri_val_pred.shape', len(fmri_val_pred))
                 if batch_counter % 10 == 0:
                     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
                 batch_counter += 1
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
-        print('fmri_val_pred.shape', fmri_val_pred.shape)
         
         return fmri_val_pred
  
