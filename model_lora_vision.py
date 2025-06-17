@@ -1024,12 +1024,18 @@ class RegressionHander_Vision():
         pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=16, is_for_training=False)
         self.model.eval()
         fmri_val_pred = []
+        full_embeddings = None
         with torch.no_grad():
             batch_counter = 0
             for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
                 if record_layer_output:
                     output, layer_output = self.model(batch_X)
+                    if full_embeddings is None:
+                        full_embeddings = layer_output.cpu().numpy()
+                    else:
+                        full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
+                    print('full_embeddings.shape', full_embeddings.shape)
                 else:
                     output = self.model(batch_X)
                 #print('output.shape', output.shape)
@@ -1040,6 +1046,7 @@ class RegressionHander_Vision():
                 batch_counter += 1
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
         print('fmri_val_pred.shape', fmri_val_pred.shape)
+        
         return fmri_val_pred
  
 
