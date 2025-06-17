@@ -154,7 +154,7 @@ class VideoDataset(torch.utils.data.Dataset):
         videoname, frame_indices = self.input_data[idx]
         print(f'videoname: {videoname}', f'frame_indices: {frame_indices}', f'idx: {idx}')
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-
+        return videoname, frame_indices, idx
         if utils.isMockMode():
             return torch.randn(4,3,8,256,256), self.targets[idx]
         # For example:
