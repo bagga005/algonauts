@@ -1044,6 +1044,9 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
         assert len(movies_val) == 1, "loravision only supports one movie for validation"
+        if movies_val[0] == 'friends-s07':
+            fmri, boundary = prepare_s7_fmri_for_alignment(subject)
+            skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
