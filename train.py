@@ -1081,7 +1081,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         assert total_size == (len(features_val) + num_stimuli*10), f"total_size {total_size} != features_val.shape[0] {len(features_val) + num_stimuli*10}"
         assert total_size == (fmri_val.shape[0] + num_stimuli*10), f"total_size {total_size} != fmri_val.shape[0] {fmri_val.shape[0] + num_stimuli*10}"
         print('create trainer')
-        
+        fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
         print('got lora vision handler')
 
     if training_handler != 'loravision':
