@@ -25,6 +25,7 @@ class VisionLinearRegressionModel(nn.Module):
         super(VisionLinearRegressionModel, self).__init__()
         self.v_model = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
         self.model_layer = 'blocks.5.pool'
+        self.return_layer_output = False
         self.device = device
         self.linear4 = nn.Linear(input_size, output_size)
         nn.init.kaiming_normal_(self.linear4.weight)
@@ -85,6 +86,9 @@ class VisionLinearRegressionModel(nn.Module):
         self.visual_model = get_peft_model(self.v_model, self.lora_config)
         self.visual_model.to(self.device)
 
+    def set_return_layer_output(self, return_layer_output):
+        self.return_layer_output = return_layer_output
+
 
     def forward(self, x):
         b_size, window = x.shape[:2]
@@ -97,19 +101,37 @@ class VisionLinearRegressionModel(nn.Module):
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
             x = self.visual_model.model.blocks[2](x)
-        with torch.enable_grad():
-            # Blocks 3 and 4 contain LoRA parameters and require gradients
-            x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
-            x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
-
-        
-            layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
-            layer_output = layer_output.reshape(layer_output.shape[0], -1)
-            layer_output = layer_output.reshape(b_size, -1)
             
-            prediction = checkpoint(self.linear4, layer_output, use_reentrant=False)
+        if self.training:
+            with torch.enable_grad():
+                # Blocks 3 and 4 contain LoRA parameters and require gradients
+                x = checkpoint(self.visual_model.model.blocks[3], x, use_reentrant=False)
+                x = checkpoint(self.visual_model.model.blocks[4], x, use_reentrant=False)
 
-        return prediction
+            
+                layer_output = checkpoint(self.visual_model.model.blocks[5].pool, x, use_reentrant=False)
+                layer_output = layer_output.reshape(layer_output.shape[0], -1)
+                layer_output = layer_output.reshape(b_size, -1)
+                
+                prediction = checkpoint(self.linear4, layer_output, use_reentrant=False)
+
+            return prediction
+        else:
+            with torch.no_grad():
+                x = self.visual_model.model.blocks[3](x)
+                x = self.visual_model.model.blocks[4](x)
+                
+                layer_output = self.visual_model.model.blocks[5].pool(x)
+                layer_output = layer_output.reshape(layer_output.shape[0], -1)
+                print('layer_output.shape after first resize', layer_output.shape)
+                layer_output = layer_output.reshape(b_size, -1)
+                print('layer_output.shape after second resize', layer_output.shape)
+                prediction = self.linear4(layer_output)
+            
+            if self.return_layer_output:
+                return prediction, layer_output
+            else:
+                return prediction
 
 
 # Define setup and cleanup functions for distributed training at module level
@@ -995,6 +1017,9 @@ class RegressionHander_Vision():
 
     def predict(self, features_val):
         print('prediction called')
+        record_layer_output = True
+        if record_layer_output:
+            self.model.set_return_layer_output(True)
         mock_fmri = np.random.randn(len(features_val), 1000).astype(np.float32)
         pred_loader = prepare_training_data(features_val, mock_fmri, batch_size=16, is_for_training=False)
         self.model.eval()
@@ -1003,7 +1028,10 @@ class RegressionHander_Vision():
             batch_counter = 0
             for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
-                output = self.model(batch_X)
+                if record_layer_output:
+                    output, layer_output = self.model(batch_X)
+                else:
+                    output = self.model(batch_X)
                 #print('output.shape', output.shape)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
