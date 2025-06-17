@@ -154,14 +154,14 @@ class VideoDataset(torch.utils.data.Dataset):
         videoname, frame_indices = self.input_data[idx]
         #print(f'videoname: {videoname}', f'frame_indices: {frame_indices}', f'idx: {idx}')
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-        return videoname, frame_indices, idx
+        #return videoname, frame_indices, idx
         if utils.isMockMode():
             return torch.randn(4,3,8,256,256), self.targets[idx]
         # For example:
         with h5py.File(filename, 'r') as f:
             frames = f[videoname]['visual']
             frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-        return frames, self.targets[idx]
+        return videoname, frame_indices, idx, frames, self.targets[idx]
 
 # Move train_on_device outside the class to make it picklable
 def save_checkpoint(state, filename):
@@ -1064,12 +1064,11 @@ class RegressionHander_Vision():
         full_embeddings = None
         with torch.no_grad():
             batch_counter = 0
-            for batch_X1, batch_X2, batch_idx in pred_loader:
+            for batch_X1, batch_X2, batch_idx, batch_X, batch_y in pred_loader:
                 print('predict batch')
                 print(batch_X1)
                 print(batch_X2)
                 print(batch_idx)
-                continue
                 batch_X = batch_X.to(self.device)
                 if record_layer_output:
                     output, layer_output = self.model(batch_X)
@@ -1077,12 +1076,10 @@ class RegressionHander_Vision():
                         full_embeddings = layer_output.cpu().numpy()
                     else:
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
+                        self.compare_two_slices(layer_output)
                 else:
                     output = self.model(batch_X)
-                #if batch_counter < 5:
-                    #compare two slices
-                    # print(f'****Batch {batch_counter}****')
-                    # self.compare_two_slices(full_embeddings)
+                    
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
