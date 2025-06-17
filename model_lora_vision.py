@@ -1039,6 +1039,7 @@ class RegressionHander_Vision():
         till3 = 8192 * 3
         till4 = 8192 * 4
         for i in range(2, 15):
+            print(f'comparing slice {i}')
             slice1 = embeddings[i,:till1]    
             slice2 = embeddings[i-1,till1:till2]
             self.compare_two_slices_with_r_score(slice1, slice2)
