@@ -1,5 +1,6 @@
 import torch
 from torchvision.models.feature_extraction import create_feature_extractor
+from model_lora_vision_embeddings import save_embeddings
 import os
 import utils
 import random
@@ -1044,8 +1045,6 @@ class RegressionHander_Vision():
             slice1 = embeddings[i,till3:till4]    
             slice2 = embeddings[i+1,till2:till3]
             self.compare_two_slices_with_r_score(slice1, slice2)
-        
-from model_lora_vision_embeddings import save_embeddings
 
     def predict(self, features_val, video_prefix):
         print('prediction called')
