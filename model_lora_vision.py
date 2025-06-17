@@ -1064,8 +1064,11 @@ class RegressionHander_Vision():
         full_embeddings = None
         with torch.no_grad():
             batch_counter = 0
-            for batch_X, batch_y in pred_loader:
-                print(batch_X)
+            for batch_X1, batch_X2, batch_idx, batch_y in pred_loader:
+                print('predict batch')
+                print(batch_X1)
+                print(batch_X2)
+                print(batch_idx)
                 break
                 batch_X = batch_X.to(self.device)
                 if record_layer_output:
