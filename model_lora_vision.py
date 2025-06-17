@@ -1067,7 +1067,6 @@ class RegressionHander_Vision():
                         full_embeddings = layer_output.cpu().numpy()
                     else:
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
-                        self.compare_two_slices(layer_output.cpu().numpy())
                 else:
                     output = self.model(batch_X)
                     
