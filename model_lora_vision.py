@@ -1069,7 +1069,7 @@ class RegressionHander_Vision():
                 print(batch_X1)
                 print(batch_X2)
                 print(batch_idx)
-                break
+                continue
                 batch_X = batch_X.to(self.device)
                 if record_layer_output:
                     output, layer_output = self.model(batch_X)
