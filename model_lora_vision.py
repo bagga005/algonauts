@@ -152,16 +152,16 @@ class VideoDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx):
         videoname, frame_indices = self.input_data[idx]
-        #print(f'videoname: {videoname}', f'frame_indices: {frame_indices}', f'idx: {idx}')
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
-        #return videoname, frame_indices, idx
+
         if utils.isMockMode():
             return torch.randn(4,3,8,256,256), self.targets[idx]
         # For example:
         with h5py.File(filename, 'r') as f:
             frames = f[videoname]['visual']
             frames = torch.from_numpy(frames[frame_indices[0]:frame_indices[1]]).squeeze(1)
-        return videoname, frame_indices, idx, frames, self.targets[idx]
+        #return videoname, frame_indices, idx, frames, self.targets[idx]
+        return frames, self.targets[idx]
 
 # Move train_on_device outside the class to make it picklable
 def save_checkpoint(state, filename):
