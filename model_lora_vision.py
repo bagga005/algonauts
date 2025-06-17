@@ -1045,8 +1045,9 @@ class RegressionHander_Vision():
             slice2 = embeddings[i+1,till2:till3]
             self.compare_two_slices_with_r_score(slice1, slice2)
         
-        
-    def predict(self, features_val):
+from model_lora_vision_embeddings import save_embeddings
+
+    def predict(self, features_val, video_prefix):
         print('prediction called')
         record_layer_output = True
         if record_layer_output:
@@ -1076,7 +1077,7 @@ class RegressionHander_Vision():
                     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
                 batch_counter += 1
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
-        
+        save_embeddings(full_embeddings, fmri_val_pred, video_prefix, 0)
         return fmri_val_pred
  
 

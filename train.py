@@ -1063,13 +1063,14 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             effective_size = size-10
             features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
-            fmri_val_pred_stim = trainer.predict(features_val_stim)
-            fmri_val_pred.append(fmri_val_pred_stim)
-            #prefix with stim_id
             if stim_id.startswith('s'):
                 prefix= "friends_" + stim_id
             else:
                 prefix = "movie10_" + stim_id
+            fmri_val_pred_stim = trainer.predict(features_val_stim, prefix)
+            fmri_val_pred.append(fmri_val_pred_stim)
+            #prefix with stim_id
+            
             
             from_idx = from_idx + effective_size
             assert (len(features_val_stim) + 10) == size, f"size mismatch while slicing {stim_id} {len(features_val_stim) + 10} {size}"
