@@ -826,6 +826,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
             file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
             with gzip.open(file_path, 'rb') as f:
                 loaded_tensor = pickle.load(f)
+            print('loaded_tensor.shape', loaded_tensor.shape)
             #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
             if loaded_tensor.dtype == torch.bfloat16:
                 loaded_tensor = loaded_tensor.to(torch.float32)
