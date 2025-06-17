@@ -26,7 +26,7 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
             pickle.dump(embeddings, f)
         metadata[layer_name] = {
                     'type': 'numpy.ndarray',
-                    'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
+                    'shape': list(embeddings.shape) if hasattr(embeddings, 'shape') else None
         }
     
     layer_name = 'predictions'
