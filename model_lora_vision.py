@@ -1075,6 +1075,7 @@ class RegressionHander_Vision():
                     output = self.model(batch_X)
                 if batch_counter < 5:
                     #compare two slices
+                    print(f'****Batch {batch_counter}****')
                     print(batch_X)
                     self.compare_two_slices(full_embeddings)
                 output = output.cpu().numpy()
