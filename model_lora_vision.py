@@ -152,6 +152,7 @@ class VideoDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx):
         videoname, frame_indices = self.input_data[idx]
+        print(f'videoname: {videoname}', 'frame_indices: {frame_indices}', 'idx: {idx}')
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
 
         if utils.isMockMode():
@@ -1076,7 +1077,6 @@ class RegressionHander_Vision():
                 if batch_counter < 5:
                     #compare two slices
                     print(f'****Batch {batch_counter}****')
-                    print(batch_X)
                     self.compare_two_slices(full_embeddings)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
