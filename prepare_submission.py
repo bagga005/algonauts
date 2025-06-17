@@ -1,5 +1,4 @@
-from train import load_stimulus_features_friends_s7, align_features_and_fmri_samples_friends_s7, \
-    get_features, align_features_and_fmri_samples, get_fmri
+from train import get_boundary_from_fmri_for_movie_for_subject
 import utils
 import zipfile
 import os
@@ -18,22 +17,6 @@ FORMAT_WITH_MODALITY =3
 
 def get_dict_key_for_subject(sub):
     return f'sub-0{sub}'
-
-def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
-    if movie_name == "friends-s07":
-        _, boundary = prepare_s7_fmri_for_alignment(subject)
-        return boundary
-    else:
-        if movie_name[:7] == 'friends':
-            id = movie_name[8:]
-        elif movie_name[:7] == 'movie10':
-            id = movie_name[8:]
-        fmri = get_fmri(subject)
-        movie_splits = [key for key in fmri if id in key[:len(id)]]
-        boundary = []
-        for split in movie_splits:
-            boundary.append((split, fmri[split].shape[0]))
-        return boundary
 
 def append_to_dict(dict, subject, stimuli_id, data, format, modality):
     if format == FORMAT_CODA:

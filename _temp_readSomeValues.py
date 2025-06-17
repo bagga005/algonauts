@@ -110,13 +110,14 @@ if __name__ == "__main__":
     #file_path = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy"
     #print_npy_keys(file_path)
     stimId = "friends_s01e01a"
-    stimId = "s01e01a"
+    #stimId = "s01e01a"
     #file1_path = "/mnt/c/temp/" + stimId + ".h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/" + stimId + ".h5"
-    file1_path = "/teamspace/studios/present-tomato-9u8y/algo_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
+    file1_path = "/workspace/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
-    #read_h5_file(file1_path, stimId, 'language_pooler_output')
+    file2_path = "/home/bagga005/algo/comp_data/tmp/friends_s01e01a.h5"
+    read_h5_file(file2_path, stimId, 'visual')
     #read_h5_file(file1_path, stimId, 'language_last_hidden_state')
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
     #file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
@@ -131,7 +132,7 @@ if __name__ == "__main__":
     file2 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy'
     file3 = '/workspace/stimulus_features/pca/friends_movie10/visual/features_train-merged.npy'
     #merge_npy_files(file1, file2, file3)
-    read_npy_keys_for_audio(file1)
+    #read_npy_keys_for_audio(file1)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
     #read_h5_file(file, 'friends_s02e01a', 'visual')
     file = "/home/bagga005/algo/comp_data/stimulus_features/raw/visual/friends_s02e01a.h5"

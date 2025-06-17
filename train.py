@@ -22,6 +22,23 @@ import json
 import datetime
 from roi_network_map import get_breakup_by_network
 from algonaut_funcs import prepare_s7_fmri_for_alignment
+
+def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
+    if movie_name == "friends-s07":
+        _, boundary = prepare_s7_fmri_for_alignment(subject)
+        return boundary
+    else:
+        if movie_name[:7] == 'friends':
+            id = movie_name[8:]
+        elif movie_name[:7] == 'movie10':
+            id = movie_name[8:]
+        fmri = get_fmri(subject)
+        movie_splits = [key for key in fmri if id in key[:len(id)]]
+        boundary = []
+        for split in movie_splits:
+            boundary.append((split, fmri[split].shape[0]))
+        return boundary
+    
 def load_stimulus_features(root_data_dir, modality):
     """
     Load the stimulus features.
@@ -1026,12 +1043,25 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         movies_val, viewing_session)
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
+        assert len(movies_val) == 1, "loravision only supports one movie for validation"
+        boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
-        # print('features_val.shape', features_val.shape)
-        # print('fmri_val.shape', fmri_val.shape)
-        # features_val = features_val[:64]
-        # fmri_val = fmri_val[:64,:]
-        #print('feautres_train', features_train[:500])
+        assert features_val.shape[0] == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
+        from_idx = 0
+        total_size =0
+        num_stimuli =0
+        for stim_id, size in boundary:
+            num_stimuli +=1
+            total_size += size
+            effective_size = size-10
+            features_val_stim = features_val[from_idx:from_idx+effective_size,:]
+            fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
+            from_idx = from_idx + effective_size
+            assert (features_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {features_val_stim.shape[0]} {size}"
+            assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0]} {size}"
+        assert total_size == (features_val.shape[0] + num_stimuli*10), f"total_size {total_size} != features_val.shape[0] {features_val.shape[0] + num_stimuli*10}"
+        assert total_size == (fmri_val.shape[0] + num_stimuli*10), f"total_size {total_size} != fmri_val.shape[0] {fmri_val.shape[0] + num_stimuli*10}"
+        exit()
         print('create trainer')
         del features
         _,_, enable_wandb = utils.get_wandb_config()
