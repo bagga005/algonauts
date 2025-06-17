@@ -1012,7 +1012,36 @@ class RegressionHander_Vision():
     def load_model(self, model_name):
         params = utils.load_model_pytorch(model_name)
         self.model.load_state_dict(params)
-
+    def compare_two_slices(self, embeddings):
+        slice1 = embeddings[10,:8192]
+        till = 8192 * 2
+        slice2 = embeddings[11,8192:till]
+        print('slice1.shape', slice1.shape)
+        print('slice2.shape', slice2.shape)
+        print('slice1', slice1)
+        print('slice2', slice2)
+        
+        mask = ~(np.isnan(slice1) | np.isnan(slice2))
+        flat1 = slice1[mask].flatten()
+        flat2 = slice2[mask].flatten()
+        
+        if len(flat1) == 0 or len(flat2) == 0:
+            print(f"No valid data for comparison in key '{key}'")
+            return
+            
+        r_score = np.corrcoef(flat1, flat2)[0, 1]
+        #print(f"Key '{key}' - R-score: {r_score:.6f}")
+        
+        # Optional: check if arrays are exactly equal
+        is_equal = np.array_equal(
+            array1[~np.isnan(array1)],
+            array2[~np.isnan(array2)]
+        )
+        if not is_equal:
+            print(f"  Arrays  are not identical!")
+        else:   
+            print(f"  Arrays are identical!")
+        
     def predict(self, features_val):
         print('prediction called')
         record_layer_output = True
@@ -1035,7 +1064,8 @@ class RegressionHander_Vision():
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
                 else:
                     output = self.model(batch_X)
-                #
+                #compare two slices
+                self.compare_two_slices(full_embeddings)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
