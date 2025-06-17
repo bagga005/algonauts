@@ -91,12 +91,13 @@ class VisionLinearRegressionModel(nn.Module):
 
 
     def forward(self, x):
+        print('x.shape on input', x.shape)
         b_size, window = x.shape[:2]
         x = x.view(b_size * window, *x.shape[2:])
-
+        print('x.shape after 1', x.shape)
         if len(x.shape) == 4:
             x = x.unsqueeze(2)
-
+        print('x.shape after 2', x.shape)
         with torch.no_grad():
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
@@ -1049,6 +1050,7 @@ class RegressionHander_Vision():
         
         return fmri_val_pred
  
+
 
 
 def prepare_training_data(input, target, batch_size=2, is_for_training=True, num_gpus=1):

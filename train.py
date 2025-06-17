@@ -1049,16 +1049,22 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
+        del features
+        _,_, enable_wandb = utils.get_wandb_config()
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=False)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
         from_idx = 0
         total_size =0
         num_stimuli =0
+        fmri_val_pred = []
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
             effective_size = size-10
             features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
+            fmri_val_pred_stim = trainer.predict(features_val_stim)
+            fmri_val_pred.append(fmri_val_pred_stim)
             #prefix with stim_id
             if stim_id.startswith('s'):
                 prefix= "friends_" + stim_id
@@ -1071,11 +1077,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0] + 10} {size}"
         assert total_size == (len(features_val) + num_stimuli*10), f"total_size {total_size} != features_val.shape[0] {len(features_val) + num_stimuli*10}"
         assert total_size == (fmri_val.shape[0] + num_stimuli*10), f"total_size {total_size} != fmri_val.shape[0] {fmri_val.shape[0] + num_stimuli*10}"
-        exit()
         print('create trainer')
-        del features
-        _,_, enable_wandb = utils.get_wandb_config()
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=False)
+        
         print('got lora vision handler')
 
     if training_handler != 'loravision':
@@ -1086,7 +1089,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         print('model_name', model_name)
         trainer.load_model(model_name)
 
-    fmri_val_pred = trainer.predict(features_val)
+    if training_handler != 'loravision':
+        fmri_val_pred = trainer.predict(features_val)
     #save it first
     movie_name = None
     if len(movies_val) == 1:
