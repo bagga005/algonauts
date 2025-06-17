@@ -1031,18 +1031,14 @@ class RegressionHander_Vision():
         )
         if not is_equal:
             print(f"  Arrays  are not identical!")
-        else:   
-            print(f"  Arrays are identical!")
+
         
     def compare_two_slices(self, embeddings):
-        slice1 = embeddings[10,:8192]
-        till = 8192 * 2
-        slice2 = embeddings[11,8192:till]
-        self.compare_two_slices_with_r_score(slice1, slice2)
-        slice1 = embeddings[11,:8192]
-        till = 8192 * 2
-        slice2 = embeddings[10,8192:till]
-        self.compare_two_slices_with_r_score(slice1, slice2)
+        for i in range(2, 15):
+            slice1 = embeddings[i,:8192]
+            till = 8192 * 2
+            slice2 = embeddings[i-1,8192:till]
+            self.compare_two_slices_with_r_score(slice1, slice2)
         
         
     def predict(self, features_val):
