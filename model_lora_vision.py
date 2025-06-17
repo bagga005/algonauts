@@ -594,8 +594,6 @@ class RegressionHander_Vision():
             self.model.to(self.device)
             print(f'loaded params from model {pretrain_params_name}')
         else:
-            self.model = VisionLinearRegressionModel(input_size, output_size, self.device)
-            self.model.to(self.device)
             print('not loading existing model') 
         self.enable_wandb = enable_wandb
         
@@ -1075,8 +1073,10 @@ class RegressionHander_Vision():
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
                 else:
                     output = self.model(batch_X)
-                #compare two slices
-                self.compare_two_slices(full_embeddings)
+                if batch_counter < 5:
+                    #compare two slices
+                    print(batch_X)
+                    self.compare_two_slices(full_embeddings)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
