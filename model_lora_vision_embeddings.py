@@ -4,7 +4,6 @@ import gzip
 import pickle
 def save_embeddings(full_embeddings, predictions, prefix, counter):
     save_dir = os.path.join(utils.get_output_dir(), utils.get_embeddings_dir())
-    print(f'save_dir: {save_dir}')
     assert full_embeddings.shape[0] == predictions.shape[0], 'full_embeddings and predictions must have the same number of rows'
     start_index = counter
     # Create the save directory if it doesn't exist
@@ -38,7 +37,6 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
         fn_name = f"{prefix_with_counter}_{safe_name}"
         
         embeddings = predictions[i,:]
-        print(base_dir, fn_name + file_ext)
         with gzip.open(os.path.join(base_dir, fn_name + file_ext), 'wb') as f:
             pickle.dump(embeddings, f)
         metadata[layer_name] = {
