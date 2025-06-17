@@ -88,7 +88,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
         total_size =0
         num_stimuli =0
         compare_buffer = 2*pads.shape[0]
-        if add_pads:
+        if not add_pads:
             compare_buffer = 0
         for stim_id, size in boundary:
             num_stimuli +=1
