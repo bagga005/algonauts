@@ -1026,16 +1026,16 @@ class RegressionHander_Vision():
         flat2 = slice2[mask].flatten()
         
         if len(flat1) == 0 or len(flat2) == 0:
-            print(f"No valid data for comparison in key '{key}'")
+            print(f"No valid data for comparison")
             return
             
         r_score = np.corrcoef(flat1, flat2)[0, 1]
-        #print(f"Key '{key}' - R-score: {r_score:.6f}")
+        print(f"R-score: {r_score:.6f}")
         
         # Optional: check if arrays are exactly equal
         is_equal = np.array_equal(
-            array1[~np.isnan(array1)],
-            array2[~np.isnan(array2)]
+            slice1[~np.isnan(slice1)],
+            slice2[~np.isnan(slice2)]
         )
         if not is_equal:
             print(f"  Arrays  are not identical!")
