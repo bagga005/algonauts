@@ -1051,7 +1051,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         del features
         _,_, enable_wandb = utils.get_wandb_config()
         lora_model = utils.get_model_checkpoint()
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=lora_model, enable_wandb=False, lora_config=lora_config)
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=lora_model, enable_wandb=False)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
         from_idx = 0
         total_size =0
