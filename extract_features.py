@@ -894,9 +894,10 @@ if __name__ == "__main__":
     embeddings_combined_dir = utils.get_embeddings_combined_dir()
     dir_output_path = os.path.join(out_dir, embeddings_combined_dir)
 
-    filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
+    #filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     #filter_in_name = ["s03", "s04", "s05", "s06"]
+    filter_in_name = ["life"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
