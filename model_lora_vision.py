@@ -1074,10 +1074,10 @@ class RegressionHander_Vision():
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
                 else:
                     output = self.model(batch_X)
-                if batch_counter < 5:
+                #if batch_counter < 5:
                     #compare two slices
-                    print(f'****Batch {batch_counter}****')
-                    self.compare_two_slices(full_embeddings)
+                    # print(f'****Batch {batch_counter}****')
+                    # self.compare_two_slices(full_embeddings)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
