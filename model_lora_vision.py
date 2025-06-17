@@ -91,13 +91,11 @@ class VisionLinearRegressionModel(nn.Module):
 
 
     def forward(self, x):
-        print('x.shape on input', x.shape)
         b_size, window = x.shape[:2]
         x = x.view(b_size * window, *x.shape[2:])
-        print('x.shape after 1', x.shape)
         if len(x.shape) == 4:
             x = x.unsqueeze(2)
-        print('x.shape after 2', x.shape)
+
         with torch.no_grad():
             x = self.visual_model.model.blocks[0](x)
             x = self.visual_model.model.blocks[1](x)
@@ -124,9 +122,8 @@ class VisionLinearRegressionModel(nn.Module):
                 
                 layer_output = self.visual_model.model.blocks[5].pool(x)
                 layer_output = layer_output.reshape(layer_output.shape[0], -1)
-                print('layer_output.shape after first resize', layer_output.shape)
                 layer_output = layer_output.reshape(b_size, -1)
-                print('layer_output.shape after second resize', layer_output.shape)
+
                 prediction = self.linear4(layer_output)
             
             if self.return_layer_output:

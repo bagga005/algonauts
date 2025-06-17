@@ -1019,6 +1019,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # features_val = torch.FloatTensor(features_val).to(device)
     fmri_val = None
+    fmri_val_pred = []
     if training_handler == 'pytorch':
          # Align the stimulus features with the fMRI responses for the validation movies
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
@@ -1056,7 +1057,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         from_idx = 0
         total_size =0
         num_stimuli =0
-        fmri_val_pred = []
+        
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
@@ -1064,7 +1065,9 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
             fmri_val_pred_stim = trainer.predict(features_val_stim)
+            print('fmri_val_pred_stim.shape', fmri_val_pred_stim.shape)
             fmri_val_pred.append(fmri_val_pred_stim)
+            print('fmri_val_pred.shape', len(fmri_val_pred))
             #prefix with stim_id
             if stim_id.startswith('s'):
                 prefix= "friends_" + stim_id
