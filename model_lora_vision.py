@@ -1064,20 +1064,20 @@ class RegressionHander_Vision():
                 if record_layer_output:
                     output, layer_output = self.model(batch_X)
                     if full_embeddings is None:
-                        full_embeddings = layer_output.cpu().numpy()
+                        full_embeddings = layer_output.cpu()
                     else:
-                        full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
+                        full_embeddings = torch.cat([full_embeddings, layer_output.cpu()], axis=0)
                 else:
                     output = self.model(batch_X)
                 print('full_embeddings.shape', full_embeddings.shape)
-                output = output.cpu().numpy()
+                output = output.cpu()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
                     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
                 batch_counter += 1
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
         save_embeddings(full_embeddings, fmri_val_pred, video_prefix, 0)
-        return fmri_val_pred
+        return fmri_val_pred.numpy()
  
 
 
