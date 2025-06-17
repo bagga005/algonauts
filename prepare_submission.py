@@ -75,6 +75,9 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     movie_name='friends-s07', zip_file=False):
     submission_predictions = init_dict({}, subjects, format, modality, file_name, exp_name)
     pads = np.zeros((5,1000))
+    add_pads = False
+    if format == FORMAT_CODA:
+        add_pads = True
 
     for sub in subjects:
         boundary = get_boundary_from_fmri_for_movie_for_subject(sub, movie_name)
@@ -84,16 +87,20 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
         from_idx = 0
         total_size =0
         num_stimuli =0
+        compare_buffer = 2*pads.shape[0]
+        if add_pads:
+            compare_buffer = 0
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
             effective_size = size-10
             slice = sub_predictions[from_idx:from_idx+effective_size,:]
-            slice = np.concatenate((pads, slice, pads), axis=0)
+            if add_pads:
+                slice = np.concatenate((pads, slice, pads), axis=0)
             append_to_dict(submission_predictions, sub, stim_id, slice.astype(np.float32), format, modality)
             #if from_idx < 3000: print(from_idx, from_idx + size)
             from_idx = from_idx + effective_size
-            assert slice.shape[0] == size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
+            assert slice.shape[0] == size + compare_buffer, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
         assert total_size == (sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]), f"total_size {total_size} != sub_predictions.shape[0] {sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]}"
     # print(submission_predictions.keys())
     # print(submission_predictions['language'].keys())
