@@ -184,7 +184,7 @@ if __name__ == "__main__":
         results_output_directory = sys.argv[2]
         
     try:
-        utils.set_hf_home_path()
+        set_hf_home_path()
         run_trainings(experiment_name, results_output_directory)
     except Exception as e:
         traceback.print_exc()
