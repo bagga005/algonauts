@@ -1056,7 +1056,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             num_stimuli +=1
             total_size += size
             effective_size = size-10
-            features_val_stim = features_val[from_idx:from_idx+effective_size,:]
+            features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
             from_idx = from_idx + effective_size
             assert (features_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {features_val_stim.shape[0]} {size}"
