@@ -1046,7 +1046,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         assert len(movies_val) == 1, "loravision only supports one movie for validation"
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
-        print('features_val.shape', features_val)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
         from_idx = 0
         total_size =0
