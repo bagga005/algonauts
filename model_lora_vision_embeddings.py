@@ -23,9 +23,9 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
         
         embeddings = predictions[i,:]
         with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
-            pickle.dump(embeddings.cpu(), f)
+            pickle.dump(embeddings, f)
         metadata[layer_name] = {
-                    'type': 'np',
+                    'type': 'numpy.ndarray',
                     'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
         }
     
@@ -40,7 +40,7 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
         embeddings = predictions[i,:]
         print(base_dir, safe_name + file_ext)
         with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
-            pickle.dump(embeddings.cpu(), f)
+            pickle.dump(embeddings, f)
         metadata[layer_name] = {
                     'type': 'np',
                     'shape': list(embedding.shape) if hasattr(embedding, 'shape') else None
