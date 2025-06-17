@@ -1058,6 +1058,13 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             effective_size = size-10
             features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
+            #prefix with stim_id
+            if stim_id.startswith('s'):
+                prefix= "friends_" + stim_id
+            else:
+                prefix = "movie10_" + stim_id
+            print('prefix: ', prefix)
+            
             from_idx = from_idx + effective_size
             assert (features_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {features_val_stim.shape[0]} {size}"
             assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0]} {size}"
@@ -1077,8 +1084,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             model_name = config['trained_model_name']
         print('model_name', model_name)
         trainer.load_model(model_name)
-    else:
-        model_name = f'lora_vision_all_sub-{subject}'
 
     fmri_val_pred = trainer.predict(features_val)
     #save it first
