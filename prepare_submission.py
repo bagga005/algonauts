@@ -76,8 +76,10 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     submission_predictions = init_dict({}, subjects, format, modality, file_name, exp_name)
     pads = np.zeros((5,1000))
     add_pads = False
+    compare_buffer = 10
     if format == FORMAT_CODA:
         add_pads = True
+        compare_buffer = 0
 
     for sub in subjects:
         boundary = get_boundary_from_fmri_for_movie_for_subject(sub, movie_name)
@@ -87,9 +89,6 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
         from_idx = 0
         total_size =0
         num_stimuli =0
-        compare_buffer = 0
-        if not add_pads:
-            compare_buffer = 2*pads.shape[0]
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
