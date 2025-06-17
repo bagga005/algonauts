@@ -1034,10 +1034,19 @@ class RegressionHander_Vision():
 
         
     def compare_two_slices(self, embeddings):
+        till1 = 8192
+        till2 = 8192 * 2
+        till3 = 8192 * 3
+        till4 = 8192 * 4
         for i in range(2, 15):
-            slice1 = embeddings[i,:8192]
-            till = 8192 * 2
-            slice2 = embeddings[i-1,8192:till]
+            slice1 = embeddings[i,:till1]    
+            slice2 = embeddings[i-1,till1:till2]
+            self.compare_two_slices_with_r_score(slice1, slice2)
+            slice1 = embeddings[i,till1:till2]
+            slice2 = embeddings[i-1,till2:till3]
+            self.compare_two_slices_with_r_score(slice1, slice2)
+            slice1 = embeddings[i,till2:till3]    
+            slice2 = embeddings[i-1,till3:till4]
             self.compare_two_slices_with_r_score(slice1, slice2)
         
         
