@@ -128,7 +128,7 @@ class VisionLinearRegressionModel(nn.Module):
                 prediction = self.linear4(layer_output)
             
             if self.return_layer_output:
-                return prediction, layer_output
+                return prediction, layer_output[:,-8192]
             else:
                 return prediction
 
@@ -1069,7 +1069,7 @@ class RegressionHander_Vision():
                         full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
                 else:
                     output = self.model(batch_X)
-                    
+                print('full_embeddings.shape', full_embeddings.shape)
                 output = output.cpu().numpy()
                 fmri_val_pred.append(output)
                 if batch_counter % 10 == 0:
