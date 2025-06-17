@@ -127,7 +127,10 @@ def get_lora_prediction_subject():
     return int(os.getenv("LORA_PRED_SUBJECT"))
 
 def get_model_checkpoint():
-    return os.getenv("MODEL_CHECKPOINT")
+    mck = os.getenv("MODEL_CHECKPOINT")
+    if mck is None or mck == '':
+        return None
+    return mck
 
 def load_model_pytorch(model_name):
     file_name = f'{model_name}.pth'
