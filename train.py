@@ -1051,7 +1051,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         from_idx = 0
         total_size =0
         num_stimuli =0
-        print('boundary', boundary)
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
@@ -1066,8 +1065,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             print('prefix: ', prefix)
             
             from_idx = from_idx + effective_size
-            assert (features_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {features_val_stim.shape[0]} {size}"
-            assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0]} {size}"
+            assert (len(features_val_stim) + 10) == size, f"size mismatch while slicing {stim_id} {len(features_val_stim) + 10} {size}"
+            assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0] + 10} {size}"
         assert total_size == (len(features_val) + num_stimuli*10), f"total_size {total_size} != features_val.shape[0] {len(features_val) + num_stimuli*10}"
         assert total_size == (fmri_val.shape[0] + num_stimuli*10), f"total_size {total_size} != fmri_val.shape[0] {fmri_val.shape[0] + num_stimuli*10}"
         exit()
