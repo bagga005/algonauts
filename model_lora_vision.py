@@ -1013,7 +1013,6 @@ class RegressionHander_Vision():
         params = utils.load_model_pytorch(model_name)
         self.model.load_state_dict(params)
     def compare_two_slices_with_r_score(self, slice1, slice2):
-        return
         mask = ~(np.isnan(slice1) | np.isnan(slice2))
         flat1 = slice1[mask].flatten()
         flat2 = slice2[mask].flatten()
@@ -1040,10 +1039,10 @@ class RegressionHander_Vision():
         till = 8192 * 2
         slice2 = embeddings[11,8192:till]
         self.compare_two_slices_with_r_score(slice1, slice2)
-        slice1 = embeddings[10,:8192]
+        slice1 = embeddings[11,:8192]
         till = 8192 * 2
-        slice2 = embeddings[11,8192:till]
-        
+        slice2 = embeddings[10,8192:till]
+        self.compare_two_slices_with_r_score(slice1, slice2)
         
         
     def predict(self, features_val):
