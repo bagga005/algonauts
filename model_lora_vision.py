@@ -1036,9 +1036,11 @@ class RegressionHander_Vision():
                     print('full_embeddings.shape', full_embeddings.shape)
                 else:
                     output = self.model(batch_X)
-                #print('output.shape', output.shape)
+                #
                 output = output.cpu().numpy()
+                print('output.shape', output.shape)
                 fmri_val_pred.append(output)
+                print('fmri_val_pred.shape', len(fmri_val_pred))
                 if batch_counter % 10 == 0:
                     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
                 batch_counter += 1
