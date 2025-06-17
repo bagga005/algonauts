@@ -21,7 +21,7 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
         prefix_with_counter = f"{prefix}_tr_{i}"
         fn_name = f"{prefix_with_counter}_{safe_name}"
         
-        embeddings = predictions[i,:]
+        embeddings = full_embeddings[i,:]
         with gzip.open(os.path.join(base_dir, fn_name + file_ext), 'wb') as f:
             pickle.dump(embeddings, f)
         metadata[layer_name] = {
@@ -45,8 +45,9 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
                     'type': 'np',
                     'shape': list(embeddings.shape) if hasattr(embeddings, 'shape') else None
         }
+        utils.save_embedding_metadata(prefix_with_counter, metadata)
     
     
     
-    utils.save_embedding_metadata(prefix_with_counter, metadata)
+    
     return counter + predictions.shape[0]
