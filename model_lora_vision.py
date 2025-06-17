@@ -1012,15 +1012,8 @@ class RegressionHander_Vision():
     def load_model(self, model_name):
         params = utils.load_model_pytorch(model_name)
         self.model.load_state_dict(params)
-    def compare_two_slices(self, embeddings):
-        slice1 = embeddings[10,:8192]
-        till = 8192 * 2
-        slice2 = embeddings[11,8192:till]
-        print('slice1.shape', slice1.shape)
-        print('slice2.shape', slice2.shape)
-        print('slice1', slice1)
-        print('slice2', slice2)
-        
+    def compare_two_slices_with_r_score(self, slice1, slice2):
+        return
         mask = ~(np.isnan(slice1) | np.isnan(slice2))
         flat1 = slice1[mask].flatten()
         flat2 = slice2[mask].flatten()
@@ -1041,6 +1034,17 @@ class RegressionHander_Vision():
             print(f"  Arrays  are not identical!")
         else:   
             print(f"  Arrays are identical!")
+        
+    def compare_two_slices(self, embeddings):
+        slice1 = embeddings[10,:8192]
+        till = 8192 * 2
+        slice2 = embeddings[11,8192:till]
+        self.compare_two_slices_with_r_score(slice1, slice2)
+        slice1 = embeddings[10,:8192]
+        till = 8192 * 2
+        slice2 = embeddings[11,8192:till]
+        
+        
         
     def predict(self, features_val):
         print('prediction called')
