@@ -31,7 +31,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     experiment_comments = 'test internvl'
     specific_modalities = ["visual"]
     config = {
-        'trained_model_name':'lora-7-checkpoint-params',#'lora-best-distributed',
+        'trained_model_name': None, #'lora-7-checkpoint-params',#'lora-best-distributed',
     }
     
     

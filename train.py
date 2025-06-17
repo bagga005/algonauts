@@ -1034,8 +1034,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window,
         movies_val, viewing_session)
-        print('features_val.shape', features_val.shape)
-        print('fmri_val.shape', fmri_val.shape)
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
          # Align the stimulus features with the fMRI responses for the validation movies
@@ -1052,7 +1050,8 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
         del features
         _,_, enable_wandb = utils.get_wandb_config()
-        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=config['trained_model_name'], enable_wandb=False)
+        lora_model = utils.get_model_checkpoint()
+        trainer = RegressionHander_Vision(8192 * stimulus_window, fmri_val.shape[1], pretrain_params_name=lora_model, enable_wandb=False, lora_config=lora_config)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
         from_idx = 0
         total_size =0
@@ -1065,24 +1064,19 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             features_val_stim = features_val[from_idx:from_idx+effective_size]
             fmri_val_stim = fmri_val[from_idx:from_idx+effective_size,:]
             fmri_val_pred_stim = trainer.predict(features_val_stim)
-            print('fmri_val_pred_stim.shape', fmri_val_pred_stim.shape)
             fmri_val_pred.append(fmri_val_pred_stim)
-            print('fmri_val_pred.shape', len(fmri_val_pred))
             #prefix with stim_id
             if stim_id.startswith('s'):
                 prefix= "friends_" + stim_id
             else:
                 prefix = "movie10_" + stim_id
-            print('prefix: ', prefix)
             
             from_idx = from_idx + effective_size
             assert (len(features_val_stim) + 10) == size, f"size mismatch while slicing {stim_id} {len(features_val_stim) + 10} {size}"
             assert (fmri_val_stim.shape[0] + 10) == size, f"size mismatch while slicing {stim_id} {fmri_val_stim.shape[0] + 10} {size}"
         assert total_size == (len(features_val) + num_stimuli*10), f"total_size {total_size} != features_val.shape[0] {len(features_val) + num_stimuli*10}"
         assert total_size == (fmri_val.shape[0] + num_stimuli*10), f"total_size {total_size} != fmri_val.shape[0] {fmri_val.shape[0] + num_stimuli*10}"
-        print('create trainer')
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
-        print('got lora vision handler')
 
     if training_handler != 'loravision':
         if not config['trained_model_name']:
