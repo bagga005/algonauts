@@ -152,7 +152,7 @@ class VideoDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx):
         videoname, frame_indices = self.input_data[idx]
-        print(f'videoname: {videoname}', 'frame_indices: {frame_indices}', 'idx: {idx}')
+        print(f'videoname: {videoname}', f'frame_indices: {frame_indices}', f'idx: {idx}')
         filename = os.path.join(utils.get_stimulus_pre_features_dir(), 'pre', 'visual', videoname+'.h5')
 
         if utils.isMockMode():
