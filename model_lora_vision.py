@@ -1039,16 +1039,10 @@ class RegressionHander_Vision():
         till2 = 8192 * 2
         till3 = 8192 * 3
         till4 = 8192 * 4
-        for i in range(2, 15):
+        for i in range(0, 15):
             print(f'comparing slice {i}')
-            slice1 = embeddings[i,:till1]    
-            slice2 = embeddings[i-1,till1:till2]
-            self.compare_two_slices_with_r_score(slice1, slice2)
-            slice1 = embeddings[i,till1:till2]
-            slice2 = embeddings[i-1,till2:till3]
-            self.compare_two_slices_with_r_score(slice1, slice2)
-            slice1 = embeddings[i,till2:till3]    
-            slice2 = embeddings[i-1,till3:till4]
+            slice1 = embeddings[i,till3:till4]    
+            slice2 = embeddings[i+1,till2:till3]
             self.compare_two_slices_with_r_score(slice1, slice2)
         
         
@@ -1064,11 +1058,8 @@ class RegressionHander_Vision():
         full_embeddings = None
         with torch.no_grad():
             batch_counter = 0
-            for batch_X1, batch_X2, batch_idx, batch_X, batch_y in pred_loader:
-                print('predict batch')
-                print(batch_X1)
-                print(batch_X2)
-                print(batch_idx)
+            #for batch_X1, batch_X2, batch_idx, batch_X, batch_y in pred_loader:
+            for batch_X, batch_y in pred_loader:
                 batch_X = batch_X.to(self.device)
                 if record_layer_output:
                     output, layer_output = self.model(batch_X)
