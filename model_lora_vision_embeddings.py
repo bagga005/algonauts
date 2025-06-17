@@ -19,10 +19,10 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
     os.makedirs(base_dir, exist_ok=True)
     for i in range(start_index, start_index + full_embeddings.shape[0]):
         prefix_with_counter = f"{prefix}_tr_{i}"
-        safe_name = f"{prefix_with_counter}_{safe_name}"
+        fn_name = f"{prefix_with_counter}_{safe_name}"
         
         embeddings = predictions[i,:]
-        with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
+        with gzip.open(os.path.join(base_dir, fn_name + file_ext), 'wb') as f:
             pickle.dump(embeddings, f)
         metadata[layer_name] = {
                     'type': 'numpy.ndarray',
@@ -35,11 +35,11 @@ def save_embeddings(full_embeddings, predictions, prefix, counter):
     os.makedirs(base_dir, exist_ok=True)
     for i in range(start_index, start_index + predictions.shape[0]):
         prefix_with_counter = f"{prefix}_tr_{i}"
-        safe_name = f"{prefix_with_counter}_{safe_name}"
+        fn_name = f"{prefix_with_counter}_{safe_name}"
         
         embeddings = predictions[i,:]
-        print(base_dir, safe_name + file_ext)
-        with gzip.open(os.path.join(base_dir, safe_name + file_ext), 'wb') as f:
+        print(base_dir, fn_name + file_ext)
+        with gzip.open(os.path.join(base_dir, fn_name + file_ext), 'wb') as f:
             pickle.dump(embeddings, f)
         metadata[layer_name] = {
                     'type': 'np',
