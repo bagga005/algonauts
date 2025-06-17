@@ -128,9 +128,9 @@ class VisionLinearRegressionModel(nn.Module):
                 prediction = self.linear4(layer_output)
             
             if self.return_layer_output:
-                print('layer_output.shape', layer_output.shape)
-                response = layer_output[:,-8192]
-                print('response.shape', response.shape)
+                #print('layer_output.shape', layer_output.shape)
+                response = layer_output[:,-8192:]
+                #print('response.shape', response.shape)
                 return prediction, response
             else:
                 return prediction
