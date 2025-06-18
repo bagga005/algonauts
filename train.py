@@ -386,6 +386,7 @@ def align_features_and_fmri_samples_friends_s7(subject, features_friends_s7,
 def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
+     assert len(boundary) > 4, "boundary cant be so small"
      print('boundary', boundary)
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
