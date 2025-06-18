@@ -467,6 +467,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     aligned_fmri = np.empty((0,1000), dtype=np.float32)
     if all_subject_fmri:
         aligned_fmri = np.empty((0,4,1000), dtype=np.float32)
+
     ### Loop across movies ###
     for movie in movies:
         #do fmri len check for all mods
@@ -476,7 +477,6 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         for mod in features.keys():
             do_features_fmri_len_check(features[mod], fmri_for_subject, movie)
             
-        exit()
         ### Get the IDs of all movies splits for the selected movie ###
         if movie[:7] == 'friends':
             id = movie[8:]
