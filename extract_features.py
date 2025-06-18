@@ -470,6 +470,9 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
         ten = torch.mean(loaded_tensor[i:j+1,:], dim=0)
     elif combine_strategy == COMBINE_STRATEGY_INDEXS_AVG:
         ten = torch.mean(loaded_tensor[indexes,:], dim=0)
+    elif combine_strategy == COMBINE_STRATEGY_ALL:
+        #regular code
+        ten = loaded_tensor
     else:
         raise ValueError(f"Invalid strategy: {combine_strategy}")
     
@@ -578,7 +581,7 @@ STRATEGY_V2_LN7_VCLS = 300
 #R50
 STRATEGY_PREDICTION = 800
 
-
+COMBINE_STRATEGY_ALL = 'all'
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
 COMBINE_STRATEGY_LAST4 = 'last4'
@@ -635,7 +638,7 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=19)
                 
             elif strategy == STRATEGY_PREDICTION:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "predictions", COMBINE_STRATEGY_I,i=19)
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "predictions", COMBINE_STRATEGY_ALL)
             
             elif strategy == STRATEGY_V3_MP_PRE_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=6)
