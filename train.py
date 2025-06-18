@@ -23,7 +23,8 @@ import datetime
 from roi_network_map import get_breakup_by_network
 from algonaut_funcs import prepare_s7_fmri_for_alignment
 
-def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
+def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None):
+    assert subject == None or fmri == None, "subject and fmri cannot be provided together"
     if movie_name == "friends-s07":
         _, boundary = prepare_s7_fmri_for_alignment(subject)
         return boundary
@@ -32,7 +33,8 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name):
             id = movie_name[8:]
         elif movie_name[:7] == 'movie10':
             id = movie_name[8:]
-        fmri = get_fmri(subject)
+        if fmri is None:
+            fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
         boundary = []
         for split in movie_splits:
@@ -381,6 +383,13 @@ def align_features_and_fmri_samples_friends_s7(subject, features_friends_s7,
 
     return aligned_features_friends_s7
 
+def do_features_fmri_len_check(features, fmri, movie_name):
+    #do based on subject 1
+     boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
+     for stim_id, size in boundary:
+            assert size == len(features[stim_id]), f"size {size} != len(features[stim_id]) {len(features[stim_id])}"
+
+
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     excluded_samples_end, hrf_delay, stimulus_window, movies, viewing_session, summary_features=False, all_subject_fmri=False):
     """
@@ -455,7 +464,9 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         aligned_fmri = np.empty((0,4,1000), dtype=np.float32)
     ### Loop across movies ###
     for movie in movies:
-
+        #do fmri len check for all mods
+        for mod in features.keys():
+            do_features_fmri_len_check(features[mod], fmri, movie)
         ### Get the IDs of all movies splits for the selected movie ###
         if movie[:7] == 'friends':
             id = movie[8:]
