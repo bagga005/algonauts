@@ -1,11 +1,51 @@
 import train
 from datetime import datetime
 import traceback
-from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir, set_hf_home_path
+from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir, \
+    set_hf_home_path, get_run_settings_file
 import os
 import subprocess
 import sys
+import json
 
+def load_training_settings():
+
+    # Default settings
+    default_settings = {
+        "excluded_samples_start": 5,
+        "excluded_samples_end": 5,
+        "hrf_delay": 3,
+        "stimulus_window": 4,
+        "subject": 1,
+        "include_viewing_sessions": False,
+        "movies_train": ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"],
+        "movies_val": ["friends-s06"],
+        "training_handler": "sklearn",
+        "experiment_comments": "experiment from settings file",
+        "specific_modalities": ["language"],
+        "run_training_1_subject": False,
+        "run_training_all_subjects": False,
+        "run_validation_1_subject": False,
+        "run_validation_all_subjects": False
+    }
+    settings_file_path = get_run_settings_file()
+    # Load settings from file if it exists
+    if os.path.exists(settings_file_path):
+        try:
+            with open(settings_file_path, 'r') as f:
+                file_settings = json.load(f)
+            
+            # Update defaults with file settings
+            default_settings.update(file_settings)
+            print(f"Settings loaded from: {settings_file_path}")
+            
+        except (json.JSONDecodeError, IOError) as e:
+            raise Exception(f"Error loading settings file {settings_file_path}: {e}")
+            
+    else:
+        raise Exception(f"Settings file {settings_file_path} not found")
+    
+    return default_settings
 
 def run_trainings(experiment_name=None, results_output_directory=None):
 
@@ -13,27 +53,31 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     # areas_of_interest_path = os.path.join(root_data_dir, 'sub-01_modality-all_accuracy.npy')
     # npn = np.load(areas_of_interest_path)
     # print(npn)
-    excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
-    excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
-    hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
-    stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
-    subject = 1
-    include_viewing_sessions = False
-    skip_accuracy_check = False
-    movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06", "friends-s07", "movie10-life","movie10-bourne",  "movie10-wolf", "movie10-figures"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
-    #movies_train = ["friends-s01"] # @param {allow-input: true}
-    movies_val = ["friends-s02"] # @param {allow-input: true}
+    settings = load_training_settings()
+    excluded_samples_start = settings["excluded_samples_start"]
+    excluded_samples_end = settings["excluded_samples_end"]
+    hrf_delay = settings["hrf_delay"]
+    stimulus_window = settings["stimulus_window"]
+    subject = settings["subject"]
+    include_viewing_sessions = settings["include_viewing_sessions"]
+    movies_train = settings["movies_train"]
+    movies_val = settings["movies_val"]
+    training_handler = settings["training_handler"]
+    experiment_comments = settings["experiment_comments"]
+    specific_modalities = settings["specific_modalities"]
+    run_training_1_subject = settings["run_training_1_subject"]
+    run_training_all_subjects = settings["run_training_all_subjects"]
+    run_validation_1_subject = settings["run_validation_1_subject"]
+    run_validation_all_subjects = settings["run_validation_all_subjects"]
     
-    # movies_train = ["friends-s01"	] # @param {allow-input: true}
-    # movies_val = ["friends-s01"] # @param {allow-input: true}
-    training_handler = 'sklearn'
+    assert not(run_training_1_subject and run_training_all_subjects), "run_training_1_subject and run_training_all_subjects cannot be True at the same time"
+    assert not(run_validation_1_subject and run_validation_all_subjects), "run_validation_1_subject and run_validation_all_subjects cannot be True at the same time"
+    assert training_handler in ["sklearn", "loravision"], "training_handler must be either sklearn or loravision"
     
-    experiment_comments = 'test internvl'
-    specific_modalities = ["visual"]
+    
     config = {
         'trained_model_name': None, #'lora-7-checkpoint-params',#'lora-best-distributed',
     }
-    
     
     #loading fmri
     if subject == -1:
@@ -82,21 +126,24 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     print('train_movies', movies_train)
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
-    
-    train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    if run_training_1_subject:
+        train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
-    # train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
-    #                              config, specific_modalities)
-    # train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, \
-    #     config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
-    #     write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, training_handler, include_viewing_sessions, config, specific_modalities)
-    #train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
-    for movie in movies_val:
-        train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, [movie], training_handler, \
-            include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, skip_accuracy_check=skip_accuracy_check)
-    
+    if run_training_all_subjects:
+        train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
+                                 config, specific_modalities)
+        
+    if run_validation_1_subject:    
+        for movie in movies_val:
+            train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, [movie], training_handler, \
+                include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, skip_accuracy_check=skip_accuracy_check)
+
+    if run_validation_all_subjects:
+        train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, \
+            config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
+            write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
+       
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
     #print('features', features['visual'].keys())
