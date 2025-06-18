@@ -882,7 +882,7 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         else:
             print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
-def add_padding(dir_output_path, pca_dims, modality):
+def do_add_padding(dir_output_path, pca_dims, modality):
     for pca_dim in pca_dims:
         pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
         if os.path.exists(pca_file_path):            
@@ -906,7 +906,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
         for pca_dim in pca_dims:
             perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
     if add_padding:
-        add_padding(dir_output_path, pca_dims, modality)
+        do_add_padding(dir_output_path, pca_dims, modality)
 
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
