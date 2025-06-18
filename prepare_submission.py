@@ -60,7 +60,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     pads = np.zeros((5,1000))
     add_pads = False
     compare_buffer = 10
-    if format == FORMAT_CODA:
+    if format == FORMAT_CODA or format == FORMAT_FLAT or format == FORMAT_WITH_MODALITY:
         add_pads = True
         compare_buffer = 0
 
