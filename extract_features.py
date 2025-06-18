@@ -836,6 +836,8 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
             #assert loaded_tensor.dtype == torch.bfloat16, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.bfloat16"
             if loaded_tensor.dtype == torch.bfloat16:
                 loaded_tensor = loaded_tensor.to(torch.float32)
+            if loaded_tensor.dtype == np.float32:
+                loaded_tensor = torch.from_numpy(loaded_tensor).to(torch.float32)
             assert loaded_tensor.dtype == torch.float32, f"loaded_tensor.dtype {loaded_tensor.dtype} != torch.float32"
             extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
             #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
