@@ -26,7 +26,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
-    training_handler = 'sklearn'
+    training_handler = 'loravision'
     
     experiment_comments = 'test internvl'
     specific_modalities = ["visual"]
