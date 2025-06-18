@@ -387,7 +387,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
      for stim_id, size in boundary:
-            if(size != len(features[stim_id])):
+            if(size != len(features[stim_id]) and size != len(features[stim_id])+1):
                 print(f"Mismatch: for movie {movie_name} and stim_id {stim_id}. fmri size {size} != feature size {len(features[stim_id])} ")
 
 
@@ -468,6 +468,8 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         #do fmri len check for all mods
         for mod in features.keys():
             do_features_fmri_len_check(features[mod], fmri, movie)
+            
+        exit()
         ### Get the IDs of all movies splits for the selected movie ###
         if movie[:7] == 'friends':
             id = movie[8:]
