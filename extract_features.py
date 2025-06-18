@@ -969,7 +969,7 @@ if __name__ == "__main__":
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                     #overwrite_pca=True, \
                     #overwrite=True, \
-                    pca_skip=True, \
+                    #pca_skip=True, \
                     # force_evaluation=True \
                     skip_evaluation = True, \
                     pca_dims=[250,500,1000], \
