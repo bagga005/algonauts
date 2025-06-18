@@ -1050,7 +1050,7 @@ class RegressionHander_Vision():
             self.compare_two_slices_with_r_score(slice1, slice2)
 
     def predict(self, features_val, video_prefix):
-        print('prediction called')
+        print('prediction called for ', video_prefix)
         record_layer_output = True
         if record_layer_output:
             self.model.set_return_layer_output(True)

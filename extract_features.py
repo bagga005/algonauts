@@ -820,7 +820,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
         if add_layer_to_path:
             dir_path = os.path.join(dir_path, layer_name)
         tr_upper = compute_tr_upper(dir_path, stim_id, layer_name)
-        #print('tr_upper', stim_id, tr_upper)
+        print('tr_upper', stim_id, tr_upper)
         
         #print('dir_path', dir_path)
         for tr_i in range(tr_upper):
