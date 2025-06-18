@@ -886,7 +886,7 @@ def do_add_padding(dir_output_path, pca_dims, modality):
     for pca_dim in pca_dims:
         pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
         if os.path.exists(pca_file_path):            
-            features = np.load(pca_file_path)
+            features = np.load(pca_file_path, allow_pickle=True)
             print(features.keys())
         else:
             print(f"**Skipping padding for {pca_dim} because file does not exist")
