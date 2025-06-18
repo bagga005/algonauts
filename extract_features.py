@@ -603,7 +603,7 @@ COMBINE_STRATEGY_VISION_V2 = 'vision_v2'
 
 def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modality, filter_in_name=None, overwrite=False, add_layer_to_path=True):
     stim_id_list = get_stim_id_list(dir_input_path, filter_in_name, add_layer_to_path)
-    print('stim_id_list', stim_id_list)
+    #print('stim_id_list', stim_id_list)
     num_skipped = 0
     e_format = utils.get_embeddings_format()
     if e_format != '2' and e_format != '1':
