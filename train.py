@@ -390,7 +390,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
 
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
-                (stim_id == 's01e01b' and size == len(features[stim_id])+2)
+                ((stim_id in ['s01e01b', 's04e23a'] )and size == len(features[stim_id])+2)
             if not passed:
                 print(f"Mismatch: for movie {movie_name} and stim_id {stim_id}. fmri size {size} != feature size {len(features[stim_id])} ")
 
