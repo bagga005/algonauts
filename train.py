@@ -469,7 +469,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         # print('id', id)
         #print('movie_splits', movie_splits)
         #load viewing session
-        print('features.keys()', features.keys())
+        print('features.keys()', features['visual'].keys())
         ### Loop over movie splits ###
         for split in movie_splits:
             v_session = None
