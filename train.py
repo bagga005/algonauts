@@ -1056,7 +1056,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         from_idx = 0
         total_size =0
         num_stimuli =0
-        print(features_val)
         for stim_id, size in boundary:
             num_stimuli +=1
             total_size += size
