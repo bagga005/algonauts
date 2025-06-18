@@ -911,7 +911,7 @@ if __name__ == "__main__":
     #filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     #filter_in_name = ["s03", "s04", "s05", "s06"]
-    filter_in_name = ["life", "s01"]
+    filter_in_name = ["life", "s01", "s02"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
