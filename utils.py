@@ -90,6 +90,37 @@ def get_subject_network_accuracy_file_for_experiement(experiment_name, results_o
         filepath = os.path.join(get_output_dir(), 'all_subjects_accuracy.csv')
     return filepath
 
+def get_stimulus_windows():
+    a_sw = get_run_setting("audio_stimulus_window")
+    v_sw = get_run_setting("visual_stimulus_window")
+    l_sw = get_run_setting("language_stimulus_window")
+    if a_sw is None or v_sw is None or l_sw is None:
+        raise Exception("audio_stimulus_window, visual_stimulus_window, and language_stimulus_window must be set in the run settings file")
+    
+    return int(a_sw), int(v_sw), int(l_sw)
+
+def get_run_setting(setting_name):
+
+    settings_file_path = get_run_settings_file()
+    
+    # Check if settings file exists
+    if not os.path.exists(settings_file_path):
+        raise Exception(f"Settings file {settings_file_path} not found")
+    
+    try:
+        # Load settings from file
+        with open(settings_file_path, 'r') as f:
+            settings = json.load(f)
+        
+        # Check if the requested setting exists
+        if setting_name not in settings:
+            raise Exception(f"Setting '{setting_name}' not found in {settings_file_path}")
+            
+        return settings[setting_name]
+        
+    except (json.JSONDecodeError, IOError) as e:
+        raise Exception(f"Error loading settings file {settings_file_path}: {e}")
+    
 def get_embeddings_format():
     embeddings_format = os.getenv("EMBEDDINGS_FORMAT")
     if not embeddings_format:
