@@ -882,16 +882,17 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         else:
             print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
-def do_add_padding(dir_output_path, pca_dims, modality):
+def do_add_padding(dir_output_path, pca_dims):
     pads = np.zeros((5,1000))
     for pca_dim in pca_dims:
         pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
         if os.path.exists(pca_file_path):            
-            features = np.load(pca_file_path, allow_pickle=True)
+            features = np.load(pca_file_path, allow_pickle=True).item()
             #print(features.item().keys())
             for stim_id in features.keys():
                 features[stim_id] = np.concatenate((pads, features[stim_id], pads), axis=0)
             np.save(pca_file_path, features)
+            print(f"**Padded {pca_dim} for {pca_file_path}")
         else:
             print(f"**Skipping padding for {pca_dim} because file does not exist")
     
