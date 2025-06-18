@@ -967,13 +967,13 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    overwrite_pca=True, \
+                    #overwrite_pca=True, \
                     #overwrite=True, \
                     #pca_skip=True, \
                     # force_evaluation=True \
                     skip_evaluation = True, \
                     pca_dims=[250,500,1000], \
-                    skip_add_padding=True, \
+                    skip_add_padding=False, \
                     #skip_dimension_check=True \
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
