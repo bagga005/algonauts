@@ -120,6 +120,18 @@ def isMockMode():
     if strm:
         return str_to_bool(strm)
     
+def get_run_settings_file():
+    dir_path = os.getenv("RUN_SETTINGS_DIR")
+    if dir_path and dir_path.strip() != '':
+        settings_file = os.getenv("RUN_SETTING")
+        if settings_file and settings_file.strip() != '':
+            return os.path.join(dir_path, settings_file+ ".json")
+        else:
+            raise Exception("RUN_SETTINGS_FILE is not set")
+    else:
+        raise Exception("RUN_SETTINGS_DIR is not set")
+
+
 def get_lora_config():
     return int(os.getenv("LORA_BATCH_SIZE")), int(os.getenv("LORA_EPOCH")), int(os.getenv("LORA_START_EPOCH"))
 
