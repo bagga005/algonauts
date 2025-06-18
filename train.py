@@ -388,7 +388,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
      for stim_id, size in boundary:
             if(size != len(features[stim_id])):
-                print(f"size {size} != len(features[stim_id]) {len(features[stim_id])} for movie {movie_name} and stim_id {stim_id}")
+                print(f"Mismatch: for movie {movie_name} and stim_id {stim_id}. fmri size {size} != feature size {len(features[stim_id])} ")
 
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
