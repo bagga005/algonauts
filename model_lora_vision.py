@@ -1076,8 +1076,8 @@ class RegressionHander_Vision():
                         output = self.model(batch_X)
                     output = output.cpu().numpy()
                     fmri_val_pred.append(output)
-                    if batch_counter % 10 == 0:
-                        print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
+                    # if batch_counter % 10 == 0:
+                    #     print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
                     batch_counter += 1
                     pbar.update(1)
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
