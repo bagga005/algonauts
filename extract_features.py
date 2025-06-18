@@ -935,7 +935,7 @@ if __name__ == "__main__":
                     #pca_skip=True \
                     # force_evaluation=True \
                     skip_evaluation = True, \
-                    pca_dims=[2000]
+                    pca_dims=[250,500,1000]
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
