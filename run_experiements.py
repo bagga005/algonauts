@@ -71,10 +71,6 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     assert not(run_training_1_subject and run_training_all_subjects), "run_training_1_subject and run_training_all_subjects cannot be True at the same time"
     assert not(run_validation_1_subject and run_validation_all_subjects), "run_validation_1_subject and run_validation_all_subjects cannot be True at the same time"
     assert training_handler in ["sklearn", "loravision"], "training_handler must be either sklearn or loravision"
-    a_sw, v_sw, l_sw = get_stimulus_windows()
-    print('a_sw', a_sw)
-    print('v_sw', v_sw)
-    print('l_sw', l_sw)
     
     
     config = {
