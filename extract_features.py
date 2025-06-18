@@ -499,9 +499,7 @@ def get_stim_id_list(dir_path, filter_in_name=None, add_layer_to_path=True):
         dir_path = os.path.join(dir_path, 'metadata')
     files = glob(f"{dir_path}/*_metadata.json")
     f_list = [f.split("/")[-1].split("_")[0] + "_" + f.split("/")[-1].split("_")[1] for f in files]
-    print('f_list 1', f_list)
     f_list = list(set(f_list))
-    print('f_list 2', f_list)
     f_list.sort()
     #print(filter_in_name)
 
@@ -899,6 +897,33 @@ def do_add_padding(dir_output_path, pca_dims):
             print(f"**Padded {pca_dim} for {pca_file_path}")
         else:
             print(f"**Skipping padding for {pca_dim} because file does not exist")
+
+def get_long_movie_name(short_movie_name):
+    if short_movie_name == "s01":
+        return "friends-s01"
+    elif short_movie_name == "s02":
+        return "friends-s02"
+    elif short_movie_name == "s03":
+        return "friends-s03"
+    elif short_movie_name == "s04":
+        return "friends-s04"
+    elif short_movie_name == "s05":
+        return "friends-s05"
+    elif short_movie_name == "s06":
+        return "friends-s06"
+    elif short_movie_name == "s07":
+        return "friends-s07"
+    elif short_movie_name == "life":
+        return "movie10-life"
+    elif short_movie_name == "bourne":
+        return "movie10-bourne"
+    elif short_movie_name == "figures":
+        return "movie10-figures"
+    elif short_movie_name == "wolf":
+        return "movie10-wolf"
+    
+    else:
+        raise ValueError(f"Invalid short movie name: {short_movie_name}")
     
 def do_dimension_check(dir_output_path, pca_dims, filter_in_name):
     fmri = get_fmri(1)
@@ -907,7 +932,7 @@ def do_dimension_check(dir_output_path, pca_dims, filter_in_name):
         if os.path.exists(pca_file_path):
             features = np.load(pca_file_path, allow_pickle=True).item()
             for movie in filter_in_name:
-                do_features_fmri_len_check(features, fmri, movie)
+                do_features_fmri_len_check(features, fmri, get_long_movie_name(movie))
             print(f"**Dimension check passed for {pca_file_path}")
         else:
             print(f"**Skipping dimension check for {pca_dim} because file does not exist")
