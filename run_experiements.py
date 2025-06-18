@@ -17,7 +17,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
     hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
-    subject = -1
+    subject = 1
     include_viewing_sessions = False
     skip_accuracy_check = False
     movies_train = ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06", "friends-s07", "movie10-life","movie10-bourne",  "movie10-wolf", "movies10-figures"] #, "movie10-bourne",  "movie10-wolf", "movies10-life"] # @param {allow-input: true}
@@ -26,7 +26,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     
     # movies_train = ["friends-s01"	] # @param {allow-input: true}
     # movies_val = ["friends-s01"] # @param {allow-input: true}
-    training_handler = 'loravision'
+    training_handler = 'sklearn'
     
     experiment_comments = 'test internvl'
     specific_modalities = ["visual"]
