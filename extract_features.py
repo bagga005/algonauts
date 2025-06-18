@@ -580,6 +580,7 @@ STRATEGY_V2_LN7_VCLS = 300
 
 #R50
 STRATEGY_PREDICTION = 800
+STRATEGY_POOL_ALL = 801
 
 COMBINE_STRATEGY_ALL = 'all'
 COMBINE_STRATEGY_LAST = 'last'
@@ -639,7 +640,8 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 
             elif strategy == STRATEGY_PREDICTION:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "predictions", COMBINE_STRATEGY_ALL)
-            
+            elif strategy == STRATEGY_POOL_ALL:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "blocks_5_pool", COMBINE_STRATEGY_ALL)
             elif strategy == STRATEGY_V3_MP_PRE_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=6)
             elif strategy == STRATEGY_V3_MP_POST_F3:
