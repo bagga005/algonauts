@@ -635,7 +635,7 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=19)
                 
             elif strategy == STRATEGY_PREDICTION:
-                ten1 = combine_vlm_features(dir_input_path, stim_id, "prediction", COMBINE_STRATEGY_I,i=19)
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "predictions", COMBINE_STRATEGY_I,i=19)
             
             elif strategy == STRATEGY_V3_MP_PRE_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=6)
