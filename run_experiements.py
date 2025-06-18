@@ -78,7 +78,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     config = {
         'trained_model_name': None, #'lora-7-checkpoint-params',#'lora-best-distributed',
     }
-    
+
     #loading fmri
     if subject == -1:
         fmri = train.get_fmri_for_all_subjects()
@@ -137,12 +137,12 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     if run_validation_1_subject:    
         for movie in movies_val:
             train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, [movie], training_handler, \
-                include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False, skip_accuracy_check=skip_accuracy_check)
+                include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
 
     if run_validation_all_subjects:
         train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, training_handler, include_viewing_sessions, \
             config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
-            write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory, skip_accuracy_check=skip_accuracy_check)
+            write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory)
        
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
