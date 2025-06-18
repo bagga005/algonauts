@@ -499,7 +499,9 @@ def get_stim_id_list(dir_path, filter_in_name=None, add_layer_to_path=True):
         dir_path = os.path.join(dir_path, 'metadata')
     files = glob(f"{dir_path}/*_metadata.json")
     f_list = [f.split("/")[-1].split("_")[0] + "_" + f.split("/")[-1].split("_")[1] for f in files]
+    print('f_list 1', f_list)
     f_list = list(set(f_list))
+    print('f_list 2', f_list)
     f_list.sort()
     #print(filter_in_name)
 
@@ -945,8 +947,8 @@ if __name__ == "__main__":
 
     #filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
-    #filter_in_name = ["s03", "s04", "s05", "s06"]
-    filter_in_name = ["movie10-life", "friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"]
+    filter_in_name = ["s03"]
+    #filter_in_name = ["movie10-life", "friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
