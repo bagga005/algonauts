@@ -469,7 +469,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         # print('id', id)
         #print('movie_splits', movie_splits)
         #load viewing session
-        print('features.keys()', features['visual'].keys())
+        #print('features.keys()', features['visual'].keys())
         ### Loop over movie splits ###
         for split in movie_splits:
             v_session = None
@@ -1047,8 +1047,6 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             fmri, boundary = prepare_s7_fmri_for_alignment(subject)
             skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
-        print('boundary', boundary)
-        print('features.keys()', features['visual'].keys())
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, stimulus_window, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
         del features
         _,_, enable_wandb = utils.get_wandb_config()
