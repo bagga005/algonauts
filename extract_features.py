@@ -575,6 +575,9 @@ STRATEGY_LN_3_VN = 21
 STRATEGY_LN7_4_12_NORM_VN_NORM = 22
 STRATEGY_V2_LN7_VCLS = 300
 
+#R50
+STRATEGY_PREDICTION = 800
+
 
 COMBINE_STRATEGY_LAST = 'last'
 COMBINE_STRATEGY_LAST3 = 'last3'
@@ -630,7 +633,9 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=10)
             elif strategy == STRATEGY_V4_IMG_PLUS1:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=19)
-
+                
+            elif strategy == STRATEGY_PREDICTION:
+                ten1 = combine_vlm_features(dir_input_path, stim_id, "prediction", COMBINE_STRATEGY_I,i=19)
             
             elif strategy == STRATEGY_V3_MP_PRE_7:
                 ten1 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I_J,i=0,j=6)
