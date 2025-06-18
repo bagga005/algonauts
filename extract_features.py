@@ -911,7 +911,7 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
         for pca_dim in pca_dims:
             perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
     if add_padding:
-        do_add_padding(dir_output_path, pca_dims, modality)
+        do_add_padding(dir_output_path, pca_dims)
 
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
