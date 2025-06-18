@@ -2,7 +2,7 @@ import train
 from datetime import datetime
 import traceback
 from utils import load_viewing_session_for_subject, get_accuracy_json_file, isMockMode, get_runpod_config, get_output_dir, \
-    set_hf_home_path, get_run_settings_file, get_stimulus_windows
+    set_hf_home_path, get_run_settings_file, get_stimulus_windows, get_hrf_delay
 import os
 import subprocess
 import sys
@@ -14,7 +14,6 @@ def load_training_settings():
     default_settings = {
         "excluded_samples_start": 5,
         "excluded_samples_end": 5,
-        "hrf_delay": 3,
         "subject": 1,
         "include_viewing_sessions": False,
         "movies_train": ["friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"],
@@ -55,7 +54,6 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     settings = load_training_settings()
     excluded_samples_start = settings["excluded_samples_start"]
     excluded_samples_end = settings["excluded_samples_end"]
-    hrf_delay = settings["hrf_delay"]
     subject = settings["subject"]
     include_viewing_sessions = settings["include_viewing_sessions"]
     movies_train = settings["movies_train"]
@@ -71,8 +69,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     assert not(run_training_1_subject and run_training_all_subjects), "run_training_1_subject and run_training_all_subjects cannot be True at the same time"
     assert not(run_validation_1_subject and run_validation_all_subjects), "run_validation_1_subject and run_validation_all_subjects cannot be True at the same time"
     assert training_handler in ["sklearn", "loravision"], "training_handler must be either sklearn or loravision"
-    
-    
+
     config = {
         'trained_model_name': None, #'lora-7-checkpoint-params',#'lora-best-distributed',
     }
@@ -105,18 +102,18 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     # print('fmri3', fmri3['s01e01a'].shape)
     
     # print('fmri5', fmri5['s01e01a'].shape)
-    #measure_yony_accuracy(subject, specific_modalities[0], fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train)
+    #measure_yony_accuracy(subject, specific_modalities[0], fmri, excluded_samples_start, excluded_samples_end, movies_train)
     # areas_of_interest_path = os.path.join(root_data_dir, 'eval_results', 'areas-of-interest.csv')
     # arr = utils.load_csv_to_array(areas_of_interest_path)
     # print('arr', arr[:100])
     # print('arr.shape', arr.shape)
     # utils.save_npy(arr, subject, modality)
-    #features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train)
-    #run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val)
+    #features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train)
+    #run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val)
     # print('modality', modality)
     # print('features_train.shape', features_train.shape)
     # print('fmri_train.shape', fmri_train.shape)
-    #train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_train)
+    #train_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_train)
     movies_train_val = None
     if isMockMode():
         print('******************* MOCK MODE *******************')
@@ -125,20 +122,20 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     print('movies_train_val', movies_train_val)
     print('moviels_val', movies_val)
     if run_training_1_subject:
-        train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+        train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     #subject = 3
-    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
+    #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     if run_training_all_subjects:
-        train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
+        train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
                                  config, specific_modalities)
         
     if run_validation_1_subject:    
         for movie in movies_val:
-            train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, [movie], training_handler, \
+            train.validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, [movie], training_handler, \
                 include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
 
     if run_validation_all_subjects:
-        train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, training_handler, include_viewing_sessions, \
+        train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, \
             config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
             write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory)
        
@@ -146,8 +143,8 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     #features = train.get_features("all")
     #print('features', features['visual'].keys())
     #print('features', features['visual']['s01e01a'].shape)
-    #train.align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train)
-    #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_val)
+    #train.align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train)
+    #validate_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_val)
 
     # Print the shape of the training fMRI responses and stimulus features: note
     # that the two have the same sample size!

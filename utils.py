@@ -99,6 +99,15 @@ def get_stimulus_windows():
     
     return int(a_sw), int(v_sw), int(l_sw)
 
+def get_hrf_delay():
+    a_sw = get_run_setting("audio_hrf_delay")
+    v_sw = get_run_setting("visual_hrf_delay")
+    l_sw = get_run_setting("language_hrf_delay")
+    if a_sw is None or v_sw is None or l_sw is None:
+        raise Exception("audio_hrf_delay, visual_hrf_delay, and language_hrf_delay must be set in the run settings file")
+    
+    return int(a_sw), int(v_sw), int(l_sw)
+
 def get_run_setting(setting_name):
 
     settings_file_path = get_run_settings_file()

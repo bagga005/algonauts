@@ -261,7 +261,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
 
 
 def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
-    excluded_samples_end, hrf_delay, movies, viewing_session, summary_features=False, all_subject_fmri=False):
+    excluded_samples_end, movies, viewing_session, summary_features=False, all_subject_fmri=False):
     """
     Align the stimulus feature with the fMRI response samples for the selected
     movies, later used to train and validate the encoding models.
@@ -334,6 +334,7 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
         aligned_fmri = np.empty((0,4,1000), dtype=np.float32)
 
     audio_stimulus_window, visual_stimulus_window, language_stimulus_window = utils.get_stimulus_windows()
+    audio_hrf_delay, visual_hrf_delay, language_hrf_delay = utils.get_hrf_delay()
     ### Loop across movies ###
     for movie in movies:
         #do fmri len check for all mods
@@ -425,15 +426,18 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
                         # if mod == 'audio':
                         #     effective_split = 'friends_' + split
                         effective_stimulus_window = visual_stimulus_window
+                        effective_hrf_delay = visual_hrf_delay
                         if mod == 'language':
                             effective_stimulus_window = language_stimulus_window
+                            effective_hrf_delay = language_hrf_delay
                         elif mod == 'audio':
                             effective_stimulus_window = audio_stimulus_window
-                        if s < (effective_stimulus_window + hrf_delay):
+                            effective_hrf_delay = audio_hrf_delay
+                        if s < (effective_stimulus_window + effective_hrf_delay):
                             idx_start = excluded_samples_start
                             idx_end = idx_start + effective_stimulus_window
                         else:
-                            idx_start = s + excluded_samples_start - hrf_delay \
+                            idx_start = s + excluded_samples_start - effective_hrf_delay \
                                 - effective_stimulus_window + 1
                             idx_end = idx_start + effective_stimulus_window
                         # In case there are less visual/audio feature samples
@@ -653,14 +657,14 @@ def add_recurrent_features(features,fmri,recurrence):
     #print('fmri.shape', fmri.shape)
     return recurrent_features, fmri
 
-def run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler, viewing_session, config):
+def run_training(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, viewing_session, config):
     #print('run training')
     
     #features_train, fmri_train = add_recurrent_features(features_train, fmri_train, recurrence)
     #features_train_val, fmri_train_val = add_recurrent_features(features_train_val, fmri_train_val, recurrence)
     features_train_val, fmri_train_val = None, None
     if training_handler == 'pytorch':
-        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, viewing_session)
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, viewing_session)
         trainer = RegressionHander_Pytorch(features_train.shape[1], fmri_train.shape[1])
         print('got simple handler')
     if training_handler == 'loravision':
@@ -669,7 +673,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
             all_subjects = True
 
         print('training for all subjects', all_subjects)
-        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, viewing_session, summary_features=True, all_subject_fmri=all_subjects)
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, viewing_session, summary_features=True, all_subject_fmri=all_subjects)
         output_shape = fmri_train.shape[1]
         if len(fmri_train.shape) == 3:
             output_shape = fmri_train.shape[2]
@@ -685,12 +689,12 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     elif training_handler == 'sklearn':
         #print('aligning features and fmri samples')
-        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, viewing_session)
+        features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, viewing_session)
         #print('got features and fmri samples')
         trainer = LinearHandler_Sklearn(features_train.shape[1], fmri_train.shape[1])
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val)
     elif training_handler == 'transformer':
-        features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train_val, viewing_session)
+        features_train_val, fmri_train_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train_val, viewing_session)
         trainer = RegressionHander_Transformer(features_train.shape[1], fmri_train.shape[1])
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     #print('training')
@@ -700,7 +704,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, h
     del features_train, fmri_train
     return trainer, training_time
 
-def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None):
+def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
@@ -711,14 +715,14 @@ def train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_sam
         print(f"Starting training for modality {modality}...")
         features = get_features(modality)
         print(f"Got features for modality {modality}...")
-        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler,viewing_session, config)
+        trainer, training_time = run_training(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler,viewing_session, config)
         print(f"Completed modality {modality} in {training_time:.2f} seconds")
         model_name = get_model_name(subject, modality, 0)
         trainer.save_model(model_name)
         del features, trainer
 
 
-def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None, skip_if_accuracy_exists=False):
+def train_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities=None, skip_if_accuracy_exists=False):
     start_time = time.time()
     for subject in [1, 2, 3, 5]:
         subject_start = time.time()
@@ -730,7 +734,7 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
                 continue
         fmri = get_fmri(subject)
         #viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
-        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
+        train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, include_viewing_sessions, config, specific_modalities)
         subject_time = time.time() - subject_start
         print(f"Completed subject {subject} in {subject_time:.2f} seconds")
         del fmri
@@ -738,17 +742,17 @@ def train_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_del
     print(f"\nTotal training time for all subjects: {total_time:.2f} seconds")
     return total_time
 
-def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, training_handler, include_viewing_sessions, config, \
+def validate_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, config, \
                                 specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, skip_accuracy_check=False):
     modalities = ["visual", "audio", "language", "all", "audio+language", "visual+language"]
     if specific_modalities:
         modalities = specific_modalities
     for modality in modalities:
         features = get_features(modality)
-        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
         del features
 
-def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False, experiment_name=None, results_output_directory=None, skip_accuracy_check=False):
+def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, config, specific_modalities=None, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False, break_up_by_network=False, save_combined_accuracy=False, experiment_name=None, results_output_directory=None, skip_accuracy_check=False):
     assert len(specific_modalities) == 1
     modality = specific_modalities[0]
     features = get_features(modality)
@@ -761,7 +765,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
     for subject in subjects:
         fmri = get_fmri(subject)
         print(f"\nValidation for Subject {subject}")
-        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
+        accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
         subject_accuracies[subject] = accuracy
         subject_accuracies_by_network[subject] = accuracy_by_network
         
@@ -827,13 +831,13 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, hrf_
     
     print("=== END SUMMARY ===\n")
 
-def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
+def run_validation_by_average(subject, modality, fmri,excluded_samples_start, excluded_samples_end, movies_train, movies_val,training_handler, include_viewing_sessions, write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False):
     viewing_session = None
     if include_viewing_sessions:
         viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     features = get_features(modality)
-    features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay,  movies_val, viewing_session)
-    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, viewing_session)
+    features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_val, viewing_session)
+    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, viewing_session)
     print('features_train.shape', features_train.shape)
     print('features_val.shape', features_val.shape)
     print('fmri_train.shape', fmri_train.shape)
@@ -873,7 +877,7 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
     return accuracy
 
 
-def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val,training_handler, include_viewing_sessions, config, \
+def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val,training_handler, include_viewing_sessions, config, \
     write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, skip_accuracy_check=False):
     viewing_session = None
     if include_viewing_sessions:
@@ -887,7 +891,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     if training_handler == 'pytorch':
          # Align the stimulus features with the fMRI responses for the validation movies
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
-        excluded_samples_start, excluded_samples_end, hrf_delay, 
+        excluded_samples_start, excluded_samples_end, 
         movies_val, viewing_session)
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
@@ -896,13 +900,13 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             fmri, boundary = prepare_s7_fmri_for_alignment(subject)
             skip_accuracy_check = True
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
-        excluded_samples_start, excluded_samples_end, hrf_delay, 
+        excluded_samples_start, excluded_samples_end,
         movies_val, viewing_session)
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
          # Align the stimulus features with the fMRI responses for the validation movies
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
-        excluded_samples_start, excluded_samples_end, hrf_delay, 
+        excluded_samples_start, excluded_samples_end, 
         movies_val, viewing_session)
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
@@ -911,7 +915,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
             fmri, boundary = prepare_s7_fmri_for_alignment(subject)
             skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
-        features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
+        features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
         del features
         _,_, enable_wandb = utils.get_wandb_config()
         lora_model = utils.get_model_checkpoint()
@@ -999,11 +1003,11 @@ def get_subject_string(subject):
     elif subject == 5:
         return 'sub-05'
 
-def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train):
+def measure_yony_accuracy(subject, modality, fmri, excluded_samples_start, excluded_samples_end, movies_train):
     fmri = get_fmri(subject)
     viewing_session = utils.load_viewing_session_for_subject(get_subject_string(subject))
     features = get_features(modality)
-    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, hrf_delay, movies_train, viewing_session)
+    features_train, fmri_train = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_train, viewing_session)
     
     #utils.compute_encoding_accuracy(fmri_train, fmri_train, subject, modality)
     pre_fmri = fmri_train.copy()
