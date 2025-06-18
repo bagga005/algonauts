@@ -15,7 +15,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     # print(npn)
     excluded_samples_start = 5  #@param {type:"slider", min:0, max:20, step:1}
     excluded_samples_end = 5  #@param {type:"slider", 6min:0, max:20, step:1}
-    hrf_delay = 3  #@param {type:"slider", min:0, max:10, step:1}
+    hrf_delay = 0  #@param {type:"slider", min:0, max:10, step:1}
     stimulus_window = 4  #@param {type:"slider", min:1, max:20, step:1}
     subject = 1
     include_viewing_sessions = False
