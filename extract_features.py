@@ -9,6 +9,7 @@ import h5py
 import torch
 import numpy as np
 from run_experiements import run_trainings
+from train import get_fmri, do_features_fmri_len_check
 import shutil
 #from model_r50_ft import VisionR50FineTuneModel
 USE_LIGHTNING = True
@@ -897,9 +898,21 @@ def do_add_padding(dir_output_path, pca_dims):
         else:
             print(f"**Skipping padding for {pca_dim} because file does not exist")
     
+def do_dimension_check(dir_output_path, pca_dims, filter_in_name):
+    fmri = get_fmri(1)
+    for pca_dim in pca_dims:
+        pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
+        if os.path.exists(pca_file_path):
+            features = np.load(pca_file_path, allow_pickle=True).item()
+            for movie in filter_in_name:
+                do_features_fmri_len_check(features, fmri, movie)
+            print(f"**Dimension check passed for {pca_file_path}")
+        else:
+            print(f"**Skipping dimension check for {pca_dim} because file does not exist")
+            
 def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, \
     overwrite=False, add_layer_to_path=True,  skip_evaluation=False, overwrite_pca=False, force_evaluation=False, pca_dims=[250,500,1000], 
-    add_padding=False):
+    skip_add_padding=True, skip_dimension_check=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"\n**Starting save_combined_vlm_features for {strategy_name}")
@@ -911,8 +924,10 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
             do_pca(dir_output_path, pca_file_path, modality, do_zscore=False, skip_pca_just_comgine=True)
         for pca_dim in pca_dims:
             perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
-    if add_padding:
+    if not skip_add_padding:
         do_add_padding(dir_output_path, pca_dims)
+    if not skip_dimension_check:
+        do_dimension_check(dir_output_path, pca_dims, filter_in_name)
 
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
@@ -931,7 +946,7 @@ if __name__ == "__main__":
     #filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     #filter_in_name = ["s03", "s04", "s05", "s06"]
-    filter_in_name = ["life", "s01", "s02"]
+    filter_in_name = ["movie10-life", "friends-s01", "friends-s02"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
@@ -958,7 +973,8 @@ if __name__ == "__main__":
                     # force_evaluation=True \
                     skip_evaluation = True, \
                     pca_dims=[250,500,1000], \
-                    add_padding=True
+                    skip_add_padding=True, \
+                    #skip_dimension_check=True \
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
