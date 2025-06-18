@@ -972,8 +972,8 @@ if __name__ == "__main__":
 
     #filter_in_name = ["s01", "s02", "s03", "s04", "s05", "s06", "s07"]
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
-    filter_in_name = ["s03"]
-    #filter_in_name = ["movie10-life", "friends-s01", "friends-s02", "friends-s03", "friends-s04", "friends-s05"]
+    #filter_in_name = ["s03"]
+    filter_in_name = ["life", "s01", "s02", "s03", "s04", "s05"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
