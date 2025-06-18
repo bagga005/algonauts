@@ -26,6 +26,8 @@ from algonaut_funcs import prepare_s7_fmri_for_alignment
 def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None):
     assert subject == None or fmri == None, "subject and fmri cannot be provided together"
     if movie_name == "friends-s07":
+        if subject == None:
+            subject = 1
         _, boundary = prepare_s7_fmri_for_alignment(subject)
         return boundary
     else:
