@@ -861,13 +861,14 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
     #print(f"combine_features: {strategy}, combined_tensor.shape", combined_tensor.shape, "stim_id", stim_id)
     return combined_tensor
 
-
-def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False, force_evaluation=False):
+def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite=False, \
+    force_evaluation=False):
     pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
     if not os.path.exists(pca_file_path) or overwrite:
         do_pca(dir_output_path, pca_file_path, modality, do_zscore=True, skip_pca_just_comgine=False, n_components=pca_dim)
     else:
         print(f"**Skipping pca for {strategy_name} {pca_dim} because file already exists")
+    
     if not skip_evaluation:
         #get results file path to see if it exists
         eval_dir = os.path.join(dir_output_path, 'evals')
@@ -881,7 +882,18 @@ def perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, 
         else:
             print(f"**Skipping validation for {strategy_name} {pca_dim} because results file already exists")
 
-def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, overwrite=False, add_layer_to_path=True,  skip_evaluation=False, overwrite_pca=False, force_evaluation=False, pca_dims=[250,500,1000]):
+def add_padding(dir_output_path, pca_dims, modality):
+    for pca_dim in pca_dims:
+        pca_file_path =os.path.join(dir_output_path, f"features_train-{pca_dim}.npy")
+        if os.path.exists(pca_file_path):            
+            features = np.load(pca_file_path)
+            print(features.keys())
+        else:
+            print(f"**Skipping padding for {pca_dim} because file does not exist")
+    
+def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, modality, filter_in_name=None, pca_only=False, pca_skip=False, \
+    overwrite=False, add_layer_to_path=True,  skip_evaluation=False, overwrite_pca=False, force_evaluation=False, pca_dims=[250,500,1000], 
+    add_padding=False):
     os.makedirs(dir_output_path, exist_ok=True)	
     if not pca_only:
         print(f"\n**Starting save_combined_vlm_features for {strategy_name}")
@@ -893,6 +905,8 @@ def exec_emb_and_pca(dir_input_path, dir_output_path, strategy_name, strategy, m
             do_pca(dir_output_path, pca_file_path, modality, do_zscore=False, skip_pca_just_comgine=True)
         for pca_dim in pca_dims:
             perform_pca_evaluate_embeddings(strategy, strategy_name, pca_dim, modality, skip_evaluation, dir_output_path, overwrite_pca, force_evaluation)
+    if add_padding:
+        add_padding(dir_output_path, pca_dims, modality)
 
 
 def get_embeddings_and_evaluate_for_strategy(strategy_folder_name, strategy_id, dir_input_path, dir_output_path, **kwargs):
@@ -932,12 +946,13 @@ if __name__ == "__main__":
                 strategy = arg
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
-                    overwrite_pca=True, \
+                    #overwrite_pca=True, \
                     #overwrite=True, \
-                    #pca_skip=True \
+                    pca_skip=True, \
                     # force_evaluation=True \
                     skip_evaluation = True, \
-                    pca_dims=[250,500,1000]
+                    pca_dims=[250,500,1000], \
+                    add_padding=True
                     )
                 get_embeddings_and_evaluate_for_strategy(strategy, strategy_id, \
             dir_input_path, dir_output_path, **kwargs)  
