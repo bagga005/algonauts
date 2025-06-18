@@ -1,4 +1,5 @@
 import torch
+from tqdm import tqdm
 from torchvision.models.feature_extraction import create_feature_extractor
 from model_lora_vision_embeddings import save_embeddings
 import os
@@ -1062,21 +1063,23 @@ class RegressionHander_Vision():
         with torch.no_grad():
             batch_counter = 0
             #for batch_X1, batch_X2, batch_idx, batch_X, batch_y in pred_loader:
-            for batch_X, batch_y in pred_loader:
-                batch_X = batch_X.to(self.device)
-                if record_layer_output:
-                    output, layer_output = self.model(batch_X)
-                    if full_embeddings is None:
-                        full_embeddings = layer_output.cpu().numpy()
+            with tqdm(total=len(pred_loader), desc="Extracting ..") as pbar:
+                for batch_X, batch_y in pred_loader:
+                    batch_X = batch_X.to(self.device)
+                    if record_layer_output:
+                        output, layer_output = self.model(batch_X)
+                        if full_embeddings is None:
+                            full_embeddings = layer_output.cpu().numpy()
+                        else:
+                            full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
                     else:
-                        full_embeddings = np.concatenate([full_embeddings, layer_output.cpu().numpy()], axis=0)
-                else:
-                    output = self.model(batch_X)
-                output = output.cpu().numpy()
-                fmri_val_pred.append(output)
-                if batch_counter % 10 == 0:
-                    print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
-                batch_counter += 1
+                        output = self.model(batch_X)
+                    output = output.cpu().numpy()
+                    fmri_val_pred.append(output)
+                    if batch_counter % 10 == 0:
+                        print(f'batch_counter {batch_counter} | Total: {len(features_val)}')
+                    batch_counter += 1
+                    pbar.update(1)
         fmri_val_pred = np.concatenate(fmri_val_pred, axis=0)
         save_embeddings(full_embeddings, fmri_val_pred, video_prefix, 0)
         return fmri_val_pred
