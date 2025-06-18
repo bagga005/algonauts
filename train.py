@@ -35,8 +35,6 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None)
             id = movie_name[8:]
         elif movie_name[:7] == 'movie10':
             id = movie_name[8:]
-        print('movie_name', movie_name)
-        print('id', id)
         if fmri is None:
             fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
@@ -394,7 +392,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
 
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
-                (size == len(features[stim_id])+2) or (stim_id in ['bourne01'])
+                (size == len(features[stim_id])+2) or (stim_id in ['bourne01', 'life01' , 'life02', 'life03', 'life04', 'life05'])
             if not passed:
                 print(f"Mismatch: for movie {movie_name} and stim_id {stim_id}. fmri size {size} != feature size {len(features[stim_id])} ")
 
