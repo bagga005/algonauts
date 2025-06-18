@@ -471,8 +471,8 @@ def align_features_and_fmri_samples(features, fmri, excluded_samples_start,
     for movie in movies:
         #do fmri len check for all mods
         fmri_for_subject = fmri
-        # if all_subject_fmri:
-        #     fmri_for_subject = fmri['fmri1']
+        if all_subject_fmri:
+            fmri_for_subject = fmri['fmri1']
         for mod in features.keys():
             do_features_fmri_len_check(features[mod], fmri_for_subject, movie)
             
