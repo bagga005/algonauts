@@ -47,7 +47,8 @@ class SentenceDataset(Dataset):
         return text
 
 class SentenceDataset_v15(Dataset):
-    def __init__(self, transcript_id, mode="last_n_trs", last_n_trs=5, n_used_words=510, prep_sentences=None):
+    def __init__(self, transcript_id, mode="n_used_words", last_n_trs=5, \
+        n_used_words=1000, prep_sentences="contpretr-friends-v1"):
         transcript_data, self.tr_start, self.tr_length = get_full_transcript(transcript_id)
         self.sentences = [item['text_per_tr'] for item in transcript_data]
         self.prep_sentences = prep_sentences
@@ -109,6 +110,11 @@ def get_best_text(ds15, ds2, idx, skip_video_tokens=False, num_videos=8):
         return text15, False
             
 
+
+
+# df = pd.read_csv(transcript_file, sep='\t').fillna("")
+#         dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words, prep_sentences=prep_sentences)
+
 def get_full_transcript(stim_id):
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=False)
     tr_start = 0
@@ -120,6 +126,12 @@ def get_full_transcript(stim_id):
         else:
             tr_start += tr_info['len']
     return transcript_data, tr_start, tr_length
+
+def get_transcript_dataSet_simple(stim_id, n_used_words=1000):
+    root_data_dir = utils.get_data_root_dir()
+    ds = SentenceDataset_v15(stim_id, n_used_words=n_used_words)
+    return ds
+    
 
 def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=False, use_summary=False, use_present_scene=False):
     root_data_dir = utils.get_data_root_dir()

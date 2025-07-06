@@ -146,7 +146,7 @@ def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
     if isEnhanced:
         t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/friends/s*/enhanced/{stim_id}*.tsv")
     else:
-        t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/friends/s*/{stim_id}*.tsv")
+        t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/*/*/{stim_id}*.tsv")
     t_files.sort()
     f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
     #print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])

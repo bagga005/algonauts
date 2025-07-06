@@ -10,7 +10,8 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text, SentenceDataset_v15, get_best_text
+from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text, \
+     get_transcript_dataSet_simple
 import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
@@ -726,8 +727,9 @@ def process_all_files_for_embedding_extraction():
             # text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=False, n_used_words=1000, skip_pre_post_split=False, \
             #     use_summary=True, use_present_scene=True)
             #Experiment with img at start and middle
-            text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=True, \
-                use_summary=True, use_present_scene=True)
+            # text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=True, \
+            #     use_summary=True, use_present_scene=True)
+            text_dataset = get_transcript_dataSet_simple(stim_id, n_used_words=1000)
             
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
