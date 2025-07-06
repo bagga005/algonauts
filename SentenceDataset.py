@@ -70,7 +70,7 @@ class SentenceDataset_v15(Dataset):
 
         elif self.mode=="n_used_words":
           effective_idx = idx + self.tr_start
-          #print(f"effective_idx: {effective_idx} {idx}")
+          print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
           tr_text = "".join(self.sentences[:effective_idx+1])
           nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
           text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
@@ -125,6 +125,7 @@ def get_full_transcript(stim_id):
             break
         else:
             tr_start += tr_info['len']
+    print(f"tr_start: {tr_start}, tr_length: {tr_length}")
     return transcript_data, tr_start, tr_length
 
 def get_transcript_dataSet_simple(stim_id, n_used_words=1000):

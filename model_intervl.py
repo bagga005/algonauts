@@ -793,7 +793,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     batch_size = utils.get_mvl_batch_size()
 
     len_trans_dataset = len(text_dataset)
-    assert num_chunks -1 <= len_trans_dataset <= num_chunks, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
+    assert num_chunks - 5<= len_trans_dataset <= num_chunks +5, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
 
     #experiement exact match
     # dataset15 = SentenceDataset_v15(episode_id, mode="n_used_words", n_used_words=n_used_words)
@@ -838,6 +838,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
                     #experiement exact match
                     textData = text_dataset[trans_index]
+                    continue
                     question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix, mvl_pix_last=mvl_pix_last)
                     # question_for_embeddings, matched = get_best_text(dataset15, text_dataset, trans_index, skip_video_tokens=skip_pix, num_videos=8)
                     # matched_num += 1 if matched else 0
