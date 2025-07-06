@@ -111,7 +111,10 @@ def get_best_text(ds15, ds2, idx, skip_video_tokens=False, num_videos=8):
 #         dataset = SentenceDataset(df["text_per_tr"].tolist(), mode="n_used_words", n_used_words=n_used_words, prep_sentences=prep_sentences)
 
 def get_full_transcript(stim_id):
-    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=False)
+    stim_iden = stim_id[:-1]
+    if stim_iden[-1] == '0':
+        stim_iden = stim_iden[:-1]
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_iden, isEnhanced=False)
     tr_start = 0
     tr_length =0
     for tr_info in trans_info_list:
@@ -130,7 +133,10 @@ def get_transcript_dataSet_simple(stim_id, n_used_words=1000):
 
 def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=False, use_summary=False, use_present_scene=False):
     root_data_dir = utils.get_data_root_dir()
-    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_id[:-1], isEnhanced=True)
+    stim_iden = stim_id[:-1]
+    if stim_iden[-1] == '0':
+        stim_iden = stim_iden[:-1]
+    transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_iden, isEnhanced=True)
     tr_start = 0
     tr_length =0
     for tr_info in trans_info_list:
