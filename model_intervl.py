@@ -435,7 +435,7 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
         'img_index_values': img_index_values,
     }
     # utils.log_to_file(f"counter: {counter}")
-    utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
+    #utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
 
     return input_ids, image_flags, prompt_markers
 
@@ -844,7 +844,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    utils.log_to_file(counter,':', question_for_embeddings)
+                    #utils.log_to_file(counter,':', question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
@@ -860,7 +860,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     skip_pix=skip_pix
                 )
 
-                if not utils.isMockMode() and False:
+                if not utils.isMockMode():
                     save_embeddings(extracted_features, prompt_markers_list, embeddings_dir, text=text_dataset[counter], 
                         list_prefix=embeddings_prefix_list, counter=counter)
             pbar.update(len(batch_indices)) if use_progress_bar else None
