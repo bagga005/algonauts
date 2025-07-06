@@ -195,7 +195,7 @@ def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8, mvl_p
             question_for_embeddings = video_prefix + "\n" + total_text
         else:
             question_for_embeddings = video_prefix
-        utils.log_to_file('question_for_embeddings', question_for_embeddings)
+        #utils.log_to_file('question_for_embeddings', question_for_embeddings)
 
             
 
