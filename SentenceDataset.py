@@ -60,8 +60,7 @@ class SentenceDataset_v15(Dataset):
         return self.tr_length
 
     def __getitem__(self, idx):
-        text['fancy_post'] = ""
-        text['fancy_pre'] = ""
+        text = {}
 
         effective_idx = idx + self.tr_start
         print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
