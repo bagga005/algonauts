@@ -60,16 +60,22 @@ class SentenceDataset_v15(Dataset):
         return self.tr_length
 
     def __getitem__(self, idx):
-        text = ""
+        text['fancy_post'] = ""
+        text['fancy_pre'] = ""
 
         effective_idx = idx + self.tr_start
         print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
-        tr_text = "".join(self.sentences[:effective_idx+1])
-        nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
-        text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
+        text['fancy_post'] = self.sentences[effective_idx]
+        postLen = len(text['fancy_post'].split())
+        text['fancy_pre'] = "".join(self.sentences[:effective_idx])
+        #nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
+        pre_words_quota = self.n_used_words - postLen
+        text['fancy_pre']= " ".join(text['fancy_pre'].split(" ")[-pre_words_quota:])
 
         if self.prep_sentences=="contpretr-friends-v1":
-            text = normalize_pauses(text)
+            text['fancy_post'] = normalize_pauses(text['fancy_post'])
+            text['fancy_pre'] = normalize_pauses(text['fancy_pre'])
+        print(f"text['fancy_pre']: {text['fancy_pre']}")
 
         if text=="": text= " "
         return text
