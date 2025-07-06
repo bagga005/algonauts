@@ -777,6 +777,21 @@ def get_num_chunks(episode_id):
             season = 'life'
         elif 'wot' in episode_id:
             season = 'wot'
+        elif 'planetearth' in episode_id:
+            season = 'planetearth'
+        elif 'pulpfiction' in episode_id:
+            season = 'pulpfiction'
+        elif 'lipassepartoutfe' in episode_id:
+            season = 'passepartout'
+        elif 'mononoke' in episode_id:
+            season = 'mononoke'
+        elif 'wolf' in episode_id:
+            season = 'wolf'
+        elif 'figures' in episode_id:
+            season = 'figures'
+        elif 'bourne' in episode_id:
+            season = 'bourne'
+        
     season_folder = os.path.join(utils.get_output_dir(), 'video_chunks', season)
     files = glob(f"{season_folder}/{episode_id}_*.mp4")
     return len(files), season_folder
