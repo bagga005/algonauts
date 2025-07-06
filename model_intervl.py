@@ -758,6 +758,7 @@ def save_pixel_values(pixel_values, save_dir, prefix):
 
 
 def get_num_chunks(episode_id):
+    print(f"episode_id: {episode_id}")
     season = 's1'
     if 's0' in episode_id:
         if 's02' in episode_id:
