@@ -71,8 +71,8 @@ class SentenceDataset_v15(Dataset):
         text['fancy_pre']= " ".join(text['fancy_pre'].split(" ")[-pre_words_quota:])
 
         if self.prep_sentences=="contpretr-friends-v1":
-            text['fancy_post'] = normalize_pauses(text['fancy_post'])
-            text['fancy_pre'] = normalize_pauses(text['fancy_pre'])
+            text['fancy_post'] = normalize_pauses(text['fancy_post']).rstrip()
+            text['fancy_pre'] = normalize_pauses(text['fancy_pre']).rstrip()
         print(f"text['fancy_pre']: {text['fancy_pre']}")
         print(f"text['fancy_post']: {text['fancy_post']}")
 
