@@ -118,11 +118,12 @@ def extract_video_chucks():
     #seasons = ['s7']
     stimuli_list = utils.get_stimuli_prefix()
     seasons = stimuli_list.split(',')
+    print(seasons)
     for season in seasons:
         file_in_filter = ''
         exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
         files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/movie10/{season}/*.mkv")
-
+        print(files)
         if file_in_filter:
             files = [f for f in files if file_in_filter in f]
         files.sort(reverse=True)
