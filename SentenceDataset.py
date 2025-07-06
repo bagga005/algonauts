@@ -47,16 +47,13 @@ class SentenceDataset(Dataset):
         return text
 
 class SentenceDataset_v15(Dataset):
-    def __init__(self, transcript_id, mode="n_used_words", last_n_trs=5, \
-        n_used_words=1000, prep_sentences="contpretr-friends-v1"):
+    def __init__(self, transcript_id, n_used_words=1000, prep_sentences="contpretr-friends-v1"):
         transcript_data, self.tr_start, self.tr_length = get_full_transcript(transcript_id)
         self.sentences = [item['text_per_tr'] for item in transcript_data]
         self.prep_sentences = prep_sentences
         if self.prep_sentences=="contpretr-friends-v1":
             self.sentences = [s if not(s is np.nan) else "..." for s in self.sentences]
 
-        self.mode=mode
-        self.last_n_trs = last_n_trs
         self.n_used_words = n_used_words
 
     def __len__(self):
@@ -64,16 +61,12 @@ class SentenceDataset_v15(Dataset):
 
     def __getitem__(self, idx):
         text = ""
-        if self.mode == "last_n_trs":
-          text= self.sentences[idx-self.last_n_trs: idx+1]
-          text= "".join(text)
 
-        elif self.mode=="n_used_words":
-          effective_idx = idx + self.tr_start
-          print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
-          tr_text = "".join(self.sentences[:effective_idx+1])
-          nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
-          text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
+        effective_idx = idx + self.tr_start
+        print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
+        tr_text = "".join(self.sentences[:effective_idx+1])
+        nopunct_text = tr_text#tr_text.translate(str.maketrans('', '', string.punctuation)) # remove punctuation
+        text= " ".join(nopunct_text.split(" ")[-self.n_used_words:])
 
         if self.prep_sentences=="contpretr-friends-v1":
             text = normalize_pauses(text)
