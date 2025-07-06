@@ -53,12 +53,13 @@ class SentenceDataset_v15(Dataset):
         self.prep_sentences = prep_sentences
         if self.prep_sentences=="contpretr-friends-v1":
             print('***********adding ... for nan')
-            self.sentences = [s if not(s is '') else "..." for s in self.sentences]
             for s in self.sentences:
-                if s is '':
+                if s is np.nan:
                     print(f"s: {s}")
                 else:
                     print(f"s(not nan): {s}")
+            self.sentences = [s if not(s is '') else "..." for s in self.sentences]
+            
         
 
         self.n_used_words = n_used_words
