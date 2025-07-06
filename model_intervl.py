@@ -838,13 +838,14 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     pixel_values = pixel_values.to(torch.bfloat16).cuda()
                     #experiement exact match
                     textData = text_dataset[trans_index]
-                    continue
+                    
                     question_for_embeddings = combine_pre_post_text(textData, skip_video_tokens=skip_pix, mvl_pix_last=mvl_pix_last)
                     # question_for_embeddings, matched = get_best_text(dataset15, text_dataset, trans_index, skip_video_tokens=skip_pix, num_videos=8)
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    #utils.log_to_file(counter,':', question_for_embeddings)
+                    utils.log_to_file(counter,':', question_for_embeddings)
+                    continue
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
