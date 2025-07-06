@@ -75,6 +75,7 @@ class SentenceDataset_v15(Dataset):
             text['fancy_post'] = normalize_pauses(text['fancy_post'])
             text['fancy_pre'] = normalize_pauses(text['fancy_pre'])
         print(f"text['fancy_pre']: {text['fancy_pre']}")
+        print(f"text['fancy_post']: {text['fancy_post']}")
 
         if text=="": text= " "
         return text
