@@ -16,7 +16,7 @@ if not os.path.isdir(directory):
 for filename in os.listdir(directory):
     full_path = os.path.join(directory, filename)
     if os.path.isfile(full_path):
-        new_name = filename.replace('task-', '').replace('video_', '').replace('__tr','_tr')
+        new_name = filename.replace('task-', '').replace('_video', '').replace('__tr','_tr')
         if new_name != filename:
             new_path = os.path.join(directory, new_name)
             os.rename(full_path, new_path)
