@@ -120,7 +120,6 @@ def get_full_transcript(stim_id):
             break
         else:
             tr_start += tr_info['len']
-    print(f"tr_start: {tr_start}, tr_length: {tr_length}")
     return transcript_data, tr_start, tr_length
 
 def get_transcript_dataSet_simple(stim_id, n_used_words=1000):
