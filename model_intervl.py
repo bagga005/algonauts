@@ -760,18 +760,21 @@ def save_pixel_values(pixel_values, save_dir, prefix):
 
 def get_num_chunks(episode_id):
     season = 's1'
-    if 's02' in episode_id:
-        season = 's2'
-    elif 's03' in episode_id:
-        season = 's3'
-    elif 's04' in episode_id:
-        season = 's4'
-    elif 's05' in episode_id:
-        season = 's5'
-    elif 's06' in episode_id:
-        season = 's6'
-    elif 's07' in episode_id:
-        season = 's7'
+    if 's0' in episode_id:
+        if 's02' in episode_id:
+            season = 's2'
+        elif 's03' in episode_id:
+            season = 's3'
+        elif 's04' in episode_id:
+            season = 's4'
+        elif 's05' in episode_id:
+            season = 's5'
+        elif 's06' in episode_id:
+            season = 's6'
+        elif 's07' in episode_id:
+            season = 's7'
+    else:
+        season = episode_id[:-1]
     season_folder = os.path.join(utils.get_output_dir(), 'video_chunks', season)
     files = glob(f"{season_folder}/{episode_id}_*.mp4")
     return len(files), season_folder
