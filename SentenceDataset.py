@@ -62,7 +62,6 @@ class SentenceDataset_v15(Dataset):
         text = {}
 
         effective_idx = idx + self.tr_start
-        print(f"effective_idx: {effective_idx} {idx} {self.tr_start}")
         text['fancy_post'] = self.sentences[effective_idx]
         postLen = len(text['fancy_post'].split())
         text['fancy_pre'] = "".join(self.sentences[:effective_idx])
@@ -73,8 +72,6 @@ class SentenceDataset_v15(Dataset):
         if self.prep_sentences=="contpretr-friends-v1":
             text['fancy_post'] = normalize_pauses(text['fancy_post']).rstrip(" ")
             text['fancy_pre'] = normalize_pauses(text['fancy_pre']).rstrip(" ")
-        print(f"text['fancy_pre']: {text['fancy_pre']}")
-        print(f"text['fancy_post']: {text['fancy_post']}")
 
         if text=="": text= " "
         return text
