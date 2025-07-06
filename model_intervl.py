@@ -633,14 +633,11 @@ def get_embeddings_with_existing_hooks(model, tokenizer, list_pixel_values, list
     #utils.log_to_file(counter, ':', response)
     return dict(layer_outputs), prompt_markers_list
 
-def process_all_files_for_embedding_extraction():
+def process_all_files_for_embedding_extraction(stimulus_prefix):
     root_data_dir = utils.get_data_root_dir()
 # As an exemple, extract visual features for season 1, episode 1 of Friends
     #episode_path = root_data_dir + "algonauts_2025.competitors/stimuli/movies/friends/s1/friends_s01e01a.mkv"
     # Collecting the paths to all the movie stimuli
-    stimuli_prefix = utils.get_stimuli_prefix()
-    if not stimuli_prefix:
-        stimuli_prefix = '*'
     #if stimuli_prefix is None
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
@@ -942,7 +939,12 @@ def test_dataset(stim_id):
     
 def run_model_training():
     utils.set_hf_home_path()
-    process_all_files_for_embedding_extraction()
+    stimulus_prefix = utils.get_stimuli_prefix()
+    assert stimulus_prefix is not None, "stimulus_prefix is None"
+    stimulus_prefix_list = stimulus_prefix.split(',')
+    for stimulus_prefix in stimulus_prefix_list:
+        process_all_files_for_embedding_extraction(stimulus_prefix)
+
     
 # if __name__ == "__main__":
 #     #process_all_files_for_extraction()
