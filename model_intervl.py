@@ -643,7 +643,7 @@ def process_all_files_for_embedding_extraction():
     #if stimuli_prefix is None
     file_in_filter = ''
     exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/{stimuli_prefix}/*.mkv")
+    files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/*/{stimuli_prefix}/*.mkv")
 
     if file_in_filter:
         files = [f for f in files if file_in_filter in f]
@@ -658,7 +658,6 @@ def process_all_files_for_embedding_extraction():
     
 
     # Saving directories
-    save_dir_temp = utils.get_tmp_dir()
     hf_path = utils.get_mvl_model() #"OpenGVLab/InternVL3-1B-Pretrained"
     device_map = split_model(hf_path)
     simple_extraction = utils.get_mvl_simple_extraction()
@@ -689,13 +688,13 @@ def process_all_files_for_embedding_extraction():
         model.img_context_token_id = img_context_token_id
     if not simple_extraction:
         custom_layers = [
-                    'vision_model.encoder.layers.2',
-                    'vision_model.encoder.layers.4',
-                    'vision_model.encoder.layers.12',
-                    'vision_model.encoder.layers.22',
-                    'vision_model.encoder.layers.23',
+                    #'vision_model.encoder.layers.2',
+                    #'vision_model.encoder.layers.4',
+                    #'vision_model.encoder.layers.12',
+                    #'vision_model.encoder.layers.22',
+                    #'vision_model.encoder.layers.23',
                     'vision_model',                     # Vision encoder
-                    'language_model.model.layers.4',    # First layer
+                    #'language_model.model.layers.4',    # First layer
                     'language_model.model.layers.12',    # First layer
                     'language_model.model.layers.20',    # First layer
                     'language_model.model.layers.21',    # Middle layer
@@ -730,7 +729,6 @@ def process_all_files_for_embedding_extraction():
             text_dataset = get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialogue_separator=True, n_used_words=1000, skip_pre_post_split=True, \
                 use_summary=True, use_present_scene=True)
             
-            transcript_file = stim_path.replace('.mkv', '.tsv').replace('movies', 'transcripts')
             # Pass layer_outputs to the extraction function
             extract_vlm_embeddings(stim_id, text_dataset, model, tokenizer, 
                                  layer_outputs, use_progress_bar)
