@@ -79,9 +79,9 @@ class SentenceDataset_v15(Dataset):
         pre_words_quota = self.n_used_words - postLen
         text['fancy_pre']= " ".join(text['fancy_pre'].split(" ")[-pre_words_quota:])
 
-        # if self.prep_sentences=="contpretr-friends-v1":
-        #     text['fancy_post'] = normalize_pauses(text['fancy_post'])
-        #     text['fancy_pre'] = normalize_pauses(text['fancy_pre'])
+        if self.prep_sentences=="contpretr-friends-v1":
+            text['fancy_post'] = normalize_pauses(text['fancy_post'])
+            text['fancy_pre'] = normalize_pauses(text['fancy_pre'])
         print(f"text['fancy_pre']: {text['fancy_pre']}")
         print(f"text['fancy_post']: {text['fancy_post']}")
 
