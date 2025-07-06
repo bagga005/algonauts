@@ -115,11 +115,13 @@ def extract_video_chucks():
     out_data_dir = os.path.join(utils.get_output_dir(), 'video_chunks')
     os.makedirs(out_data_dir, exist_ok=True)
     tr = 1.49
-    seasons = ['s7']
+    #seasons = ['s7']
+    stimuli_list = utils.get_stimuli_prefix()
+    seasons = stimuli_list.split(',')
     for season in seasons:
         file_in_filter = ''
         exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
-        files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/friends/{season}/*.mkv")
+        files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/movie10/{season}/*.mkv")
 
         if file_in_filter:
             files = [f for f in files if file_in_filter in f]
