@@ -117,7 +117,7 @@ if __name__ == "__main__":
     #file1_path = "/home/bagga005/algo/comp_data/stimulus_features/raw/language/friends_s01e01a_features_language.h5"
 
     file2_path = "/home/bagga005/algo/comp_data/tmp/friends_s01e01a.h5"
-    read_h5_file(file2_path, stimId, 'visual')
+    #read_h5_file(file2_path, stimId, 'visual')
     #read_h5_file(file1_path, stimId, 'language_last_hidden_state')
     # file1_path = '/teamspace/studios/this_studio/algo_data/stimulus_features/pca/friends_movie10/language/features_train_new.npy'
     #file1 = "/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_test.npy"
@@ -132,6 +132,8 @@ if __name__ == "__main__":
     file2 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy'
     file3 = '/workspace/stimulus_features/pca/friends_movie10/visual/features_train-merged.npy'
     #merge_npy_files(file1, file2, file3)
+    file1 = '/workspace/stimulus_features/pre/visual/planetearth1.h5'
+    read_h5_file(file1)
     #read_npy_keys_for_audio(file1)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
     #read_h5_file(file, 'friends_s02e01a', 'visual')
