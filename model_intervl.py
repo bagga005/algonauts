@@ -323,7 +323,7 @@ def get_params_for_forward_no_pix(model,tokenizer, text_prompt, counter):
     model_inputs = tokenizer(query, return_tensors='pt', return_offsets_mapping=True, add_special_tokens=True)
     input_ids = model_inputs['input_ids'].to(model.device)
     offsets = model_inputs.offset_mapping
-    #utils.print_input_tokens_with_offsets(query, offsets, input_ids)
+    utils.print_input_tokens_with_offsets(query, offsets, input_ids)
 
     return input_ids
 
