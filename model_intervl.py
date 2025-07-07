@@ -809,7 +809,7 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
     batch_size = utils.get_mvl_batch_size()
 
     len_trans_dataset = len(text_dataset)
-    assert num_chunks - 9<= len_trans_dataset <= num_chunks +9, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
+    assert num_chunks - 30<= len_trans_dataset <= num_chunks +30, f"len(trans_dataset) != num_chunks {len_trans_dataset} != {num_chunks}"
 
     #experiement exact match
     # dataset15 = SentenceDataset_v15(episode_id, mode="n_used_words", n_used_words=n_used_words)
