@@ -179,6 +179,11 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                     #print('embedding.shape', embedding.shape)
                 assert embedding.dtype == torch.bfloat16, f"embedding.dtype {embedding.dtype} != torch.bfloat16"
                 if simple_extraction:
+                    if embedding.shape[0] < 7:
+                        gap = 7 - embedding.shape[0]
+                        last_dim = embedding[-1,:]
+                        gap_tensor = last_dim.repeat(gap, 1)                            
+                        embedding = torch.cat((embedding, gap_tensor), dim=0)
                     assert embedding.shape[0] == 7, f"embedding.shape[0] {embedding.shape[0]} != 7"
                 else:
                     assert embedding.shape[0] == 20, f"embedding.shape[0] {embedding.shape[0]} != 20"
@@ -865,8 +870,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    utils.log_to_file(counter,':')
-                    utils.log_to_file(question_for_embeddings)
+                    # utils.log_to_file(counter,':')
+                    # utils.log_to_file(question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
