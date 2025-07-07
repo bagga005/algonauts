@@ -10,8 +10,8 @@ import utils
 from glob import glob
 from tqdm import tqdm
 import pandas as pd
-from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text, \
-     get_transcript_dataSet_simple
+from SentenceDataset import SentenceDataset_v2, get_transcript_dataSet, combine_pre_post_text
+from SentenceDataset_v15 import SentenceDataset_v15, get_transcript_dataSet_simple
 import gzip
 import pickle
 from Scenes_and_dialogues import get_scene_dialogue
