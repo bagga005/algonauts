@@ -103,7 +103,6 @@ def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
         t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/*/*/{stim_id}*.tsv")
     t_files.sort()
     f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
-    print(len(f_stimuli), list(f_stimuli)[:3], list(f_stimuli)[-3:])
     
     assert len(f_stimuli) > 0, "transcript file not found"
     trans_iterator = enumerate(f_stimuli.items())
@@ -129,14 +128,11 @@ def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
 
 
 def get_full_transcript(stim_id):
-    print(f"Getting full transcript for {stim_id}")
-    if 'friends' not in stim_id:
-        stim_id = 'movie10_' + stim_id 
+    stim_id = utils.get_full_transcript_id(stim_id)
     stim_iden = stim_id[:-1]
     if stim_iden[-1] == '0' or stim_iden[-1] == '1':
         stim_iden = stim_iden[:-1]
 
-    print(stim_iden, stim_id)
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_iden, isEnhanced=False)
     tr_start = 0
     tr_length =0

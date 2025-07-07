@@ -503,7 +503,14 @@ def get_embeddding_meta_file_name(transcript_id):
     embeddings_prefix = f"{transcript_id}"
     meta_file = os.path.join(embeddings_dir, f"{embeddings_prefix}_metadata.json")
     return meta_file
-
+def get_full_transcript_id(transcript_id):
+    if 'friends' in transcript_id:
+        return transcript_id
+    elif 'movie10' in transcript_id:
+        return transcript_id
+    else:
+        return 'movie10_' + transcript_id 
+    return transcript_id
 def is_transcript_already_processed(transcript_id):
     meta_file = get_embeddding_meta_file_name(transcript_id)
     return os.path.exists(meta_file)

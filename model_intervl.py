@@ -72,6 +72,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
             base_dir = os.path.join(save_dir, safe_name)
             os.makedirs(base_dir, exist_ok=True)
             if prefix:
+                prefix = utils.get_full_transcript_id(prefix)
                 safe_name = f"{prefix}_{safe_name}"
 
             if isinstance(embedding_batch, tuple):
