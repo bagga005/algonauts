@@ -93,7 +93,8 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 
                 #take last 7. TOTAL 7
                 embedding_last7 = embedding[-7:,:]
-                print(layer_name, embedding.shape)
+                if layer_name == 'language_model.model.norm':
+                    print(embedding_last7[6])
                 
                 if not simple_extraction:
                     #save average of individual image so 8 tensors + last 1 at end of image that is all combine. TOTAL 9 
