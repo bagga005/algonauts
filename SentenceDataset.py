@@ -52,7 +52,7 @@ class SentenceDataset_v15(Dataset):
         self.sentences = [item['text_per_tr'] for item in transcript_data]
         self.prep_sentences = prep_sentences
         if self.prep_sentences=="contpretr-friends-v1":
-            self.sentences = [s if not(s is '') else "..." for s in self.sentences]
+            self.sentences = [s if s != '' else "..." for s in self.sentences]
         self.n_used_words = n_used_words
 
     def __len__(self):
