@@ -103,6 +103,7 @@ def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
         t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/*/*/{stim_id}*.tsv")
     t_files.sort()
     f_stimuli = {f.split("/")[-1].split(".")[0]: f for f in t_files}
+    print(f_stimuli)
     
     assert len(f_stimuli) > 0, "transcript file not found"
     trans_iterator = enumerate(f_stimuli.items())
