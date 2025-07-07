@@ -62,6 +62,8 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
     file_ext = ".pt.gz"
     simple_extraction = utils.get_mvl_simple_extraction()
     extraction_format = utils.get_mvl_extraction_format()
+    print('extraction_format', extraction_format)
+    print('simple_extraction', simple_extraction)
     assert len(prompt_markers_list) == len(list_prefix), f"len(prompt_markers_list) != len(list_prefix) {len(prompt_markers_list)} != {len(list_prefix)}"
     for i, (prompt_markers, prefix) in enumerate(zip(prompt_markers_list, list_prefix)):
         for layer_name, embedding_batch in full_embeddings.items():
@@ -91,6 +93,7 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 
                 #take last 7. TOTAL 7
                 embedding_last7 = embedding[-7:,:]
+                print(layer_name, embedding.shape)
                 
                 if not simple_extraction:
                     #save average of individual image so 8 tensors + last 1 at end of image that is all combine. TOTAL 9 
