@@ -102,7 +102,7 @@ def load_all_tsv_for_one_episode(stim_id, isEnhanced=False):
     else:
         if 'friends' not in stim_id:
             print('not friends ', stim_id)
-            t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/movie10/*/{stim_id}*.tsv")
+            t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/movie10/pulpfiction/{stim_id}*.tsv")
         else:
             t_files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/transcripts/friends/*/{stim_id}*.tsv")
     t_files.sort()
