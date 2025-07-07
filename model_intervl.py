@@ -701,10 +701,10 @@ def process_all_files_for_embedding_extraction(stimuli_prefix):
                     #'vision_model.encoder.layers.12',
                     #'vision_model.encoder.layers.22',
                     #'vision_model.encoder.layers.23',
-                    'vision_model',                     # Vision encoder
+                    #'vision_model',                     # Vision encoder
                     #'language_model.model.layers.4',    # First layer
                     'language_model.model.layers.12',    # First layer
-                    'language_model.model.layers.20',    # First layer
+                    #'language_model.model.layers.20',    # First layer
                     'language_model.model.layers.21',    # Middle layer
                     'language_model.model.layers.22',   # Later layer
                     'language_model.model.layers.23',   # Later layer
