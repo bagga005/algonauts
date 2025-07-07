@@ -132,7 +132,7 @@ def get_full_transcript(stim_id):
     stim_iden = stim_id[:-1]
     if stim_iden[-1] == '0' or stim_iden[-1] == '1':
         stim_iden = stim_iden[:-1]
-    print(stim_iden)
+    #print(stim_iden)
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_iden, isEnhanced=False)
     tr_start = 0
     tr_length =0
@@ -155,8 +155,8 @@ class SentenceDataset_v15(Dataset):
         self.prep_sentences = prep_sentences
         if self.prep_sentences=="contpretr-friends-v1":
             self.sentences = [s if s != '' else "..." for s in self.sentences]
-        print('total len',len(self.sentences))
-        print('start',self.tr_start, 'self.tr_length',self.tr_length)
+        #print('total len',len(self.sentences))
+        #print('start',self.tr_start, 'self.tr_length',self.tr_length)
         self.n_used_words = n_used_words
 
     def __len__(self):
@@ -166,7 +166,7 @@ class SentenceDataset_v15(Dataset):
         text = {}
 
         effective_idx = idx + self.tr_start
-        print(effective_idx)
+        #print(effective_idx)
         text['fancy_post'] = self.sentences[effective_idx]
         postLen = len(text['fancy_post'].split())
         text['fancy_pre'] = "".join(self.sentences[:effective_idx])
