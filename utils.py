@@ -512,7 +512,7 @@ def get_full_transcript_id(transcript_id):
         return 'movie10_' + transcript_id 
     return transcript_id
 def is_transcript_already_processed(transcript_id):
-    meta_file = get_embeddding_meta_file_name(transcript_id)
+    meta_file = get_embeddding_meta_file_name(get_full_transcript_id(transcript_id))
     return os.path.exists(meta_file)
 
 def get_roi_name(parcel):
