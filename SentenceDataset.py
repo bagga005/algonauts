@@ -158,6 +158,13 @@ def get_transcript_dataSet(stim_id, always_post_speaker=True, exclude_post_dialo
     return trans_dataset
 
 def combine_pre_post_text(textData, skip_video_tokens=False, num_videos=8, mvl_pix_last=True):
+    if skip_video_tokens:
+        text = textData['fancy_pre']
+        if text:
+            text = text + " " + textData['fancy_post']
+        else:
+            text = textData['fancy_post']
+        return text
     pre_text = textData['fancy_pre']
     post_text = textData['fancy_post']
     if mvl_pix_last:
