@@ -93,8 +93,8 @@ def save_embeddings(full_embeddings, prompt_markers_list, save_dir, text="", lis
                 
                 #take last 7. TOTAL 7
                 embedding_last7 = embedding[-7:,:]
-                if layer_name == 'language_model.model.norm':
-                    print(embedding_last7[6])
+                # if layer_name == 'language_model.model.norm':
+                #     print(embedding_last7[6])
                 
                 if not simple_extraction:
                     #save average of individual image so 8 tensors + last 1 at end of image that is all combine. TOTAL 9 
@@ -440,7 +440,7 @@ def get_params_for_forward(model,tokenizer, pixel_values, text_prompt, counter):
         'img_index_values': img_index_values,
     }
     # utils.log_to_file(f"counter: {counter}")
-    #utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
+    utils.print_input_tokens_with_offsets(query, offsets, input_ids, pre_start=pre_start_index, pre_end=pre_end_index, post_start=post_start_index, post_end=post_end_index)
 
     return input_ids, image_flags, prompt_markers
 
@@ -865,7 +865,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    #utils.log_to_file(counter,':', question_for_embeddings)
+                    utils.log_to_file(counter,':')
+                    utils.log_to_file(question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
