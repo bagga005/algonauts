@@ -645,7 +645,7 @@ def process_all_files_for_embedding_extraction(stimuli_prefix):
     # Collecting the paths to all the movie stimuli
     #if stimuli_prefix is None
     file_in_filter = ''
-    exclude_list = ['life01','life02']#['friends_s03e05b', 'friends_s03e06a']
+    exclude_list = []#['friends_s03e05b', 'friends_s03e06a']
     files = glob(f"{root_data_dir}/algonauts_2025.competitors/stimuli/movies/*/{stimuli_prefix}/*.mkv")
 
     if file_in_filter:
