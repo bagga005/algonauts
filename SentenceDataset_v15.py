@@ -133,6 +133,8 @@ def get_full_transcript(stim_id):
     stim_iden = stim_id[:-1]
     if stim_iden[-1] == '0' or stim_iden[-1] == '1':
         stim_iden = stim_iden[:-1]
+    if 'friends' not in stim_iden:
+        stim_iden = 'movie10_' + stim_iden 
     print(stim_iden)
     transcript_data, trans_info_list, total_tr_len = load_all_tsv_for_one_episode(stim_iden, isEnhanced=False)
     tr_start = 0
