@@ -848,7 +848,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
             extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
             #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
             tensor_list.append(extracted_tensor)
-            #print('tensor_list.shape', len(tensor_list))
+            print('tensor_list.shape', len(tensor_list))
         combined_tensor = torch.stack(tensor_list)
     elif e_format == '2':
         file_path = os.path.join(dir_path, f"{stim_id}.npy")
