@@ -461,7 +461,7 @@ def segment_to_extract(loaded_tensor, combine_strategy, i=0, j=0,indexes=[]):
             id1, id2, id3 = 1, 8, 16
 
         ten = loaded_tensor[id2:id3,:].flatten()
-        print('ten.shape', ten.shape)
+        #print('ten.shape', ten.shape)
     elif combine_strategy == COMBINE_STRATEGY_I_J:
         ten = loaded_tensor[i:j+1,:]
         ten = ten.flatten()
@@ -971,7 +971,7 @@ if __name__ == "__main__":
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     #filter_in_name = ["s03"]
     #filter_in_name = ["life", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "bourne", "figures", "wolf"]
-    filter_in_name = ["life","bourne"]
+    filter_in_name = ["life","bourne","figures"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
