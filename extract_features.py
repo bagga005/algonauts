@@ -831,9 +831,7 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
         if add_layer_to_path:
             dir_path = os.path.join(dir_path, layer_name)
         tr_upper = compute_tr_upper(dir_path, stim_id, layer_name)
-        print('tr_upper', stim_id, tr_upper)
-        
-        print('dir_path', dir_path)
+
         for tr_i in range(tr_upper):
             file_path = os.path.join(dir_path, f"{stim_id}_tr_{tr_i}_{layer_name}.pt.gz")
             with gzip.open(file_path, 'rb') as f:
@@ -848,7 +846,6 @@ def combine_vlm_features(dir_path, stim_id, layer_name, strategy, add_layer_to_p
             extracted_tensor = segment_to_extract(loaded_tensor, strategy, i, j, indexes)
             #print('extracted_tensor.dtype', file_path, extracted_tensor.dtype)
             tensor_list.append(extracted_tensor)
-            print('tensor_list.shape', len(tensor_list))
         combined_tensor = torch.stack(tensor_list)
     elif e_format == '2':
         file_path = os.path.join(dir_path, f"{stim_id}.npy")
