@@ -870,8 +870,8 @@ def extract_vlm_embeddings(episode_id, text_dataset, model, tokenizer,
                     # matched_num += 1 if matched else 0
                     #end experiement exact match
 
-                    utils.log_to_file(counter,':')
-                    utils.log_to_file(question_for_embeddings)
+                    # utils.log_to_file(counter,':')
+                    # utils.log_to_file(question_for_embeddings)
                     pixel_values_list.append(pixel_values)
                     question_for_embeddings_list.append(question_for_embeddings)
                     embeddings_prefix_list.append(embeddings_prefix)
