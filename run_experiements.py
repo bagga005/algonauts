@@ -138,9 +138,10 @@ def run_trainings(experiment_name=None, results_output_directory=None):
                 include_viewing_sessions, config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, write_accuracy_to_csv=False)
 
     if run_validation_all_subjects:
-        train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, \
-            config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
-            write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory)
+        for movie in movies_val:
+            train.validate_for_all_subjects(excluded_samples_start, excluded_samples_end, [movie], training_handler, include_viewing_sessions, \
+                config, specific_modalities, plot_encoding_fig=False, break_up_by_network=True, \
+                write_accuracy_to_csv=False, save_combined_accuracy=True, experiment_name=experiment_name, results_output_directory=results_output_directory)
        
     #movies_train = ["friends-s01"]
     #features = train.get_features("all")
