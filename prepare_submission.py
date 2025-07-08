@@ -66,6 +66,8 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
 
     for sub in subjects:
         boundary = get_boundary_from_fmri_for_movie_for_subject(sub, movie_name)
+        print('movie_name', movie_name)
+        print('boundary', boundary)
         predictions_file = utils.get_predictions_file_path(sub, movie_name)
         sub_predictions = np.load(predictions_file, allow_pickle=True)
         predictions_dict = {}

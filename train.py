@@ -35,6 +35,7 @@ def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None)
             id = movie_name[8:]
         elif movie_name[:7] == 'movie10':
             id = movie_name[8:]
+        print('get_boundary_from_fmri_for_movie_for_subject id', id)
         if fmri is None:
             fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
