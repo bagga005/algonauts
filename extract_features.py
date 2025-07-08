@@ -557,6 +557,7 @@ STRATEGY_V4_POST_5Layer_L10_AVG = 558
 STRATEGY_V4_POST_L4_L10_AVG = 559
 STRATEGY_V4_POST_5Layer_L10_AVG_IMG8A = 560
 STRATEGY_V4_POST_5Layer_L10_AVG_IMG_PLUS1 = 561
+STRATEGY_V4_POST_5Layer_L3_AVG = 562
 
 #Vision 
 STRATEGY_VISION_NORM = 10
@@ -712,6 +713,13 @@ def save_combined_vlm_features(dir_input_path, dir_output_path, strategy, modali
                 ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_22", COMBINE_STRATEGY_I,i=9)
                 ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_21", COMBINE_STRATEGY_I,i=9)
                 ten6 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_I,i=9)
+                ten1 = torch.cat((ten2, ten3, ten4, ten5, ten6), dim=1)
+            elif strategy == STRATEGY_V4_POST_5Layer_L3_AVG:
+                ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=7)
+                ten3 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_23", COMBINE_STRATEGY_I,i=7)
+                ten4 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_22", COMBINE_STRATEGY_I,i=7)
+                ten5 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_21", COMBINE_STRATEGY_I,i=7)
+                ten6 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_layers_12", COMBINE_STRATEGY_I,i=7)
                 ten1 = torch.cat((ten2, ten3, ten4, ten5, ten6), dim=1)
             elif strategy == STRATEGY_V4_POST_5Layer_L10_AVG_IMG8A:
                 ten2 = combine_vlm_features(dir_input_path, stim_id, "language_model_model_norm", COMBINE_STRATEGY_I,i=9)
