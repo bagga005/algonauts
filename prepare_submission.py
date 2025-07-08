@@ -66,8 +66,6 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
 
     for sub in subjects:
         boundary = get_boundary_from_fmri_for_movie_for_subject(sub, movie_name)
-        print('movie_name', movie_name)
-        print('boundary', boundary)
         predictions_file = utils.get_predictions_file_path(sub, movie_name)
         sub_predictions = np.load(predictions_file, allow_pickle=True)
         predictions_dict = {}
@@ -127,7 +125,7 @@ def run_for_coda():
 def run_for_flat_output(modality=None):
     
     subjects = [1,2,3,5]
-    movies = ["movie10-bourne","movie10-wolf","movie10-life","movie10-figures","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
+    movies = ["friends-s01","friends-s02","friends-s03","friends-s04","friends-s05","friends-s06","friends-s07","movie10-bourne","movie10-wolf","movie10-figures","movie10-life","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
     if modality is not None:
