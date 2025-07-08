@@ -91,7 +91,7 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
     output_file = get_output_file_path(file_name, 'npy', exp_name)
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     np.save(output_file, submission_predictions)
-    print(f"Formatted predictions saved to: {output_file}")
+    print(f"Formatted predictions for movie {movie_name} saved to: {output_file}")
 
     # Zip the saved file for submission
     if zip_file or format == FORMAT_CODA:
@@ -122,7 +122,7 @@ def run_for_coda():
 
 def run_for_flat_output(modality=None):
     
-    subjects = [1] # [1,2,3,5]
+    subjects = [1,2,3,5]
     movies = ["friends-s01","friends-s02", "friends-s03", "friends-s04", "friends-s05", "friends-s06"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
