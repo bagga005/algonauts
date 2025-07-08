@@ -128,12 +128,13 @@ if __name__ == "__main__":
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
     file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
-    file1 = '/workspace/stimulus_features/pca/friends_movie10/language/features_train.npy'
+    file1 = '/workspace/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_friends-s7_fmri_samples.npy'
     file2 = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/language/features_test.npy'
     file3 = '/workspace/stimulus_features/pca/friends_movie10/visual/features_train-merged.npy'
+    read_npy_keys(file1)
     #merge_npy_files(file1, file2, file3)
     file1 = '/workspace/stimulus_features/pre/visual/planetearth1.h5'
-    read_h5_file(file1, None, 'visual')
+    #read_h5_file(file1, None, 'visual')
     #read_npy_keys_for_audio(file1)
     file = "/home/bagga005/algo/comp_data/stimulus_features/pre/visual/friends_s02e01a.h5"
     #read_h5_file(file, 'friends_s02e01a', 'visual')
