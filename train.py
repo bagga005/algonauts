@@ -877,6 +877,7 @@ def run_validation_by_average(subject, modality, fmri,excluded_samples_start, ex
     return accuracy
 
 
+
 def run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val,training_handler, include_viewing_sessions, config, \
     write_accuracy=False, write_accuracy_to_csv=False, plot_encoding_fig=False,break_up_by_network=False, skip_accuracy_check=False):
     viewing_session = None
@@ -896,7 +897,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
          # Align the stimulus features with the fMRI responses for the validation movies
-        if movies_val[0] == 'friends-s07':
+        if utils.is_test_movie(movies_val[0]):
             fmri, boundary = prepare_s7_fmri_for_alignment(subject)
             skip_accuracy_check = True
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
@@ -911,7 +912,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         trainer = RegressionHander_Transformer(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'loravision':
         assert len(movies_val) == 1, "loravision only supports one movie for validation"
-        if movies_val[0] == 'friends-s07':
+        if utils.is_test_movie(movies_val[0]):
             fmri, boundary = prepare_s7_fmri_for_alignment(subject)
             skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])

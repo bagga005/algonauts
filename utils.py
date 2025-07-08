@@ -155,6 +155,10 @@ def save_model_pytorch(model, model_name):
 def str_to_bool(s):
     return s.lower() in ("true", "1", "t", "yes", "y")
 
+def is_test_movie(movie_name):
+    test_movies = ["friends-s07", "movie10-wot","movie10-pulpfiction","movie10-chaplin","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
+    return movie_name in test_movies
+
 def isMockMode():
     strm = os.getenv("MOCK_MODE")
     if strm:
