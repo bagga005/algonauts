@@ -928,11 +928,13 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
          # Align the stimulus features with the fMRI responses for the validation movies
         if utils.is_test_movie(movies_val[0]):
             fmri, boundary = prepare_test_fmri_for_alignment(subject)
-            print('fmri', fmri.shape)
+            
             skip_accuracy_check = True
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
         excluded_samples_start, excluded_samples_end,
         movies_val, viewing_session)
+        print('features_val', features_val.shape)
+        print('fmri', fmri_val.shape)
         trainer = LinearHandler_Sklearn(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'transformer':
          # Align the stimulus features with the fMRI responses for the validation movies
