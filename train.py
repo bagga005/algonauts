@@ -23,19 +23,58 @@ import datetime
 from roi_network_map import get_breakup_by_network
 from algonaut_funcs import prepare_test_fmri_for_alignment
 
+def filter_boundary_movie_name(boundary, movie_name):
+    filter = ""
+    if movie_name == "friends-s01":
+        filter = "s01e"
+    elif movie_name == "friends-s02":
+        filter = "s02e"
+    elif movie_name == "friends-s03":
+        filter = "s03e"
+    elif movie_name == "friends-s04":
+        filter = "s04e"
+    elif movie_name == "friends-s05":
+        filter = "s05e"
+    elif movie_name == "friends-s06":
+        filter = "s06e"
+    elif movie_name == "friends-s07":
+        filter = "s07e"
+    elif movie_name == "movie10-bourne":
+        filter = "bourne"
+    elif movie_name == "movie10-wolf":
+        filter = "wolf"
+    elif movie_name == "movie10-life":
+        filter = "life"
+    elif movie_name == "movie10-figures":
+        filter = "figures"
+    elif movie_name == "movie10-wot":
+        filter = "wot"
+    elif movie_name == "movie10-pulpfiction":
+        filter = "pulpfiction"
+    elif movie_name == "movie10-chaplin":
+        filter = "chaplin"
+    elif movie_name == "movie10-passepartout":
+        filter = "passepartout"
+    elif movie_name == "movie10-mononoke":
+        filter = "mononoke"
+    elif movie_name == "movie10-planetearth":
+        filter = "planetearth"
+    return [item for item in boundary if filter in item[0]]
+
+
 def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None):
     assert subject == None or fmri == None, "subject and fmri cannot be provided together"
     if utils.is_test_movie(movie_name):
         if subject == None:
             subject = 1
         _, boundary = prepare_test_fmri_for_alignment(subject)
+        boundary = filter_boundary_movie_name(boundary, movie_name)
         return boundary
     else:
         if movie_name[:7] == 'friends':
             id = movie_name[8:]
         elif movie_name[:7] == 'movie10':
             id = movie_name[8:]
-        print('get_boundary_from_fmri_for_movie_for_subject id', id)
         if fmri is None:
             fmri = get_fmri(subject)
         movie_splits = [key for key in fmri if id in key[:len(id)]]
@@ -247,41 +286,12 @@ def load_stimulus_features_friends_s7(root_data_dir):
 
     ### Output ###
     return features_friends_s7
-def filter_boundary_movie_name(boundary, movie_name):
-    filter = ""
-    if movie_name == "friends-s01":
-        filter = "s01e"
-    elif movie_name == "friends-s02":
-        filter = "s02e"
-    elif movie_name == "friends-s03":
-        filter = "s03e"
-    elif movie_name == "friends-s04":
-        filter = "s04e"
-    elif movie_name == "friends-s05":
-        filter = "s05e"
-    elif movie_name == "friends-s06":
-        filter = "s06e"
-    elif movie_name == "friends-s07":
-        filter = "s07e"
-    elif movie_name == "movie10-wot":
-        filter = "wot"
-    elif movie_name == "movie10-pulpfiction":
-        filter = "pulpfiction"
-    elif movie_name == "movie10-chaplin":
-        filter = "chaplin"
-    elif movie_name == "movie10-passepartout":
-        filter = "passepartout"
-    elif movie_name == "movie10-mononoke":
-        filter = "mononoke"
-    elif movie_name == "movie10-planetearth":
-        filter = "planetearth"
-    return [item for item in boundary if filter in item[0]]
 
 def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
      assert len(boundary) > 4, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
-     boundary = filter_boundary_movie_name(boundary, movie_name)
+
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
                 (size == len(features[stim_id])+2) or (stim_id in ['s04e20a','s04e20a','s04e20b','s06e04a','s06e06a','s06e09b','s06e24d','s07e04a','s07e23b','s07e23c','bourne01', 'life01' , 'life02', \
