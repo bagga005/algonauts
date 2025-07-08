@@ -128,13 +128,13 @@ if __name__ == "__main__":
     # file_path = os.path.join(utils.get_data_root_dir(), "algonauts_2025.competitors","fmri","sub-01","func",file_name)
     # read_subject_fmri_session_h5_write_summary(file_path, '01', 0)
     file = '/home/bagga005/algo/comp_data/stimulus_features/pca/friends_movie10/visual/features_train_orig.npy'
-    file1 = '/workspace/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_friends-s7_fmri_samples.npy'
-    file1 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_ood_fmri_samples.npy'
-    file2 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_friends-s7_fmri_samples.npy'
-    file3 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_test_fmri_samples.npy'
+    file1 = 'read_npy_keys/workspace/algo_data/predictions/wot_test/sub-1_predictions_movie10-wot.npy'
+    # file1 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_ood_fmri_samples.npy'
+    # file2 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_friends-s7_fmri_samples.npy'
+    # file3 = '/workspace/algonauts_2025.competitors2/algonauts_2025.competitors/fmri/sub-01/target_sample_number/sub-01_test_fmri_samples.npy'
     
-    #read_npy_keys(file1)
-    merge_npy_files(file1, file2, file3)
+    read_npy_keys(file1)
+    #merge_npy_files(file1, file2, file3)
     file1 = '/workspace/stimulus_features/pre/visual/planetearth1.h5'
     #read_h5_file(file1, None, 'visual')
     #read_npy_keys_for_audio(file1)
