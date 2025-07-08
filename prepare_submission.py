@@ -4,7 +4,7 @@ import zipfile
 import os
 from glob import glob
 import numpy as np
-from algonaut_funcs import prepare_s7_fmri_for_alignment
+
 
 # #dummy np
 # dummy_np = np.zeros((1000, 1000))
