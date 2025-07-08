@@ -971,7 +971,7 @@ if __name__ == "__main__":
     # filter_in_name = [ "s02","s03", "s04",  "s06"]
     #filter_in_name = ["s03"]
     #filter_in_name = ["life", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "bourne", "figures", "wolf"]
-    filter_in_name = ["life","bourne","figures","s01", "s02", "s03", "s04", "s05", "s06", "s07","wolf"]
+    filter_in_name = ["life","bourne","figures","s01", "s02", "s03", "s04", "s05", "s06", "s07","wolf","wot","pulpfiction","chaplin","passepartout","mononoke"]
     modality = "visual"
     
     strategy ="STRATEGY_V4_POST_L12_L10_AVG"
@@ -993,7 +993,7 @@ if __name__ == "__main__":
                 strategy_id = globals()[strategy]
                 kwargs = dict(modality=modality, filter_in_name=filter_in_name, \
                     overwrite_pca=True, \
-                    #overwrite=True, \
+                    overwrite=True, \
                     #pca_skip=True, \
                     # force_evaluation=True \
                     skip_evaluation = True, \
