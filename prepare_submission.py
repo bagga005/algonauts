@@ -141,5 +141,5 @@ def run_for_flat_output(modality=None):
 
 
 if __name__ == "__main__":
-    run_for_coda()
-    #run_for_flat_output()
+    #run_for_coda()
+    run_for_flat_output()
