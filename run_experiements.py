@@ -75,7 +75,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     }
 
     #loading fmri
-    if run_training_all_subjects or run_validation_all_subjects:
+    if subject == -1:
         fmri = train.get_fmri_for_all_subjects()
     else:
         fmri = train.get_fmri(subject)
@@ -127,6 +127,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
     #train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
     if run_training_all_subjects:
         for subject in [1, 2, 3, 5]:
+            fmri = train.get_fmri(subject)
             train.train_for_all_modalities(subject, fmri, excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler,  include_viewing_sessions, config, specific_modalities)
         # train.train_for_all_subjects(excluded_samples_start, excluded_samples_end, movies_train, movies_train_val, training_handler, include_viewing_sessions, \
         #                          config, specific_modalities)
