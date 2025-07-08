@@ -246,6 +246,35 @@ def load_stimulus_features_friends_s7(root_data_dir):
 
     ### Output ###
     return features_friends_s7
+def filter_boundary_movie_name(boundary, movie_name):
+    filter = ""
+    if movie_name == "friends-s01":
+        filter = "s01e"
+    elif movie_name == "friends-s02":
+        filter = "s02e"
+    elif movie_name == "friends-s03":
+        filter = "s03e"
+    elif movie_name == "friends-s04":
+        filter = "s04e"
+    elif movie_name == "friends-s05":
+        filter = "s05e"
+    elif movie_name == "friends-s06":
+        filter = "s06e"
+    elif movie_name == "friends-s07":
+        filter = "s07e"
+    elif movie_name == "movie10-wot":
+        filter = "wot"
+    elif movie_name == "movie10-pulpfiction":
+        filter = "pulpfiction"
+    elif movie_name == "movie10-chaplin":
+        filter = "chaplin"
+    elif movie_name == "movie10-passepartout":
+        filter = "passepartout"
+    elif movie_name == "movie10-mononoke":
+        filter = "mononoke"
+    elif movie_name == "movie10-planetearth":
+        filter = "planetearth"
+    return [item for item in boundary if filter in item[0]]
 
 def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
@@ -253,6 +282,8 @@ def do_features_fmri_len_check(features, fmri, movie_name):
      print('boundary', boundary)
      print('movie_name', movie_name)
      assert len(boundary) > 4, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
+     boundary = filter_boundary_movie_name(boundary, movie_name)
+     print('boundary', boundary)
      print(features.keys())
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
