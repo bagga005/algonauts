@@ -251,7 +251,7 @@ def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
      assert len(boundary) > 4, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
-     print(features.keys())
+     #print(features.keys())
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
                 (size == len(features[stim_id])+2) or (stim_id in ['s04e20a','s04e20a','s04e20b','s06e04a','s06e06a','s06e09b','s06e24d','s07e04a','s07e23b','s07e23c','bourne01', 'life01' , 'life02', \
