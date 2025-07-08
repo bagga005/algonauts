@@ -132,7 +132,7 @@ def run_for_flat_output(modality=None):
         format = FORMAT_WITH_MODALITY
     
     for sub in subjects:
-        print(f"Running for subject {sub}")
+        print(f"***** Running for subject {sub}")
         file_name = get_output_file_name([sub], exp_name, format)
         output_file = get_output_file_path(file_name, 'npy', exp_name)
         #if file exists, delete it
