@@ -82,9 +82,9 @@ def prepare_output_files(subjects, exp_name, file_name, format=FORMAT_CODA, moda
             append_to_dict(submission_predictions, sub, stim_id, slice.astype(np.float32), format, modality)
             #if from_idx < 3000: print(from_idx, from_idx + size)
             from_idx = from_idx + effective_size
-            if (slice.shape[0] + compare_buffer) != size:
-                print(f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}")
-            # assert (slice.shape[0] + compare_buffer)== size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
+            # if (slice.shape[0] + compare_buffer) != size:
+            #     print(f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}")
+            assert (slice.shape[0] + compare_buffer)== size, f"size mismatch while slicing {stim_id} {slice.shape[0]} {size}"
         assert total_size == (sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]), f"total_size {total_size} != sub_predictions.shape[0] {sub_predictions.shape[0] + num_stimuli*2*pads.shape[0]}"
     # print(submission_predictions.keys())
     # print(submission_predictions['language'].keys())
