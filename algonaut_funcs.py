@@ -20,7 +20,7 @@ from model_r50_ft import VisionR50FineTuneModel
 from sklearn.decomposition import IncrementalPCA
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-def prepare_s7_fmri_for_alignment(sub):
+def prepare_test_fmri_for_alignment(sub):
     root_data_dir = utils.get_data_root_dir()
     samples_dir = os.path.join(root_data_dir, 'algonauts_2025.competitors',
             'fmri', f'sub-0{sub}', 'target_sample_number',

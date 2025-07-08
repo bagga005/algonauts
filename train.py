@@ -21,14 +21,14 @@ import matplotlib.pyplot as plt
 import json
 import datetime
 from roi_network_map import get_breakup_by_network
-from algonaut_funcs import prepare_s7_fmri_for_alignment
+from algonaut_funcs import prepare_test_fmri_for_alignment
 
 def get_boundary_from_fmri_for_movie_for_subject(subject, movie_name, fmri=None):
     assert subject == None or fmri == None, "subject and fmri cannot be provided together"
     if utils.is_test_movie(movie_name):
         if subject == None:
             subject = 1
-        _, boundary = prepare_s7_fmri_for_alignment(subject)
+        _, boundary = prepare_test_fmri_for_alignment(subject)
         return boundary
     else:
         if movie_name[:7] == 'friends':
@@ -279,12 +279,8 @@ def filter_boundary_movie_name(boundary, movie_name):
 def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
-     print('boundary', boundary)
-     print('movie_name', movie_name)
      assert len(boundary) > 4, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
      boundary = filter_boundary_movie_name(boundary, movie_name)
-     print('boundary', boundary)
-     print(features.keys())
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
                 (size == len(features[stim_id])+2) or (stim_id in ['s04e20a','s04e20a','s04e20b','s06e04a','s06e06a','s06e09b','s06e24d','s07e04a','s07e23b','s07e23c','bourne01', 'life01' , 'life02', \
