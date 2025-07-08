@@ -793,7 +793,7 @@ def validate_for_all_subjects(excluded_samples_start, excluded_samples_end, movi
     
     for subject in subjects:
         fmri = get_fmri(subject)
-        print(f"\nValidation for Subject {subject}")
+        print(f"\nValidation for Subject {subject} for movie {movies_val[0]}")
         accuracy, accuracy_by_network = run_validation(subject, modality, features, fmri, excluded_samples_start, excluded_samples_end, movies_val, training_handler, include_viewing_sessions, config, write_accuracy, write_accuracy_to_csv=write_accuracy_to_csv, plot_encoding_fig=plot_encoding_fig, break_up_by_network=break_up_by_network, skip_accuracy_check=skip_accuracy_check)
         subject_accuracies[subject] = accuracy
         subject_accuracies_by_network[subject] = accuracy_by_network
@@ -925,6 +925,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         movies_val, viewing_session)
         trainer = RegressionHander_Pytorch(features_val.shape[1], fmri_val.shape[1])
     elif training_handler == 'sklearn':
+        assert len(movies_val) == 1, "sklearn only supports one movie for validation"
          # Align the stimulus features with the fMRI responses for the validation movies
         if utils.is_test_movie(movies_val[0]):
             fmri, boundary = prepare_test_fmri_for_alignment(subject)
