@@ -24,7 +24,7 @@ def prepare_s7_fmri_for_alignment(sub):
     root_data_dir = utils.get_data_root_dir()
     samples_dir = os.path.join(root_data_dir, 'algonauts_2025.competitors',
             'fmri', f'sub-0{sub}', 'target_sample_number',
-            f'sub-0{sub}_friends-s7_fmri_samples.npy')
+            f'sub-0{sub}_test_fmri_samples.npy')
     fmri_samples = np.load(samples_dir, allow_pickle=True).item()
     fmri_samples_aligned = {}
     boundary = []
