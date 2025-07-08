@@ -72,6 +72,7 @@ def run_trainings(experiment_name=None, results_output_directory=None):
 
     config = {
         'trained_model_name': None, #'lora-7-checkpoint-params',#'lora-best-distributed',
+        'subject': subject,
     }
 
     #loading fmri

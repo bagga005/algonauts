@@ -724,7 +724,7 @@ def run_training(features, fmri, excluded_samples_start, excluded_samples_end, m
         _,_, enable_wandb = utils.get_wandb_config()
         enable_wandb = utils.str_to_bool(enable_wandb)
         print('train enable_wandb', enable_wandb)
-        trainer = RegressionHander_Vision(8192 * visual_stimulus_window, output_shape, config['trained_model_name'], enable_wandb=enable_wandb)
+        trainer = RegressionHander_Vision(8192 * visual_stimulus_window, output_shape, config['trained_model_name'], enable_wandb=enable_wandb, subject=config['subject'])
         print('got lora vision handler')
         model, training_time = trainer.train(features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=torch.cuda.device_count())
     elif training_handler == 'sklearn':
@@ -939,7 +939,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         assert len(movies_val) == 1, "sklearn only supports one movie for validation"
          # Align the stimulus features with the fMRI responses for the validation movies
         if utils.is_test_movie(movies_val[0]):
-            fmri, boundary = prepare_test_fmri_for_alignment(subject)
+            fmri, _ = prepare_test_fmri_for_alignment(subject)
             
             skip_accuracy_check = True
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri,
@@ -957,7 +957,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
     elif training_handler == 'loravision':
         assert len(movies_val) == 1, "loravision only supports one movie for validation"
         if utils.is_test_movie(movies_val[0]):
-            fmri, boundary = prepare_test_fmri_for_alignment(subject)
+            fmri, _ = prepare_test_fmri_for_alignment(subject)
             skip_accuracy_check = True
         boundary = get_boundary_from_fmri_for_movie_for_subject(subject, movies_val[0])
         features_val, fmri_val = align_features_and_fmri_samples(features, fmri, excluded_samples_start, excluded_samples_end, movies_val, viewing_session, summary_features=True, all_subject_fmri=False)
@@ -965,7 +965,7 @@ def run_validation(subject, modality, features, fmri, excluded_samples_start, ex
         _,_, enable_wandb = utils.get_wandb_config()
         lora_model = utils.get_model_checkpoint()
         _, visual_stimulus_window, _ = utils.get_stimulus_windows()
-        trainer = RegressionHander_Vision(8192 * visual_stimulus_window, fmri_val.shape[1], pretrain_params_name=lora_model, enable_wandb=False)
+        trainer = RegressionHander_Vision(8192 * visual_stimulus_window, fmri_val.shape[1], pretrain_params_name=lora_model, enable_wandb=False, subject=subject)
         assert len(features_val) == fmri_val.shape[0], f"features_val.shape[0] {features_val.shape[0]} != fmri_val.shape[0] {fmri_val.shape[0]}"
         from_idx = 0
         total_size =0

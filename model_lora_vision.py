@@ -210,6 +210,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
     batch_size, epochs, start_epoch = config['batch_size'], config['epochs'], config['start_epoch']
     num_gpus = config['num_gpus']
     train_only_linear = config['train_only_linear']
+    subject = config['subject']
 
     # Get CPU count
     cpu_count = os.cpu_count()
@@ -219,7 +220,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
         num_workers = min(4 * max(1, num_gpus), cpu_count)
         num_workers = 2
     print(f'num_workers for dataloader: {num_workers}')
-    print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank}')
+    print(f'variables gpu: {num_gpus} world_size: {world_size} rank: {rank} subject: {subject}')
 
     # make epochs small if mode mode
     if utils.isMockMode():
@@ -454,7 +455,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                     #best_model_state = model.module.state_dict().copy()
                     patience_counter = 0
                     torch.save(model.module.state_dict(), 
-                            os.path.join(utils.get_output_dir(), 'models', f'lora-best-distributed.pth'))
+                            os.path.join(utils.get_output_dir(), 'models', f'lora-sub-{subject}-best-distributed.pth'))
                 else:
                     patience_counter += 1
             
@@ -477,14 +478,14 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
                     'numpy_rng_state': np.random.get_state(),
                 }
                 
-                checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint.pth')
+                checkpoint_path = os.path.join(utils.get_output_dir(), 'models', f'lora-sub-{subject}-{epoch}-checkpoint.pth')
                 save_checkpoint(checkpoint, checkpoint_path)
             
             # Save model periodically
             if rank == 0 and epoch % 1 == 0: #epoch != 0 and 
                 # Save the DDP model's state dictionary
                 torch.save(model.module.state_dict(), 
-                          os.path.join(utils.get_output_dir(), 'models', f'lora-{epoch}-checkpoint-params.pth'))
+                          os.path.join(utils.get_output_dir(), 'models', f'lora-sub-{subject}-{epoch}-checkpoint-params.pth'))
             
 
             # Log to wandb
@@ -587,7 +588,7 @@ def train_on_device(rank, world_size, model_params, lora_p, lin_p, train_data, v
     return None if rank == 0 else None
 
 class RegressionHander_Vision():
-    def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False):
+    def __init__(self, input_size, output_size,  pretrain_params_name=None, enable_wandb=False, subject=1):
         print('Initializing RegressionHander_Vision for single subject')
         self.input_size = input_size
         self.output_size = output_size
@@ -602,6 +603,7 @@ class RegressionHander_Vision():
         else:
             print('not loading existing model') 
         self.enable_wandb = enable_wandb
+        self.subject = subject
         
 
     def train(self, features_train, fmri_train, features_train_val, fmri_train_val, num_gpus=1):
@@ -676,6 +678,7 @@ class RegressionHander_Vision():
             'num_gpus': num_gpus,
             'params_path': params_path,
             'train_only_linear': train_only_linear,
+            'subject': self.subject,
         }
         print(f'distributed: starting training resume_checkpoint {resume_checkpoint} params_path {params_path}')
         mp.spawn(
@@ -686,7 +689,7 @@ class RegressionHander_Vision():
         )
         
         # Load the best model saved by rank 0
-        best_model_path = os.path.join(utils.get_output_dir(), 'models', 'lora-best-distributed.pth')
+        best_model_path = os.path.join(utils.get_output_dir(), 'models', f'lora-sub-{self.subject}-best-distributed.pth')
         if os.path.exists(best_model_path):
             self.model.load_state_dict(torch.load(best_model_path))
             print(f"Loaded best model from {best_model_path}")
@@ -1100,7 +1103,7 @@ def prepare_training_data(input, target, batch_size=2, is_for_training=True, num
         # A good rule of thumb is to use min(4 × num_GPUs, num_CPU_cores)
         # or simply num_CPU_cores // 2 as a starting point
         num_workers = min(4 * max(1, num_gpus), cpu_count)
-    print(f'num_workers for dataloader: {num_workers}')
+    #print(f'num_workers for dataloader: {num_workers}')
         
     # Create dataset
     dataset = VideoDataset(input, target)
