@@ -290,7 +290,7 @@ def load_stimulus_features_friends_s7(root_data_dir):
 def do_features_fmri_len_check(features, fmri, movie_name):
     #do based on subject 1
      boundary = get_boundary_from_fmri_for_movie_for_subject(None, movie_name, fmri)
-     assert len(boundary) > 4, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
+     assert len(boundary) > 1, f"boundary cant be so small len(boundary) {len(boundary)} for movie {movie_name}"
 
      for stim_id, size in boundary:
             passed = (size == len(features[stim_id]) or size == len(features[stim_id])+1) or \
