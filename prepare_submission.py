@@ -124,10 +124,10 @@ def run_for_coda():
 
 def run_for_flat_output(modality=None):
     
-    # subjects = [1,2,3,5]
-    # movies = ["friends-s01","friends-s02","friends-s03","friends-s04","friends-s05","friends-s06","friends-s07","movie10-bourne","movie10-wolf","movie10-figures","movie10-life","movie10-chaplin","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
-    subjects = [2]
-    movies = ["friends-s07","movie10-chaplin","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
+    subjects = [1,2,3,5]
+    movies = ["friends-s01","friends-s02","friends-s03","friends-s04","friends-s05","friends-s06","friends-s07","movie10-bourne","movie10-wolf","movie10-figures","movie10-life","movie10-chaplin","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
+    # subjects = [2]
+    # movies = ["friends-s07","movie10-chaplin","movie10-wot","movie10-pulpfiction","movie10-passepartout","movie10-mononoke","movie10-planetearth"]
     exp_name = utils.get_experiment_name()
     format = FORMAT_FLAT
     if modality is not None:
